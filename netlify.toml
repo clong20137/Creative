@@ -1,0 +1,23 @@
+[build]
+  command = "npm run build"
+  functions = "functions"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[dev]
+  command = "npm run dev"
+  framework = "#custom"
+  port = 5173
+
+[context.production.environment]
+  NODE_ENV = "production"
+
+[context.preview.environment]
+  NODE_ENV = "preview"
+
+[context.deploy-preview.environment]
+  NODE_ENV = "staging"
