@@ -31,8 +31,16 @@ export default function PortfolioDetail() {
         {error && <div className="p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">{error}</div>}
 
         {item && (
-          <article className="bg-white rounded-lg shadow overflow-hidden">
-            {item.image && <img src={item.image} alt={item.title} className="w-full h-96 object-cover" />}
+          <article className="max-w-5xl mx-auto bg-white rounded-lg shadow overflow-hidden">
+            {item.image && (
+              <div className="bg-gray-100 border-b">
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="mx-auto max-h-72 md:max-h-[28rem] w-full object-contain"
+                />
+              </div>
+            )}
             <div className="p-8">
               <span className="text-blue-600 font-semibold uppercase text-sm">{item.category?.replace('-', ' ')}</span>
               <h1 className="text-4xl font-bold text-gray-900 mt-2 mb-4">{item.title}</h1>
