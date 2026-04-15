@@ -526,6 +526,27 @@ function ListEditor({ title, listKey, items, fields, updateListItem, addListItem
     }
   }
 
+  const getFeatures = (item: any) => Array.isArray(item.features)
+    ? item.features
+    : String(item.features || '').split('\n').filter(Boolean)
+
+  const updateFeature = (index: number, featureIndex: number, value: string) => {
+    const currentItem = items[index] || {}
+    const features = [...getFeatures(currentItem)]
+    features[featureIndex] = value
+    updateListItem(listKey, index, 'features', features)
+  }
+
+  const addFeature = (index: number) => {
+    const currentItem = items[index] || {}
+    updateListItem(listKey, index, 'features', [...getFeatures(currentItem), ''])
+  }
+
+  const removeFeature = (index: number, featureIndex: number) => {
+    const currentItem = items[index] || {}
+    updateListItem(listKey, index, 'features', getFeatures(currentItem).filter((_: string, i: number) => i !== featureIndex))
+  }
+
   return (
     <section>
       <h2 className="text-2xl font-bold text-gray-900 mb-4">{title}</h2>
@@ -534,13 +555,39 @@ function ListEditor({ title, listKey, items, fields, updateListItem, addListItem
           <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-2 border rounded-lg p-3">
             {fields.map((field: string) => (
               <div key={field}>
-                <textarea
-                  value={Array.isArray(item[field]) ? item[field].join('\n') : item[field] || ''}
-                  onChange={(e) => updateListItem(listKey, index, field, field === 'features' ? e.target.value.split('\n').filter(Boolean) : e.target.value)}
-                  placeholder={field === 'features' ? 'features, one per line' : field}
-                  className="w-full px-4 py-2 border rounded-lg"
-                  rows={field === 'description' || field === 'text' || field === 'features' ? 3 : 1}
-                />
+                {field === 'features' ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-gray-700">Features</p>
+                    {getFeatures(item).map((feature: string, featureIndex: number) => (
+                      <div key={featureIndex} className="flex gap-2">
+                        <input
+                          value={feature}
+                          onChange={(e) => updateFeature(index, featureIndex, e.target.value)}
+                          placeholder="Feature"
+                          className="min-w-0 flex-1 px-4 py-2 border rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeFeature(index, featureIndex)}
+                          className="px-3 py-2 border rounded-lg text-red-600 hover:bg-red-50"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => addFeature(index)} className="btn-secondary">
+                      Add Feature
+                    </button>
+                  </div>
+                ) : (
+                  <textarea
+                    value={Array.isArray(item[field]) ? item[field].join('\n') : item[field] || ''}
+                    onChange={(e) => updateListItem(listKey, index, field, e.target.value)}
+                    placeholder={field}
+                    className="w-full px-4 py-2 border rounded-lg"
+                    rows={field === 'description' || field === 'text' ? 3 : 1}
+                  />
+                )}
                 {field === 'image' && (
                   <input type="file" accept="image/*" onChange={(e) => handleListImageUpload(index, e.target.files?.[0])} className="mt-2 w-full px-3 py-2 border rounded-lg" />
                 )}
