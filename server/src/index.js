@@ -9,6 +9,7 @@ import Subscription from './models/Subscription.js'
 import SubscriptionPlan from './models/SubscriptionPlan.js'
 import ServicePackage from './models/ServicePackage.js'
 import PortfolioItem from './models/PortfolioItem.js'
+import SiteSetting from './models/SiteSetting.js'
 
 // Import routes
 import authRoutes from './routes/auth.js'
@@ -20,6 +21,7 @@ import adminRoutes from './routes/admin.js'
 import usersRoutes from './routes/users.js'
 import paymentMethodsRoutes from './routes/payment-methods.js'
 import servicePackageRoutes from './routes/service-packages.js'
+import siteSettingsRoutes from './routes/site-settings.js'
 
 dotenv.config()
 
@@ -43,7 +45,7 @@ Subscription.belongsTo(SubscriptionPlan, { foreignKey: 'planId' })
 
 // Middleware
 app.use(cors())
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 
 // Database Connection & Sync
@@ -66,6 +68,7 @@ app.use('/api/admin', adminRoutes)
 app.use('/api/users', usersRoutes)
 app.use('/api/payment-methods', paymentMethodsRoutes)
 app.use('/api/service-packages', servicePackageRoutes)
+app.use('/api/site-settings', siteSettingsRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {

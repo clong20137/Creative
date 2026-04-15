@@ -7,6 +7,7 @@ import Subscription from '../models/Subscription.js'
 import SubscriptionPlan from '../models/SubscriptionPlan.js'
 import ServicePackage from '../models/ServicePackage.js'
 import PortfolioItem from '../models/PortfolioItem.js'
+import { getOrCreateSiteSettings } from './site-settings.js'
 
 const router = express.Router()
 
@@ -230,6 +231,45 @@ router.delete('/portfolio-items/:id', async (req, res) => {
     if (!item) return res.status(404).json({ error: 'Portfolio item not found' })
     await item.destroy()
     res.json({ message: 'Portfolio item deleted' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/site-settings', async (req, res) => {
+  try {
+    const settings = await getOrCreateSiteSettings()
+    res.json(settings)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.put('/site-settings', async (req, res) => {
+  try {
+    const settings = await getOrCreateSiteSettings()
+    await settings.update(req.body)
+    res.json(settings)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.put('/users/:id/two-factor', async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id)
+    if (!user) return res.status(404).json({ error: 'User not found' })
+
+    await user.update({
+      twoFactorEnabled: Boolean(req.body.enabled),
+      twoFactorCode: null,
+      twoFactorExpires: null
+    })
+
+    res.json({
+      message: 'Two-factor authentication updated',
+      user: { id: user.id, email: user.email, twoFactorEnabled: user.twoFactorEnabled }
+    })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

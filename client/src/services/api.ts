@@ -42,6 +42,7 @@ const unwrap = async <T = any>(request: Promise<{ data: T }>) => {
 export const authAPI = {
   register: (data: any) => unwrap(api.post('/auth/register', data)),
   login: (data: any) => unwrap(api.post('/auth/login', data)),
+  verifyTwoFactor: (data: any) => unwrap(api.post('/auth/verify-2fa', data)),
   getMe: () => unwrap(api.get('/auth/me'))
 }
 
@@ -87,6 +88,10 @@ export const servicePackagesAPI = {
   getServices: () => unwrap<any[]>(api.get('/service-packages'))
 }
 
+export const siteSettingsAPI = {
+  getSettings: () => unwrap(api.get('/site-settings'))
+}
+
 // Admin API
 export const adminAPI = {
   getStats: () => unwrap(api.get('/admin/stats')),
@@ -110,7 +115,10 @@ export const adminAPI = {
   getPortfolioItems: () => unwrap<any[]>(api.get('/admin/portfolio-items')),
   createPortfolioItem: (data: any) => unwrap(api.post('/admin/portfolio-items', data)),
   updatePortfolioItem: (id: string, data: any) => unwrap(api.put(`/admin/portfolio-items/${id}`, data)),
-  deletePortfolioItem: (id: string) => unwrap(api.delete(`/admin/portfolio-items/${id}`))
+  deletePortfolioItem: (id: string) => unwrap(api.delete(`/admin/portfolio-items/${id}`)),
+  getSiteSettings: () => unwrap(api.get('/admin/site-settings')),
+  updateSiteSettings: (data: any) => unwrap(api.put('/admin/site-settings', data)),
+  updateTwoFactor: (id: string, enabled: boolean) => unwrap(api.put(`/admin/users/${id}/two-factor`, { enabled }))
 }
 
 // Users API - Profile Management

@@ -16,7 +16,7 @@ const PortfolioItem = sequelize.define('PortfolioItem', {
     allowNull: false
   },
   image: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT('long'),
     allowNull: true
   },
   description: {

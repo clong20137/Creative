@@ -1,10 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { FiMenu, FiX } from 'react-icons/fi'
+import { siteSettingsAPI } from '../services/api'
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'))
+  const [siteName, setSiteName] = useState('Creative Studio')
   const location = useLocation()
 
   const isActive = (path: string) => location.pathname === path
@@ -15,12 +17,25 @@ export default function Navigation() {
     setIsOpen(false)
   }, [location.pathname])
 
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settings = await siteSettingsAPI.getSettings()
+        setSiteName(settings.siteName || 'Creative Studio')
+      } catch (error) {
+        console.error('Error loading site settings:', error)
+      }
+    }
+
+    fetchSettings()
+  }, [])
+
   return (
     <nav className="bg-white shadow-lg sticky top-0 z-50">
       <div className="container">
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="text-2xl font-bold text-blue-600">
-            Creative Studio
+            {siteName}
           </Link>
 
           {/* Desktop Menu */}

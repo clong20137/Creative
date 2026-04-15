@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
 import Navigation from './components/Navigation'
 import Footer from './components/Footer'
 import Home from './pages/Home'
@@ -18,9 +19,34 @@ import AdminInvoices from './pages/AdminInvoices'
 import AdminSubscriptions from './pages/AdminSubscriptions'
 import AdminServices from './pages/AdminServices'
 import AdminPortfolio from './pages/AdminPortfolio'
+import AdminSettings from './pages/AdminSettings'
 import NotFound from './pages/NotFound'
+import { siteSettingsAPI } from './services/api'
 
 function App() {
+  useEffect(() => {
+    const applySettings = async () => {
+      try {
+        const settings = await siteSettingsAPI.getSettings()
+        document.title = settings.siteName || 'Creative Studio'
+
+        if (settings.faviconUrl) {
+          let favicon = document.querySelector<HTMLLinkElement>("link[rel='icon']")
+          if (!favicon) {
+            favicon = document.createElement('link')
+            favicon.rel = 'icon'
+            document.head.appendChild(favicon)
+          }
+          favicon.href = settings.faviconUrl
+        }
+      } catch (error) {
+        console.error('Error loading site settings:', error)
+      }
+    }
+
+    applySettings()
+  }, [])
+
   return (
     <Router>
       <div className="flex flex-col min-h-screen">
@@ -44,6 +70,7 @@ function App() {
             <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
             <Route path="/admin/services" element={<AdminServices />} />
             <Route path="/admin/portfolio" element={<AdminPortfolio />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

@@ -11,6 +11,8 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [twoFactorCode, setTwoFactorCode] = useState('')
+  const [twoFactorToken, setTwoFactorToken] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -40,6 +42,12 @@ export default function Login() {
         ? await authAPI.register({ name, company, email, password, role: 'client' })
         : await authAPI.login({ email, password })
 
+      if (data.requiresTwoFactor) {
+        setTwoFactorToken(data.tempToken)
+        setError('')
+        return
+      }
+
       localStorage.setItem('authToken', data.token)
       localStorage.setItem('userId', String(data.user.id))
       localStorage.setItem('userRole', data.user.role)
@@ -48,6 +56,25 @@ export default function Login() {
       navigate(data.user.role === 'admin' ? '/admin/dashboard' : '/client-dashboard')
     } catch (err: any) {
       setError(err.error || 'Unable to sign in')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleTwoFactorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setIsLoading(true)
+
+    try {
+      const data = await authAPI.verifyTwoFactor({ tempToken: twoFactorToken, code: twoFactorCode })
+      localStorage.setItem('authToken', data.token)
+      localStorage.setItem('userId', String(data.user.id))
+      localStorage.setItem('userRole', data.user.role)
+      localStorage.setItem('userEmail', data.user.email)
+      navigate(data.user.role === 'admin' ? '/admin/dashboard' : '/client-dashboard')
+    } catch (err: any) {
+      setError(err.error || 'Unable to verify code')
     } finally {
       setIsLoading(false)
     }
@@ -68,14 +95,35 @@ export default function Login() {
 
         {/* Login Card */}
         <div className="card p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={twoFactorToken ? handleTwoFactorSubmit : handleSubmit} className="space-y-6">
             {error && (
               <div className="p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">
                 {error}
               </div>
             )}
 
-            {isCreatingAccount && (
+            {twoFactorToken && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">
+                A verification code was sent to your email.
+              </div>
+            )}
+
+            {twoFactorToken ? (
+              <div>
+                <label htmlFor="twoFactorCode" className="block text-gray-700 font-semibold mb-2">
+                  Verification Code
+                </label>
+                <input
+                  type="text"
+                  id="twoFactorCode"
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  placeholder="123456"
+                  required
+                />
+              </div>
+            ) : isCreatingAccount && (
               <>
                 <div>
                   <label htmlFor="name" className="block text-gray-700 font-semibold mb-2">
@@ -114,7 +162,8 @@ export default function Login() {
               </>
             )}
 
-            {/* Email Field */}
+            {!twoFactorToken && (
+              <>
             <div>
               <label htmlFor="email" className="block text-gray-700 font-semibold mb-2">
                 Email Address
@@ -178,6 +227,8 @@ export default function Login() {
                 </div>
               </div>
             )}
+              </>
+            )}
 
             {/* Remember Me & Forgot Password */}
             {!isCreatingAccount && (
@@ -199,8 +250,8 @@ export default function Login() {
               className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading
-                ? isCreatingAccount ? 'Creating account...' : 'Signing in...'
-                : isCreatingAccount ? 'Create Account' : 'Sign In'}
+                ? twoFactorToken ? 'Verifying...' : isCreatingAccount ? 'Creating account...' : 'Signing in...'
+                : twoFactorToken ? 'Verify Code' : isCreatingAccount ? 'Create Account' : 'Sign In'}
             </button>
           </form>
 

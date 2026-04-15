@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS Users (
   invoiceReminders BOOLEAN DEFAULT true,
   marketingEmails BOOLEAN DEFAULT false,
   privacyLevel VARCHAR(50) DEFAULT 'public',
+  twoFactorEnabled BOOLEAN DEFAULT false,
+  twoFactorCode VARCHAR(20),
+  twoFactorExpires DATETIME,
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -100,11 +103,30 @@ CREATE TABLE IF NOT EXISTS PortfolioItems (
   id INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
   category ENUM('web-design', 'photography', 'videography', 'branding') NOT NULL,
-  image VARCHAR(500),
+  image LONGTEXT,
   description LONGTEXT,
   projectUrl VARCHAR(500),
   isPublished BOOLEAN DEFAULT true,
   sortOrder INT DEFAULT 0,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Site Settings Table
+CREATE TABLE IF NOT EXISTS SiteSettings (
+  id INT PRIMARY KEY DEFAULT 1,
+  siteName VARCHAR(255) DEFAULT 'Creative Studio',
+  faviconUrl LONGTEXT,
+  contactEmail VARCHAR(255) DEFAULT 'hello@creativestudio.com',
+  phone VARCHAR(255) DEFAULT '+1 (555) 123-4567',
+  hours VARCHAR(255) DEFAULT 'Mon-Fri, 9am-6pm EST',
+  locationLine1 VARCHAR(255) DEFAULT '123 Creative Street',
+  locationLine2 VARCHAR(255) DEFAULT 'New York, NY 10001',
+  footerDescription LONGTEXT,
+  facebookUrl VARCHAR(500),
+  instagramUrl VARCHAR(500),
+  twitterUrl VARCHAR(500),
+  linkedinUrl VARCHAR(500),
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FiMail, FiPhone, FiMapPin } from 'react-icons/fi'
+import { siteSettingsAPI } from '../services/api'
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -12,6 +13,25 @@ export default function Contact() {
   })
 
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [settings, setSettings] = useState<any>({
+    contactEmail: 'hello@creativestudio.com',
+    phone: '+1 (555) 123-4567',
+    hours: 'Mon-Fri, 9am-6pm EST',
+    locationLine1: '123 Creative Street',
+    locationLine2: 'New York, NY 10001'
+  })
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        setSettings(await siteSettingsAPI.getSettings())
+      } catch (error) {
+        console.error('Error loading contact settings:', error)
+      }
+    }
+
+    fetchSettings()
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -65,7 +85,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900">Email</h3>
-                  <p className="text-gray-600">hello@creativestudio.com</p>
+                  <p className="text-gray-600">{settings.contactEmail}</p>
                   <p className="text-gray-600 text-sm">We reply within 24 hours</p>
                 </div>
               </div>
@@ -76,8 +96,8 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900">Phone</h3>
-                  <p className="text-gray-600">+1 (555) 123-4567</p>
-                  <p className="text-gray-600 text-sm">Mon-Fri, 9am-6pm EST</p>
+                  <p className="text-gray-600">{settings.phone}</p>
+                  <p className="text-gray-600 text-sm">{settings.hours}</p>
                 </div>
               </div>
 
@@ -87,8 +107,8 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900">Location</h3>
-                  <p className="text-gray-600">123 Creative Street</p>
-                  <p className="text-gray-600">New York, NY 10001</p>
+                  <p className="text-gray-600">{settings.locationLine1}</p>
+                  <p className="text-gray-600">{settings.locationLine2}</p>
                 </div>
               </div>
 
@@ -96,10 +116,15 @@ export default function Contact() {
               <div className="pt-8 border-t">
                 <h3 className="font-bold text-gray-900 mb-4">Follow Us</h3>
                 <div className="flex gap-4">
-                  {['Facebook', 'Instagram', 'Twitter', 'LinkedIn'].map((social, i) => (
+                  {[
+                    ['Facebook', settings.facebookUrl],
+                    ['Instagram', settings.instagramUrl],
+                    ['Twitter', settings.twitterUrl],
+                    ['LinkedIn', settings.linkedinUrl]
+                  ].map(([social, url], i) => (
                     <a
                       key={i}
-                      href="#"
+                      href={url || '#'}
                       className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 hover:bg-blue-600 hover:text-white transition"
                     >
                       {social[0]}

@@ -83,6 +83,16 @@ export default function AdminPortfolio() {
     fetchItems()
   }
 
+  const handleImageUpload = (file: File | undefined) => {
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setFormData(prev => ({ ...prev, image: String(reader.result || '') }))
+    }
+    reader.readAsDataURL(file)
+  }
+
   return (
     <AdminLayout title="Portfolio">
       {message && <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">{message}</div>}
@@ -112,6 +122,18 @@ export default function AdminPortfolio() {
             <input type="url" placeholder="Image URL" value={formData.image} onChange={(e) => setFormData({ ...formData, image: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
             <input type="url" placeholder="Project URL" value={formData.projectUrl} onChange={(e) => setFormData({ ...formData, projectUrl: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
             <input type="number" placeholder="Sort order" value={formData.sortOrder} onChange={(e) => setFormData({ ...formData, sortOrder: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Upload image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleImageUpload(e.target.files?.[0])}
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+            />
+            {formData.image && (
+              <img src={formData.image} alt="Portfolio preview" className="mt-4 h-32 w-48 object-cover rounded-lg border" />
+            )}
           </div>
           <textarea placeholder="Description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" rows={3} />
           <label className="flex items-center gap-2 text-sm text-gray-700">

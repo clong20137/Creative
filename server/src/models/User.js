@@ -79,6 +79,18 @@ const User = sequelize.define('User', {
   privacyLevel: {
     type: DataTypes.STRING,
     defaultValue: 'public'
+  },
+  twoFactorEnabled: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  twoFactorCode: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  twoFactorExpires: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   timestamps: true,

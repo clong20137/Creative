@@ -1,7 +1,26 @@
 import { FiFacebook, FiInstagram, FiTwitter, FiLinkedin } from 'react-icons/fi'
+import { useEffect, useState } from 'react'
+import { siteSettingsAPI } from '../services/api'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
+  const [settings, setSettings] = useState<any>({
+    siteName: 'Creative Studio',
+    footerDescription: 'Transforming ideas into stunning visual experiences through web design, photography, and videography.',
+    contactEmail: 'hello@creativestudio.com'
+  })
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        setSettings(await siteSettingsAPI.getSettings())
+      } catch (error) {
+        console.error('Error loading footer settings:', error)
+      }
+    }
+
+    fetchSettings()
+  }, [])
 
   return (
     <footer className="bg-gray-900 text-white py-12">
@@ -9,9 +28,9 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Company Info */}
           <div>
-            <h3 className="text-2xl font-bold mb-4">Creative Studio</h3>
+            <h3 className="text-2xl font-bold mb-4">{settings.siteName}</h3>
             <p className="text-gray-400">
-              Transforming ideas into stunning visual experiences through web design, photography, and videography.
+              {settings.footerDescription}
             </p>
           </div>
 
@@ -40,18 +59,18 @@ export default function Footer() {
           {/* Contact & Social */}
           <div>
             <h4 className="text-lg font-semibold mb-4">Connect</h4>
-            <p className="text-gray-400 mb-4">hello@creativestudio.com</p>
+            <p className="text-gray-400 mb-4">{settings.contactEmail}</p>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-white transition">
+              <a href={settings.facebookUrl || '#'} className="text-gray-400 hover:text-white transition">
                 <FiFacebook size={20} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition">
+              <a href={settings.instagramUrl || '#'} className="text-gray-400 hover:text-white transition">
                 <FiInstagram size={20} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition">
+              <a href={settings.twitterUrl || '#'} className="text-gray-400 hover:text-white transition">
                 <FiTwitter size={20} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition">
+              <a href={settings.linkedinUrl || '#'} className="text-gray-400 hover:text-white transition">
                 <FiLinkedin size={20} />
               </a>
             </div>
@@ -60,7 +79,7 @@ export default function Footer() {
 
         <div className="border-t border-gray-800 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center text-gray-400">
-            <p>&copy; {currentYear} Creative Studio. All rights reserved.</p>
+            <p>&copy; {currentYear} {settings.siteName}. All rights reserved.</p>
             <div className="space-x-6 mt-4 md:mt-0">
               <a href="#" className="hover:text-white transition">Privacy Policy</a>
               <a href="#" className="hover:text-white transition">Terms of Service</a>
