@@ -5,6 +5,8 @@ import Project from '../models/Project.js'
 import Invoice from '../models/Invoice.js'
 import Subscription from '../models/Subscription.js'
 import SubscriptionPlan from '../models/SubscriptionPlan.js'
+import ServicePackage from '../models/ServicePackage.js'
+import PortfolioItem from '../models/PortfolioItem.js'
 
 const router = express.Router()
 
@@ -146,6 +148,88 @@ router.delete('/subscription-plans/:id', async (req, res) => {
     if (!plan) return res.status(404).json({ error: 'Subscription plan not found' })
     await plan.destroy()
     res.json({ message: 'Subscription plan deleted' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Get all a la carte service packages
+router.get('/service-packages', async (req, res) => {
+  try {
+    const services = await ServicePackage.findAll({ order: [['sortOrder', 'ASC'], ['createdAt', 'DESC']] })
+    res.json(services)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/service-packages', async (req, res) => {
+  try {
+    const service = await ServicePackage.create(req.body)
+    res.status(201).json(service)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.put('/service-packages/:id', async (req, res) => {
+  try {
+    const service = await ServicePackage.findByPk(req.params.id)
+    if (!service) return res.status(404).json({ error: 'Service package not found' })
+    await service.update(req.body)
+    res.json(service)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.delete('/service-packages/:id', async (req, res) => {
+  try {
+    const service = await ServicePackage.findByPk(req.params.id)
+    if (!service) return res.status(404).json({ error: 'Service package not found' })
+    await service.destroy()
+    res.json({ message: 'Service package deleted' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Get all portfolio items
+router.get('/portfolio-items', async (req, res) => {
+  try {
+    const items = await PortfolioItem.findAll({ order: [['sortOrder', 'ASC'], ['createdAt', 'DESC']] })
+    res.json(items)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/portfolio-items', async (req, res) => {
+  try {
+    const item = await PortfolioItem.create(req.body)
+    res.status(201).json(item)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.put('/portfolio-items/:id', async (req, res) => {
+  try {
+    const item = await PortfolioItem.findByPk(req.params.id)
+    if (!item) return res.status(404).json({ error: 'Portfolio item not found' })
+    await item.update(req.body)
+    res.json(item)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.delete('/portfolio-items/:id', async (req, res) => {
+  try {
+    const item = await PortfolioItem.findByPk(req.params.id)
+    if (!item) return res.status(404).json({ error: 'Portfolio item not found' })
+    await item.destroy()
+    res.json({ message: 'Portfolio item deleted' })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

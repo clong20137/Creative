@@ -7,6 +7,8 @@ import Project from './models/Project.js'
 import Invoice from './models/Invoice.js'
 import Subscription from './models/Subscription.js'
 import SubscriptionPlan from './models/SubscriptionPlan.js'
+import ServicePackage from './models/ServicePackage.js'
+import PortfolioItem from './models/PortfolioItem.js'
 
 // Import routes
 import authRoutes from './routes/auth.js'
@@ -17,6 +19,7 @@ import portfolioRoutes from './routes/portfolio.js'
 import adminRoutes from './routes/admin.js'
 import usersRoutes from './routes/users.js'
 import paymentMethodsRoutes from './routes/payment-methods.js'
+import servicePackageRoutes from './routes/service-packages.js'
 
 dotenv.config()
 
@@ -62,6 +65,7 @@ app.use('/api/portfolio', portfolioRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/users', usersRoutes)
 app.use('/api/payment-methods', paymentMethodsRoutes)
+app.use('/api/service-packages', servicePackageRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {

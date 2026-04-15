@@ -78,9 +78,13 @@ export const subscriptionsAPI = {
 
 // Portfolio API
 export const portfolioAPI = {
-  getPortfolio: () => unwrap(api.get('/portfolio')),
+  getPortfolio: () => unwrap<any[]>(api.get('/portfolio')),
   getPortfolioByCategory: (category: string) => unwrap(api.get(`/portfolio/category/${category}`)),
   getPortfolioItem: (id: string) => unwrap(api.get(`/portfolio/${id}`))
+}
+
+export const servicePackagesAPI = {
+  getServices: () => unwrap<any[]>(api.get('/service-packages'))
 }
 
 // Admin API
@@ -98,7 +102,15 @@ export const adminAPI = {
   createSubscriptionPlan: (data: any) => unwrap(api.post('/admin/subscription-plans', data)),
   updateSubscriptionPlan: (id: string, data: any) => unwrap(api.put(`/admin/subscription-plans/${id}`, data)),
   deleteSubscriptionPlan: (id: string) => unwrap(api.delete(`/admin/subscription-plans/${id}`)),
-  assignSubscription: (data: any) => unwrap(api.post('/admin/subscriptions/assign', data))
+  assignSubscription: (data: any) => unwrap(api.post('/admin/subscriptions/assign', data)),
+  getServicePackages: () => unwrap<any[]>(api.get('/admin/service-packages')),
+  createServicePackage: (data: any) => unwrap(api.post('/admin/service-packages', data)),
+  updateServicePackage: (id: string, data: any) => unwrap(api.put(`/admin/service-packages/${id}`, data)),
+  deleteServicePackage: (id: string) => unwrap(api.delete(`/admin/service-packages/${id}`)),
+  getPortfolioItems: () => unwrap<any[]>(api.get('/admin/portfolio-items')),
+  createPortfolioItem: (data: any) => unwrap(api.post('/admin/portfolio-items', data)),
+  updatePortfolioItem: (id: string, data: any) => unwrap(api.put(`/admin/portfolio-items/${id}`, data)),
+  deletePortfolioItem: (id: string) => unwrap(api.delete(`/admin/portfolio-items/${id}`))
 }
 
 // Users API - Profile Management

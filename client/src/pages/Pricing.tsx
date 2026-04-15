@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { FiCheck } from 'react-icons/fi'
+import { servicePackagesAPI } from '../services/api'
 
 export default function Pricing() {
   const pricingPlans = [
@@ -58,7 +60,7 @@ export default function Pricing() {
     }
   ]
 
-  const servicePackages = [
+  const fallbackServicePackages = [
     { service: 'Photography Session', price: 800, unit: 'half day' },
     { service: 'Product Photography', price: 1200, unit: 'per day' },
     { service: 'Videography', price: 1500, unit: 'per day' },
@@ -66,6 +68,22 @@ export default function Pricing() {
     { service: 'Logo Design', price: 1000, unit: 'project' },
     { service: 'Brand Identity', price: 3000, unit: 'project' }
   ]
+  const [servicePackages, setServicePackages] = useState<any[]>(fallbackServicePackages)
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const services = await servicePackagesAPI.getServices()
+        if (services.length > 0) {
+          setServicePackages(services)
+        }
+      } catch (error) {
+        console.error('Error loading services:', error)
+      }
+    }
+
+    fetchServices()
+  }, [])
 
   return (
     <div>
@@ -145,6 +163,7 @@ export default function Pricing() {
             {servicePackages.map((pkg, i) => (
               <div key={i} className="card p-6">
                 <h3 className="text-1xl font-bold text-gray-900 mb-2">{pkg.service}</h3>
+                {pkg.description && <p className="text-gray-600 text-sm mb-4">{pkg.description}</p>}
                 <div className="flex items-baseline mb-4">
                   <span className="text-3xl font-bold text-blue-600">${pkg.price}</span>
                   <span className="text-gray-600 ml-2">per {pkg.unit}</span>

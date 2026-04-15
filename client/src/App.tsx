@@ -16,6 +16,8 @@ import AdminClients from './pages/AdminClients'
 import AdminProjects from './pages/AdminProjects'
 import AdminInvoices from './pages/AdminInvoices'
 import AdminSubscriptions from './pages/AdminSubscriptions'
+import AdminServices from './pages/AdminServices'
+import AdminPortfolio from './pages/AdminPortfolio'
 import NotFound from './pages/NotFound'
 
 function App() {
@@ -40,6 +42,8 @@ function App() {
             <Route path="/admin/projects" element={<AdminProjects />} />
             <Route path="/admin/invoices" element={<AdminInvoices />} />
             <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
+            <Route path="/admin/services" element={<AdminServices />} />
+            <Route path="/admin/portfolio" element={<AdminPortfolio />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

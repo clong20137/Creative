@@ -1,14 +1,13 @@
 import express from 'express'
-import Project from '../models/Project.js'
+import PortfolioItem from '../models/PortfolioItem.js'
 
 const router = express.Router()
 
-// Get all completed projects for portfolio
 router.get('/', async (req, res) => {
   try {
-    const portfolio = await Project.findAll({
-      where: { status: 'completed' },
-      order: [['createdAt', 'DESC']]
+    const portfolio = await PortfolioItem.findAll({
+      where: { isPublished: true },
+      order: [['sortOrder', 'ASC'], ['createdAt', 'DESC']]
     })
     res.json(portfolio)
   } catch (error) {
@@ -19,12 +18,12 @@ router.get('/', async (req, res) => {
 // Get portfolio by category
 router.get('/category/:category', async (req, res) => {
   try {
-    const portfolio = await Project.findAll({
+    const portfolio = await PortfolioItem.findAll({
       where: {
-        status: 'completed',
-        category: req.params.category
+        category: req.params.category,
+        isPublished: true
       },
-      order: [['createdAt', 'DESC']]
+      order: [['sortOrder', 'ASC'], ['createdAt', 'DESC']]
     })
     res.json(portfolio)
   } catch (error) {
@@ -35,7 +34,7 @@ router.get('/category/:category', async (req, res) => {
 // Get single portfolio item
 router.get('/:id', async (req, res) => {
   try {
-    const item = await Project.findByPk(req.params.id)
+    const item = await PortfolioItem.findByPk(req.params.id)
     if (!item) return res.status(404).json({ error: 'Portfolio item not found' })
     res.json(item)
   } catch (error) {

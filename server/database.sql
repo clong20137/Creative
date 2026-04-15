@@ -82,6 +82,33 @@ CREATE TABLE IF NOT EXISTS SubscriptionPlans (
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- A La Carte Service Packages Table
+CREATE TABLE IF NOT EXISTS ServicePackages (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  service VARCHAR(255) NOT NULL,
+  description LONGTEXT,
+  price DECIMAL(10, 2) NOT NULL,
+  unit VARCHAR(255) DEFAULT 'project',
+  isActive BOOLEAN DEFAULT true,
+  sortOrder INT DEFAULT 0,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Public Portfolio Items Table
+CREATE TABLE IF NOT EXISTS PortfolioItems (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  category ENUM('web-design', 'photography', 'videography', 'branding') NOT NULL,
+  image VARCHAR(500),
+  description LONGTEXT,
+  projectUrl VARCHAR(500),
+  isPublished BOOLEAN DEFAULT true,
+  sortOrder INT DEFAULT 0,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- Subscriptions Table
 CREATE TABLE IF NOT EXISTS Subscriptions (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -114,6 +141,9 @@ CREATE INDEX idx_subscriptions_clientId ON Subscriptions(clientId);
 CREATE INDEX idx_subscriptions_planId ON Subscriptions(planId);
 CREATE INDEX idx_subscriptions_status ON Subscriptions(status);
 CREATE INDEX idx_subscription_plans_active ON SubscriptionPlans(isActive);
+CREATE INDEX idx_service_packages_active ON ServicePackages(isActive);
+CREATE INDEX idx_portfolio_items_published ON PortfolioItems(isPublished);
+CREATE INDEX idx_portfolio_items_category ON PortfolioItems(category);
 
 -- Sample Admin User (Password: admin123 - hashed with bcryptjs)
 INSERT INTO Users (name, email, password, role, company, isActive)

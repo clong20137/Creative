@@ -15,7 +15,12 @@ export default function AdminClients() {
     name: '',
     email: '',
     company: '',
-    phone: ''
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: ''
   })
 
   useEffect(() => {
@@ -42,7 +47,7 @@ export default function AdminClients() {
       } else {
         await adminAPI.createUser({ ...formData, password: 'TempPassword123!' })
       }
-      setFormData({ name: '', email: '', company: '', phone: '' })
+      setFormData({ name: '', email: '', company: '', phone: '', address: '', city: '', state: '', zipCode: '', country: '' })
       setEditingId(null)
       setShowForm(false)
       fetchClients()
@@ -112,6 +117,43 @@ export default function AdminClients() {
                   className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  placeholder="Address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+                <input
+                  type="text"
+                  placeholder="City"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+                <input
+                  type="text"
+                  placeholder="State"
+                  value={formData.state}
+                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                  className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+                <input
+                  type="text"
+                  placeholder="Zip Code"
+                  value={formData.zipCode}
+                  onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
+                  className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+                <input
+                  type="text"
+                  placeholder="Country"
+                  value={formData.country}
+                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                  className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 md:col-span-2"
+                />
+              </div>
               <div className="flex gap-2">
                 <button type="submit" className="btn-primary">Save Client</button>
                 <button
@@ -138,6 +180,7 @@ export default function AdminClients() {
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Email</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Company</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Phone</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Address</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
                 </tr>
               </thead>
@@ -148,6 +191,9 @@ export default function AdminClients() {
                     <td className="px-6 py-3 text-sm text-gray-600">{client.email}</td>
                     <td className="px-6 py-3 text-sm text-gray-600">{client.company}</td>
                     <td className="px-6 py-3 text-sm text-gray-600">{client.phone}</td>
+                    <td className="px-6 py-3 text-sm text-gray-600">
+                      {[client.address, client.city, client.state, client.zipCode, client.country].filter(Boolean).join(', ') || '-'}
+                    </td>
                     <td className="px-6 py-3 text-sm space-x-2">
                       <button
                         onClick={() => {
@@ -155,7 +201,12 @@ export default function AdminClients() {
                             name: client.name,
                             email: client.email,
                             company: client.company || '',
-                            phone: client.phone || ''
+                            phone: client.phone || '',
+                            address: client.address || '',
+                            city: client.city || '',
+                            state: client.state || '',
+                            zipCode: client.zipCode || '',
+                            country: client.country || ''
                           })
                           setEditingId(String(client.id))
                           setShowForm(true)

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { portfolioAPI } from '../services/api'
 
 export default function Portfolio() {
   const [selectedCategory, setSelectedCategory] = useState('all')
 
-  const portfolioItems = [
+  const fallbackPortfolioItems = [
     {
       id: 1,
       title: 'Modern E-Commerce Platform',
@@ -61,6 +62,22 @@ export default function Portfolio() {
       description: 'Comprehensive branding for tech startup'
     }
   ]
+  const [portfolioItems, setPortfolioItems] = useState<any[]>(fallbackPortfolioItems)
+
+  useEffect(() => {
+    const fetchPortfolio = async () => {
+      try {
+        const items = await portfolioAPI.getPortfolio()
+        if (items.length > 0) {
+          setPortfolioItems(items)
+        }
+      } catch (error) {
+        console.error('Error loading portfolio:', error)
+      }
+    }
+
+    fetchPortfolio()
+  }, [])
 
   const categories = [
     { id: 'all', label: 'All Work' },
