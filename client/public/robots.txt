@@ -3,3 +3,5 @@ Allow: /
 Disallow: /admin/
 Disallow: /client-dashboard/
 Disallow: /login
+
+Sitemap: https://creativebycaleb.com/sitemap.xml
