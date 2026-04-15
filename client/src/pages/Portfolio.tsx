@@ -132,11 +132,11 @@ export default function Portfolio() {
                 key={item.id}
                 className="card overflow-hidden group cursor-pointer hover:shadow-2xl transition"
               >
-                <div className="relative overflow-hidden h-64">
+                <div className="relative overflow-hidden h-64 bg-gray-100">
                   <img
                     src={item.image}
                     alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
                   />
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                     <Link to={`/portfolio/${item.id}`} className="btn-primary">View Details</Link>
