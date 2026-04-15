@@ -188,13 +188,6 @@ export default function Login() {
               </div>
             )}
 
-            {requiresCaptcha && (
-              <div>
-                <TurnstileWidget key={turnstileWidgetKey} siteKey={turnstileSiteKey} onVerify={setTurnstileToken} />
-                <p className="mt-2 text-sm text-gray-600">Complete this security check before submitting.</p>
-              </div>
-            )}
-
             {twoFactorToken && (
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">
                 {twoFactorMethod === 'app'
@@ -365,6 +358,13 @@ export default function Login() {
                 Forgot password?
               </button>
             </div>
+            )}
+
+            {requiresCaptcha && (
+              <div>
+                <TurnstileWidget key={turnstileWidgetKey} siteKey={turnstileSiteKey} onVerify={setTurnstileToken} />
+                <p className="mt-2 text-sm text-gray-600">Complete this security check before submitting.</p>
+              </div>
             )}
 
             {/* Submit Button */}
