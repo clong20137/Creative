@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+server/uploads/*
+!server/uploads/.gitkeep
 *.local
 *.tsbuildinfo
 vite.config.js

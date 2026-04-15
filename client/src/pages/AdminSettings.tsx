@@ -122,16 +122,25 @@ async function getUploadDataUrl(file: File) {
   }
 }
 
+async function storeImageDataUrl(dataUrl: string) {
+  const upload = await adminAPI.uploadImage(dataUrl)
+  return upload.url
+}
+
 async function compactDataUrl(value: any) {
-  if (typeof value !== 'string' || !value.startsWith('data:image/') || value.length <= MAX_DATA_URL_LENGTH) {
+  if (typeof value !== 'string' || !value.startsWith('data:image/')) {
     return value
   }
 
   if (value.startsWith('data:image/svg+xml') || value.startsWith('data:image/gif')) {
-    throw new Error('One of your saved images is too large. Please replace it with a smaller image or a hosted image URL.')
+    throw new Error('SVG and GIF uploads cannot be optimized here. Please use a JPG, PNG, WebP, or a hosted image URL.')
   }
 
-  return compressImageSource(value)
+  const compactDataUrl = value.length > MAX_DATA_URL_LENGTH
+    ? await compressImageSource(value)
+    : value
+
+  return storeImageDataUrl(compactDataUrl)
 }
 
 async function compactSettingsPayload(settings: Record<string, any>) {
@@ -229,7 +238,8 @@ export default function AdminSettings() {
     try {
       setError('')
       setMessage('Preparing upload...')
-      handleChange(key, await getUploadDataUrl(file))
+      const dataUrl = await getUploadDataUrl(file)
+      handleChange(key, file.type.startsWith('image/') ? await storeImageDataUrl(dataUrl) : dataUrl)
       setMessage('Upload ready. Save settings to publish it.')
     } catch (err: any) {
       setMessage('')
@@ -509,7 +519,8 @@ function ListEditor({ title, listKey, items, fields, updateListItem, addListItem
     if (!file) return
     try {
       setError('')
-      updateListItem(listKey, index, 'image', await getUploadDataUrl(file))
+      const dataUrl = await getUploadDataUrl(file)
+      updateListItem(listKey, index, 'image', await storeImageDataUrl(dataUrl))
     } catch (err: any) {
       setError(err.message || 'Failed to prepare upload')
     }

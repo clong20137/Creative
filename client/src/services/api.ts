@@ -131,6 +131,7 @@ export const adminAPI = {
   deletePortfolioItem: (id: string) => unwrap(api.delete(`/admin/portfolio-items/${id}`)),
   getSiteSettings: () => unwrap(api.get('/admin/site-settings')),
   updateSiteSettings: (data: any) => unwrap(api.put('/admin/site-settings', data)),
+  uploadImage: (dataUrl: string) => unwrap<{ url: string }>(api.post('/admin/uploads', { dataUrl })),
   getContactMessages: () => unwrap<any[]>(api.get('/admin/contact-messages')),
   updateContactMessage: (id: string, data: any) => unwrap(api.put(`/admin/contact-messages/${id}`, data)),
   updateTwoFactor: (id: string, enabled: boolean) => unwrap(api.put(`/admin/users/${id}/two-factor`, { enabled })),

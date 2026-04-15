@@ -1,5 +1,9 @@
 import express from 'express'
 import sequelize from '../database.js'
+import fs from 'fs/promises'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { randomUUID } from 'crypto'
 import User from '../models/User.js'
 import Project from '../models/Project.js'
 import Invoice from '../models/Invoice.js'
@@ -16,6 +20,9 @@ import jwt from 'jsonwebtoken'
 
 const router = express.Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const uploadsDir = path.resolve(__dirname, '../../uploads')
 
 router.use((req, res, next) => {
   try {
@@ -125,6 +132,28 @@ router.get('/notifications', async (req, res) => {
       newMessages,
       newTickets,
       total: newMessages + newTickets
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/uploads', async (req, res) => {
+  try {
+    const match = String(req.body.dataUrl || '').match(/^data:image\/(jpeg|jpg|png|webp);base64,(.+)$/)
+    if (!match) return res.status(400).json({ error: 'Only JPG, PNG, and WebP image uploads are supported' })
+
+    const extension = match[1] === 'jpeg' ? 'jpg' : match[1]
+    const buffer = Buffer.from(match[2], 'base64')
+    if (buffer.length > 500 * 1024) return res.status(413).json({ error: 'Image upload is too large' })
+
+    await fs.mkdir(uploadsDir, { recursive: true })
+    const filename = `${randomUUID()}.${extension}`
+    await fs.writeFile(path.join(uploadsDir, filename), buffer)
+
+    const protocol = req.get('x-forwarded-proto') || req.protocol
+    res.status(201).json({
+      url: `${protocol}://${req.get('host')}/uploads/${filename}`
     })
   } catch (error) {
     res.status(500).json({ error: error.message })

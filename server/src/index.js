@@ -1,6 +1,8 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import sequelize from './database.js'
 import User from './models/User.js'
 import Project from './models/Project.js'
@@ -31,6 +33,8 @@ dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 5000
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
   .split(',')
   .map(origin => origin.trim())
@@ -78,6 +82,7 @@ app.use(cors({
 app.use('/api/stripe', stripeWebhookRoutes)
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
+app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')))
 
 const authAttempts = new Map()
 app.use('/api/auth', (req, res, next) => {
