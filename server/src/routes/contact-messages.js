@@ -41,13 +41,17 @@ router.post('/', async (req, res) => {
     const transporter = createTransporter()
 
     if (transporter && settings.contactEmail) {
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: settings.contactEmail,
-        replyTo: req.body.email,
-        subject: `New website inquiry from ${req.body.name}`,
-        text: `Name: ${req.body.name}\nEmail: ${req.body.email}\nPhone: ${req.body.phone || ''}\nCompany: ${req.body.company || ''}\nService: ${req.body.service || ''}\n\n${req.body.message}`
-      })
+      try {
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: settings.contactEmail,
+          replyTo: req.body.email,
+          subject: `New website inquiry from ${req.body.name}`,
+          text: `Name: ${req.body.name}\nEmail: ${req.body.email}\nPhone: ${req.body.phone || ''}\nCompany: ${req.body.company || ''}\nService: ${req.body.service || ''}\n\n${req.body.message}`
+        })
+      } catch (emailError) {
+        console.error('Contact message saved, but email notification failed:', emailError.message)
+      }
     }
 
     res.status(201).json({ message: 'Message sent', contactMessage: message })
