@@ -126,6 +126,14 @@ CREATE TABLE IF NOT EXISTS SiteSettings (
   locationLine1 VARCHAR(255) DEFAULT '123 Creative Street',
   locationLine2 VARCHAR(255) DEFAULT 'New York, NY 10001',
   footerDescription LONGTEXT,
+  heroTitle VARCHAR(255) DEFAULT 'Transform Your Vision Into Reality',
+  heroSubtitle LONGTEXT,
+  heroPrimaryLabel VARCHAR(255) DEFAULT 'Start a Project',
+  heroPrimaryUrl VARCHAR(500) DEFAULT '/contact',
+  heroSecondaryLabel VARCHAR(255) DEFAULT 'View Our Work',
+  heroSecondaryUrl VARCHAR(500) DEFAULT '/portfolio',
+  heroMediaType ENUM('none', 'image', 'video') DEFAULT 'none',
+  heroMediaUrl LONGTEXT,
   facebookUrl VARCHAR(500),
   instagramUrl VARCHAR(500),
   twitterUrl VARCHAR(500),
@@ -144,6 +152,8 @@ CREATE TABLE IF NOT EXISTS SiteSettings (
   bankName VARCHAR(255),
   bankAccountLast4 VARCHAR(20),
   payoutInstructions LONGTEXT,
+  turnstileSiteKey VARCHAR(500),
+  turnstileSecretKey VARCHAR(500),
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

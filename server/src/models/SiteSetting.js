@@ -43,6 +43,38 @@ const SiteSetting = sequelize.define('SiteSetting', {
     type: DataTypes.TEXT,
     defaultValue: 'Transforming ideas into stunning visual experiences through web design, photography, and videography.'
   },
+  heroTitle: {
+    type: DataTypes.STRING,
+    defaultValue: 'Transform Your Vision Into Reality'
+  },
+  heroSubtitle: {
+    type: DataTypes.TEXT,
+    defaultValue: 'Professional web design, photography, videography, and branding services that elevate your creative presence.'
+  },
+  heroPrimaryLabel: {
+    type: DataTypes.STRING,
+    defaultValue: 'Start a Project'
+  },
+  heroPrimaryUrl: {
+    type: DataTypes.STRING,
+    defaultValue: '/contact'
+  },
+  heroSecondaryLabel: {
+    type: DataTypes.STRING,
+    defaultValue: 'View Our Work'
+  },
+  heroSecondaryUrl: {
+    type: DataTypes.STRING,
+    defaultValue: '/portfolio'
+  },
+  heroMediaType: {
+    type: DataTypes.ENUM('none', 'image', 'video'),
+    defaultValue: 'none'
+  },
+  heroMediaUrl: {
+    type: DataTypes.TEXT('long'),
+    allowNull: true
+  },
   facebookUrl: {
     type: DataTypes.STRING,
     allowNull: true
@@ -118,6 +150,14 @@ const SiteSetting = sequelize.define('SiteSetting', {
   },
   payoutInstructions: {
     type: DataTypes.TEXT,
+    allowNull: true
+  },
+  turnstileSiteKey: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  turnstileSecretKey: {
+    type: DataTypes.STRING,
     allowNull: true
   }
 }, {

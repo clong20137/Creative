@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FiMail, FiPhone, FiMapPin } from 'react-icons/fi'
 import { contactMessagesAPI, siteSettingsAPI } from '../services/api'
+import TurnstileWidget from '../components/TurnstileWidget'
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -13,6 +14,7 @@ export default function Contact() {
   })
 
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
   const [settings, setSettings] = useState<any>({
     contactEmail: 'hello@creativestudio.com',
     phone: '+1 (555) 123-4567',
@@ -50,7 +52,7 @@ export default function Contact() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await contactMessagesAPI.createMessage(formData)
+      await contactMessagesAPI.createMessage({ ...formData, turnstileToken })
       setIsSubmitted(true)
       setFormData({
         name: '',
@@ -248,6 +250,10 @@ export default function Contact() {
                       placeholder="Tell us about your project..."
                     ></textarea>
                   </div>
+
+                  {settings.turnstileSiteKey && (
+                    <TurnstileWidget siteKey={settings.turnstileSiteKey} onVerify={setTurnstileToken} />
+                  )}
 
                   <button type="submit" className="btn-primary w-full">
                     Send Message

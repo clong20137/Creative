@@ -145,6 +145,9 @@ export const usersAPI = {
   updateProfile: (data: any) => unwrap(api.put('/users/profile', data)),
   updateEmail: (data: any) => unwrap(api.put('/users/email', data)),
   changePassword: (data: any) => unwrap(api.put('/users/password', data)),
+  updateTwoFactor: (enabled: boolean) => unwrap(api.put('/users/two-factor', { enabled })),
+  startTwoFactorSetup: () => unwrap(api.post('/users/two-factor/setup')),
+  confirmTwoFactorSetup: (code: string) => unwrap(api.post('/users/two-factor/confirm', { code })),
   getPreferences: () => unwrap(api.get('/users/preferences')),
   updatePreferences: (data: any) => unwrap(api.put('/users/preferences', data))
 }

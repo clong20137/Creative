@@ -1,7 +1,9 @@
 import express from 'express'
 import jwt from 'jsonwebtoken'
 import bcryptjs from 'bcryptjs'
+import crypto from 'crypto'
 import User from '../models/User.js'
+import { base32Encode, verifyTotp } from './auth.js'
 
 const router = express.Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -89,6 +91,7 @@ router.put('/password', verifyToken, async (req, res) => {
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ error: 'Current and new passwords are required' })
     }
+    if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' })
     
     const user = await User.findByPk(req.userId)
     const isValidPassword = await bcryptjs.compare(currentPassword, user.password)
@@ -97,6 +100,67 @@ router.put('/password', verifyToken, async (req, res) => {
     await user.update({ password: newPassword })
     
     res.json({ message: 'Password changed successfully' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/two-factor/setup', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.userId)
+    if (!user) return res.status(404).json({ error: 'User not found' })
+
+    const secret = base32Encode(crypto.randomBytes(20))
+    await user.update({ twoFactorSecret: secret, twoFactorMethod: 'app' })
+    const label = encodeURIComponent(`Creative Studio:${user.email}`)
+    const issuer = encodeURIComponent('Creative Studio')
+    const otpauthUrl = `otpauth://totp/${label}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`
+    res.json({ secret, otpauthUrl })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/two-factor/confirm', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.userId)
+    if (!user) return res.status(404).json({ error: 'User not found' })
+    if (!user.twoFactorSecret) return res.status(400).json({ error: 'Two-factor setup has not been started' })
+    if (!verifyTotp(user.twoFactorSecret, req.body.code)) return res.status(401).json({ error: 'Invalid authenticator code' })
+
+    await user.update({
+      twoFactorEnabled: true,
+      twoFactorMethod: 'app',
+      twoFactorCode: null,
+      twoFactorExpires: null
+    })
+
+    res.json({
+      message: 'Two-factor authentication updated',
+      user: { id: user.id, email: user.email, twoFactorEnabled: user.twoFactorEnabled, twoFactorMethod: user.twoFactorMethod }
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.put('/two-factor', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.userId)
+    if (!user) return res.status(404).json({ error: 'User not found' })
+
+    await user.update({
+      twoFactorEnabled: Boolean(req.body.enabled),
+      twoFactorMethod: req.body.enabled ? 'email' : user.twoFactorMethod,
+      twoFactorSecret: req.body.enabled ? user.twoFactorSecret : null,
+      twoFactorCode: null,
+      twoFactorExpires: null
+    })
+
+    res.json({
+      message: 'Two-factor authentication updated',
+      user: { id: user.id, email: user.email, twoFactorEnabled: user.twoFactorEnabled, twoFactorMethod: user.twoFactorMethod }
+    })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer'
 import jwt from 'jsonwebtoken'
 import ContactMessage from '../models/ContactMessage.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
+import { verifyTurnstileToken } from '../utils/turnstile.js'
 
 const router = express.Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -32,6 +33,9 @@ function createTransporter() {
 
 router.post('/', async (req, res) => {
   try {
+    if (!await verifyTurnstileToken(req.body.turnstileToken, req.ip)) {
+      return res.status(400).json({ error: 'Captcha verification failed' })
+    }
     const message = await ContactMessage.create(req.body)
     const settings = await getOrCreateSiteSettings()
     const transporter = createTransporter()

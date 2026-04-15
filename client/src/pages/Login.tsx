@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiMail, FiLock, FiEyeOff, FiEye, FiUser, FiBriefcase } from 'react-icons/fi'
-import { authAPI } from '../services/api'
+import { authAPI, siteSettingsAPI } from '../services/api'
+import TurnstileWidget from '../components/TurnstileWidget'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -18,6 +19,8 @@ export default function Login() {
   const [resetToken, setResetToken] = useState('')
   const [resetCode, setResetCode] = useState('')
   const [requiresResetAuthenticator, setRequiresResetAuthenticator] = useState(false)
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -29,6 +32,10 @@ export default function Login() {
     if (token && role) {
       navigate(role === 'admin' ? '/admin/dashboard' : '/client-dashboard')
     }
+
+    siteSettingsAPI.getSettings()
+      .then(settings => setTurnstileSiteKey(settings.turnstileSiteKey || ''))
+      .catch(() => setTurnstileSiteKey(''))
   }, [navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,8 +51,8 @@ export default function Login() {
       }
 
       const data = isCreatingAccount
-        ? await authAPI.register({ name, company, email, password, role: 'client' })
-        : await authAPI.login({ email, password })
+        ? await authAPI.register({ name, company, email, password, turnstileToken })
+        : await authAPI.login({ email, password, turnstileToken })
 
       if (data.requiresTwoFactor) {
         setTwoFactorToken(data.tempToken)
@@ -73,7 +80,7 @@ export default function Login() {
     setIsLoading(true)
 
     try {
-      const data = await authAPI.forgotPassword({ email })
+      const data = await authAPI.forgotPassword({ email, turnstileToken })
       setResetToken(data.tempToken || '')
       setRequiresResetAuthenticator(Boolean(data.requiresAuthenticator))
       setError('')
@@ -156,6 +163,10 @@ export default function Login() {
               <div className="p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">
                 {error}
               </div>
+            )}
+
+            {turnstileSiteKey && !twoFactorToken && (
+              <TurnstileWidget siteKey={turnstileSiteKey} onVerify={setTurnstileToken} />
             )}
 
             {twoFactorToken && (

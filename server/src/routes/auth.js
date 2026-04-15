@@ -4,6 +4,7 @@ import bcryptjs from 'bcryptjs'
 import nodemailer from 'nodemailer'
 import crypto from 'crypto'
 import User from '../models/User.js'
+import { verifyTurnstileToken } from '../utils/turnstile.js'
 
 const router = express.Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -110,7 +111,8 @@ async function sendPasswordResetCode(user, code) {
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, company } = req.body
+    const { name, email, password, company, turnstileToken } = req.body
+    if (!await verifyTurnstileToken(turnstileToken, req.ip)) return res.status(400).json({ error: 'Captcha verification failed' })
     if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' })
     
     const existingUser = await User.findOne({ where: { email } })
@@ -133,7 +135,8 @@ router.post('/register', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body
+    const { email, password, turnstileToken } = req.body
+    if (!await verifyTurnstileToken(turnstileToken, req.ip)) return res.status(400).json({ error: 'Captcha verification failed' })
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' })
     
     const user = await User.findOne({ where: { email } })
@@ -218,7 +221,8 @@ export { base32Encode, verifyTotp }
 
 router.post('/forgot-password', async (req, res) => {
   try {
-    const { email } = req.body
+    const { email, turnstileToken } = req.body
+    if (!await verifyTurnstileToken(turnstileToken, req.ip)) return res.status(400).json({ error: 'Captcha verification failed' })
     const user = await User.findOne({ where: { email } })
 
     if (!user) {

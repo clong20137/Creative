@@ -43,11 +43,22 @@ export default function Home() {
   ]
   const [featuredWorks, setFeaturedWorks] = useState<any[]>(fallbackFeaturedWorks)
   const [whatWeDo, setWhatWeDo] = useState<any[]>(fallbackServices)
+  const [hero, setHero] = useState<any>({
+    heroTitle: 'Transform Your Vision Into Reality',
+    heroSubtitle: 'Professional web design, photography, videography, and branding services that elevate your creative presence.',
+    heroPrimaryLabel: 'Start a Project',
+    heroPrimaryUrl: '/contact',
+    heroSecondaryLabel: 'View Our Work',
+    heroSecondaryUrl: '/portfolio',
+    heroMediaType: 'none',
+    heroMediaUrl: ''
+  })
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const settings = await siteSettingsAPI.getSettings()
+        setHero((prev: any) => ({ ...prev, ...settings }))
         if (Array.isArray(settings.whatWeDo) && settings.whatWeDo.length > 0) setWhatWeDo(settings.whatWeDo)
         if (Array.isArray(settings.featuredWork) && settings.featuredWork.length > 0) setFeaturedWorks(settings.featuredWork)
       } catch (error) {
@@ -61,21 +72,28 @@ export default function Home() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20 md:py-32">
-        <div className="container">
+      <section className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20 md:py-32">
+        {hero.heroMediaUrl && hero.heroMediaType === 'image' && (
+          <img src={hero.heroMediaUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        )}
+        {hero.heroMediaUrl && hero.heroMediaType === 'video' && (
+          <video src={hero.heroMediaUrl} className="absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline />
+        )}
+        <div className="absolute inset-0 bg-blue-950/55"></div>
+        <div className="container relative">
           <div className="max-w-2xl">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Transform Your Vision Into Reality
+              {hero.heroTitle || 'Transform Your Vision Into Reality'}
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100">
-              Professional web design, photography, videography, and branding services that elevate your creative presence.
+              {hero.heroSubtitle || 'Professional web design, photography, videography, and branding services that elevate your creative presence.'}
             </p>
             <div className="flex gap-4">
-              <Link to="/contact" className="btn-primary inline-flex items-center gap-2">
-                Start a Project <FiArrowRight />
+              <Link to={hero.heroPrimaryUrl || '/contact'} className="btn-primary inline-flex items-center gap-2">
+                {hero.heroPrimaryLabel || 'Start a Project'} <FiArrowRight />
               </Link>
-              <Link to="/portfolio" className="btn-secondary inline-block">
-                View Our Work
+              <Link to={hero.heroSecondaryUrl || '/portfolio'} className="btn-secondary inline-block">
+                {hero.heroSecondaryLabel || 'View Our Work'}
               </Link>
             </div>
           </div>

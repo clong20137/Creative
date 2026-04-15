@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FiLogOut, FiDownload, FiMessageSquare, FiCheckCircle, FiClock } from 'react-icons/fi'
+import { FiDownload, FiMessageSquare, FiCheckCircle, FiClock } from 'react-icons/fi'
 import { projectsAPI } from '../services/api'
 import { PageSkeleton } from '../components/SkeletonLoaders'
+import ClientLayout from '../components/ClientLayout'
 
 export default function ClientDashboard() {
   const navigate = useNavigate()
@@ -38,14 +39,6 @@ export default function ClientDashboard() {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('userId')
-    localStorage.removeItem('userRole')
-    localStorage.removeItem('userEmail')
-    navigate('/')
-  }
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
@@ -71,21 +64,8 @@ export default function ClientDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Client Dashboard</h1>
-            <p className="text-gray-600 mt-2">Welcome back! Manage your projects here.</p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-          >
-            <FiLogOut /> Logout
-          </button>
-        </div>
+    <ClientLayout title="Client Dashboard">
+        <p className="text-gray-600 mb-8">Welcome back! Manage your projects here.</p>
 
         {/* User Info */}
         <div className="card p-6 mb-8">
@@ -197,7 +177,6 @@ export default function ClientDashboard() {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </ClientLayout>
   )
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { FiEdit2, FiSave, FiX, FiLock, FiMail } from 'react-icons/fi'
 import { usersAPI } from '../services/api'
+import ClientLayout from '../components/ClientLayout'
 
 export default function ClientPortalSettings() {
   const [profile, setProfile] = useState<any>(null)
@@ -10,6 +11,8 @@ export default function ClientPortalSettings() {
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [message, setMessage] = useState('')
+  const [twoFactorSetup, setTwoFactorSetup] = useState<any>(null)
+  const [twoFactorCode, setTwoFactorCode] = useState('')
 
   // Editing state
   const [formData, setFormData] = useState<any>({})
@@ -103,19 +106,54 @@ export default function ClientPortalSettings() {
     }
   }
 
+  const handleTwoFactorToggle = async () => {
+    try {
+      const nextValue = !profile?.twoFactorEnabled
+      await usersAPI.updateTwoFactor(nextValue)
+      setProfile((prev: any) => ({ ...prev, twoFactorEnabled: nextValue, twoFactorMethod: nextValue ? 'email' : null }))
+      setTwoFactorSetup(null)
+      setMessage(nextValue ? 'Email two-factor authentication enabled' : 'Two-factor authentication disabled')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      setMessage('Error updating two-factor authentication')
+    }
+  }
+
+  const startAuthenticatorSetup = async () => {
+    try {
+      setTwoFactorSetup(await usersAPI.startTwoFactorSetup())
+    } catch (error) {
+      setMessage('Error starting authenticator setup')
+    }
+  }
+
+  const confirmAuthenticatorSetup = async () => {
+    try {
+      await usersAPI.confirmTwoFactorSetup(twoFactorCode)
+      setProfile((prev: any) => ({ ...prev, twoFactorEnabled: true, twoFactorMethod: 'app' }))
+      setTwoFactorSetup(null)
+      setTwoFactorCode('')
+      setMessage('Authenticator app two-factor authentication enabled')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      setMessage('Invalid authenticator code')
+    }
+  }
+
+  const qrUrl = twoFactorSetup
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(twoFactorSetup.otpauthUrl)}`
+    : ''
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+      <ClientLayout title="Account Settings">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      </ClientLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Account Settings</h1>
-
+    <ClientLayout title="Account Settings">
         {message && (
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">
             {message}
@@ -237,6 +275,34 @@ export default function ClientPortalSettings() {
           )}
         </div>
 
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Two-Factor Authentication</h2>
+          <p className="text-gray-600 mb-6">
+            Add an extra sign-in check with email codes or an authenticator app on your phone.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={handleTwoFactorToggle} className={profile?.twoFactorEnabled ? 'btn-secondary' : 'btn-primary'}>
+              {profile?.twoFactorEnabled ? 'Disable 2FA' : 'Enable Email 2FA'}
+            </button>
+            <button type="button" onClick={startAuthenticatorSetup} className="btn-secondary">
+              Set Up Authenticator App
+            </button>
+          </div>
+          {profile?.twoFactorEnabled && (
+            <p className="mt-4 text-sm text-blue-700">
+              Current method: {profile.twoFactorMethod === 'app' ? 'Authenticator app' : 'Email code'}
+            </p>
+          )}
+          {twoFactorSetup && (
+            <div className="mt-6 space-y-3 max-w-md">
+              <img src={qrUrl} alt="Authenticator QR code" className="w-44 h-44 border rounded-lg" />
+              <p className="font-mono text-sm break-all bg-gray-100 p-3 rounded">{twoFactorSetup.secret}</p>
+              <input value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)} placeholder="Authenticator code" className="w-full px-4 py-2 border rounded-lg" />
+              <button type="button" onClick={confirmAuthenticatorSetup} className="btn-primary">Confirm App 2FA</button>
+            </div>
+          )}
+        </div>
+
         {/* Email & Password Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* Email */}
@@ -315,7 +381,6 @@ export default function ClientPortalSettings() {
             </div>
           </div>
         </div>
-      </div>
 
       {/* Password Change Modal */}
       {showPasswordModal && (
@@ -425,6 +490,6 @@ export default function ClientPortalSettings() {
           </div>
         </div>
       )}
-    </div>
+    </ClientLayout>
   )
 }

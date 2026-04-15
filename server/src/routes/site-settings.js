@@ -23,6 +23,14 @@ function publicSiteSettings(settings) {
     'hours',
     'locationLine1',
     'locationLine2',
+    'heroTitle',
+    'heroSubtitle',
+    'heroPrimaryLabel',
+    'heroPrimaryUrl',
+    'heroSecondaryLabel',
+    'heroSecondaryUrl',
+    'heroMediaType',
+    'heroMediaUrl',
     'facebookUrl',
     'instagramUrl',
     'twitterUrl',
@@ -33,13 +41,16 @@ function publicSiteSettings(settings) {
     'services',
     'faqs',
     'testimonials',
-    'stripePublishableKey'
+    'stripePublishableKey',
+    'turnstileSiteKey'
   ]
 
-  return allowedKeys.reduce((safe, key) => {
+  const safeSettings = allowedKeys.reduce((safe, key) => {
     safe[key] = data[key]
     return safe
   }, {})
+  safeSettings.turnstileSiteKey = data.turnstileSiteKey || process.env.TURNSTILE_SITE_KEY || ''
+  return safeSettings
 }
 
 router.get('/', async (req, res) => {

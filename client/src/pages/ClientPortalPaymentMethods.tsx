@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { FiPlus, FiTrash2, FiX, FiCheckCircle } from 'react-icons/fi'
 import { paymentMethodsAPI } from '../services/api'
+import ClientLayout from '../components/ClientLayout'
 
 export default function ClientPortalPaymentMethods() {
   const [paymentMethods, setPaymentMethods] = useState<any[]>([])
@@ -86,17 +87,15 @@ export default function ClientPortalPaymentMethods() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+      <ClientLayout title="Payment Methods">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      </ClientLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <ClientLayout title="Payment Methods">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Payment Methods</h1>
           <button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
@@ -164,7 +163,6 @@ export default function ClientPortalPaymentMethods() {
             ))}
           </div>
         )}
-      </div>
 
       {/* Add Payment Method Modal */}
       {showAddModal && (
@@ -287,6 +285,6 @@ export default function ClientPortalPaymentMethods() {
           </div>
         </div>
       )}
-    </div>
+    </ClientLayout>
   )
 }

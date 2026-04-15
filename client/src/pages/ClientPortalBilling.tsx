@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { FiDownload, FiCreditCard, FiRefreshCw, FiX } from 'react-icons/fi'
 import { invoicesAPI, subscriptionsAPI } from '../services/api'
 import { PageSkeleton } from '../components/SkeletonLoaders'
+import ClientLayout from '../components/ClientLayout'
 
 export default function ClientPortalBilling() {
   const [invoices, setInvoices] = useState<any[]>([])
@@ -76,8 +77,7 @@ export default function ClientPortalBilling() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container">
+    <ClientLayout title="Billing">
         {/* Subscription Section */}
         <div className="mb-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">My Subscription</h2>
@@ -198,7 +198,7 @@ export default function ClientPortalBilling() {
             </div>
           )}
         </div>
-      </div>
+      
 
       {/* Upgrade Plan Modal */}
       {showUpgradeModal && (
@@ -242,6 +242,6 @@ export default function ClientPortalBilling() {
           </div>
         </div>
       )}
-    </div>
+    </ClientLayout>
   )
 }

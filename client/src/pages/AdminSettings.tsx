@@ -13,6 +13,14 @@ const emptySettings = {
   locationLine1: '',
   locationLine2: '',
   footerDescription: '',
+  heroTitle: '',
+  heroSubtitle: '',
+  heroPrimaryLabel: '',
+  heroPrimaryUrl: '',
+  heroSecondaryLabel: '',
+  heroSecondaryUrl: '',
+  heroMediaType: 'none',
+  heroMediaUrl: '',
   facebookUrl: '',
   instagramUrl: '',
   twitterUrl: '',
@@ -30,7 +38,9 @@ const emptySettings = {
   stripeSecretKey: '',
   bankName: '',
   bankAccountLast4: '',
-  payoutInstructions: ''
+  payoutInstructions: '',
+  turnstileSiteKey: '',
+  turnstileSecretKey: ''
 }
 
 const tabs = ['General', 'Contact', 'Homepage', 'Services', 'Pricing', 'Testimonials', 'Payments', 'Security']
@@ -185,6 +195,27 @@ export default function AdminSettings() {
 
             {activeTab === 'Homepage' && (
               <section className="space-y-6">
+                <section className="space-y-4">
+                  <h2 className="text-2xl font-bold text-gray-900">Homepage Banner</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input value={settings.heroTitle || ''} onChange={(e) => handleChange('heroTitle', e.target.value)} placeholder="Banner headline" className="px-4 py-2 border rounded-lg md:col-span-2" />
+                    <textarea value={settings.heroSubtitle || ''} onChange={(e) => handleChange('heroSubtitle', e.target.value)} placeholder="Banner description" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                    <input value={settings.heroPrimaryLabel || ''} onChange={(e) => handleChange('heroPrimaryLabel', e.target.value)} placeholder="Primary button label" className="px-4 py-2 border rounded-lg" />
+                    <input value={settings.heroPrimaryUrl || ''} onChange={(e) => handleChange('heroPrimaryUrl', e.target.value)} placeholder="Primary button URL" className="px-4 py-2 border rounded-lg" />
+                    <input value={settings.heroSecondaryLabel || ''} onChange={(e) => handleChange('heroSecondaryLabel', e.target.value)} placeholder="Secondary button label" className="px-4 py-2 border rounded-lg" />
+                    <input value={settings.heroSecondaryUrl || ''} onChange={(e) => handleChange('heroSecondaryUrl', e.target.value)} placeholder="Secondary button URL" className="px-4 py-2 border rounded-lg" />
+                    <select value={settings.heroMediaType || 'none'} onChange={(e) => handleChange('heroMediaType', e.target.value)} className="px-4 py-2 border rounded-lg">
+                      <option value="none">No media</option>
+                      <option value="image">Image banner</option>
+                      <option value="video">Video banner</option>
+                    </select>
+                    <input value={settings.heroMediaUrl || ''} onChange={(e) => handleChange('heroMediaUrl', e.target.value)} placeholder="Image or video URL" className="px-4 py-2 border rounded-lg" />
+                    <label className="block md:col-span-2">
+                      <span className="block text-sm font-semibold text-gray-700 mb-2">Upload banner image or video</span>
+                      <input type="file" accept="image/*,video/*" onChange={(e) => handleUpload('heroMediaUrl', e.target.files?.[0])} className="w-full px-4 py-2 border rounded-lg" />
+                    </label>
+                  </div>
+                </section>
                 <ListEditor title="What We Do" listKey="whatWeDo" items={settings.whatWeDo} fields={['title', 'desc']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} />
                 <ListEditor title="Featured Work" listKey="featuredWork" items={settings.featuredWork} fields={['title', 'category', 'image', 'description']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} />
               </section>
@@ -256,6 +287,14 @@ export default function AdminSettings() {
                     <button type="button" onClick={confirmAuthenticatorSetup} className="btn-primary">Confirm App 2FA</button>
                   </div>
                 )}
+                <div className="space-y-4 lg:col-span-2">
+                  <h2 className="text-2xl font-bold text-gray-900">Cloudflare Turnstile</h2>
+                  <p className="text-gray-600">Protect login, account creation, password reset, and contact forms from bots.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input value={settings.turnstileSiteKey || ''} onChange={(e) => handleChange('turnstileSiteKey', e.target.value)} placeholder="Turnstile site key" className="px-4 py-2 border rounded-lg" />
+                    <input value={settings.turnstileSecretKey || ''} onChange={(e) => handleChange('turnstileSecretKey', e.target.value)} placeholder="Turnstile secret key" className="px-4 py-2 border rounded-lg" />
+                  </div>
+                </div>
               </section>
             )}
           </div>

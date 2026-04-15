@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { ticketsAPI } from '../services/api'
+import ClientLayout from '../components/ClientLayout'
 
 export default function ClientTickets() {
   const [tickets, setTickets] = useState<any[]>([])
@@ -20,10 +20,7 @@ export default function ClientTickets() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container">
-        <Link to="/client-dashboard" className="text-blue-600 font-semibold">Back to Dashboard</Link>
-        <h1 className="text-3xl font-bold text-gray-900 mt-4 mb-8">Support Tickets</h1>
+    <ClientLayout title="Support Tickets">
         <form onSubmit={handleSubmit} className="card p-6 mb-8 space-y-4">
           <input value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} placeholder="Subject" className="w-full px-4 py-2 border rounded-lg" required />
           <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="w-full px-4 py-2 border rounded-lg">
@@ -47,7 +44,6 @@ export default function ClientTickets() {
             </div>
           ))}
         </div>
-      </div>
-    </div>
+    </ClientLayout>
   )
 }
