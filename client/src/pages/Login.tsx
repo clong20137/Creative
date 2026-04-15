@@ -21,6 +21,7 @@ export default function Login() {
   const [requiresResetAuthenticator, setRequiresResetAuthenticator] = useState(false)
   const [turnstileSiteKey, setTurnstileSiteKey] = useState('')
   const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -38,9 +39,23 @@ export default function Login() {
       .catch(() => setTurnstileSiteKey(''))
   }, [navigate])
 
+  const requiresCaptcha = Boolean(turnstileSiteKey) && !twoFactorToken && (!isResettingPassword || !resetToken)
+  const isSubmitDisabled = isLoading || (requiresCaptcha && !turnstileToken)
+
+  const resetCaptcha = () => {
+    setTurnstileToken('')
+    setTurnstileWidgetKey(prev => prev + 1)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (requiresCaptcha && !turnstileToken) {
+      setError('Please complete the security check before continuing.')
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -69,6 +84,7 @@ export default function Login() {
       navigate(data.user.role === 'admin' ? '/admin/dashboard' : '/client-dashboard')
     } catch (err: any) {
       setError(err.error || 'Unable to sign in')
+      resetCaptcha()
     } finally {
       setIsLoading(false)
     }
@@ -77,6 +93,12 @@ export default function Login() {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (requiresCaptcha && !turnstileToken) {
+      setError('Please complete the security check before continuing.')
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -86,6 +108,7 @@ export default function Login() {
       setError('')
     } catch (err: any) {
       setError(err.error || 'Unable to start password reset')
+      resetCaptcha()
     } finally {
       setIsLoading(false)
     }
@@ -165,8 +188,11 @@ export default function Login() {
               </div>
             )}
 
-            {turnstileSiteKey && !twoFactorToken && (
-              <TurnstileWidget siteKey={turnstileSiteKey} onVerify={setTurnstileToken} />
+            {requiresCaptcha && (
+              <div>
+                <TurnstileWidget key={turnstileWidgetKey} siteKey={turnstileSiteKey} onVerify={setTurnstileToken} />
+                <p className="mt-2 text-sm text-gray-600">Complete this security check before submitting.</p>
+              </div>
             )}
 
             {twoFactorToken && (
@@ -344,7 +370,7 @@ export default function Login() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isSubmitDisabled}
               className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading
@@ -380,6 +406,7 @@ export default function Login() {
                 setResetCode('')
                 setTwoFactorCode('')
                 setError('')
+                resetCaptcha()
               }}
               className="text-blue-600 font-semibold hover:text-blue-800"
             >
