@@ -102,6 +102,7 @@ export const contactMessagesAPI = {
 // Admin API
 export const adminAPI = {
   getStats: () => unwrap(api.get('/admin/stats')),
+  getNotifications: () => unwrap<{ newMessages: number; newTickets: number; total: number }>(api.get('/admin/notifications')),
   getClients: () => unwrap<any[]>(api.get('/admin/clients')),
   getProjects: () => unwrap<any[]>(api.get('/admin/projects')),
   getInvoices: () => unwrap<any[]>(api.get('/admin/invoices')),

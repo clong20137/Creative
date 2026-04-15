@@ -26,6 +26,7 @@ export default function AdminTickets() {
   const updateTicket = async (id: string, data: any) => {
     await ticketsAPI.updateTicket(id, data)
     fetchTickets()
+    window.dispatchEvent(new Event('admin-notifications-refresh'))
   }
 
   return (

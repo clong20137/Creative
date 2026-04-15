@@ -8,6 +8,7 @@ import SubscriptionPlan from '../models/SubscriptionPlan.js'
 import ServicePackage from '../models/ServicePackage.js'
 import PortfolioItem from '../models/PortfolioItem.js'
 import ContactMessage from '../models/ContactMessage.js'
+import Ticket from '../models/Ticket.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
 import crypto from 'crypto'
 import { base32Encode, verifyTotp } from './auth.js'
@@ -108,6 +109,23 @@ router.get('/subscriptions', async (req, res) => {
       order: [['createdAt', 'DESC']]
     })
     res.json(subscriptions)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/notifications', async (req, res) => {
+  try {
+    const [newMessages, newTickets] = await Promise.all([
+      ContactMessage.count({ where: { status: 'new' } }),
+      Ticket.count({ where: { status: 'pending' } })
+    ])
+
+    res.json({
+      newMessages,
+      newTickets,
+      total: newMessages + newTickets
+    })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

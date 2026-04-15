@@ -20,6 +20,7 @@ export default function AdminMessages() {
   const updateStatus = async (id: string, status: string) => {
     await adminAPI.updateContactMessage(id, { status })
     fetchMessages()
+    window.dispatchEvent(new Event('admin-notifications-refresh'))
   }
 
   return (
