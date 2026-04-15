@@ -27,6 +27,7 @@ import AdminSettings from './pages/AdminSettings'
 import AdminTickets from './pages/AdminTickets'
 import AdminMessages from './pages/AdminMessages'
 import AdminPlugins from './pages/AdminPlugins'
+import AdminPluginDetail from './pages/AdminPluginDetail'
 import ClientTickets from './pages/ClientTickets'
 import NotFound from './pages/NotFound'
 import { siteSettingsAPI } from './services/api'
@@ -85,6 +86,7 @@ function App() {
             <Route path="/admin/tickets" element={<AdminTickets />} />
             <Route path="/admin/messages" element={<AdminMessages />} />
             <Route path="/admin/plugins" element={<AdminPlugins />} />
+            <Route path="/admin/plugins/:slug" element={<AdminPluginDetail />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

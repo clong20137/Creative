@@ -1,9 +1,18 @@
 import express from 'express'
+import Stripe from 'stripe'
 import Plugin from '../models/Plugin.js'
 import RestaurantMenuItem from '../models/RestaurantMenuItem.js'
 import RealEstateListing from '../models/RealEstateListing.js'
+import { getOrCreateSiteSettings } from './site-settings.js'
 
 const router = express.Router()
+
+async function getStripeClient() {
+  const settings = await getOrCreateSiteSettings()
+  const secretKey = settings.stripeSecretKey || process.env.STRIPE_SECRET_KEY
+  if (!secretKey || secretKey.includes('your_key_here')) return null
+  return new Stripe(secretKey)
+}
 
 export async function getOrCreateRestaurantPlugin() {
   const [plugin] = await Plugin.findOrCreate({
@@ -13,6 +22,7 @@ export async function getOrCreateRestaurantPlugin() {
       name: 'Restaurant Menu',
       description: 'Create menu categories, item photos, descriptions, and prices for a restaurant website.',
       category: 'Restaurant',
+      price: 299,
       isEnabled: true,
       isPurchased: true,
       demoUrl: '/plugins/restaurant'
@@ -60,6 +70,7 @@ export async function getOrCreateRealEstatePlugin() {
       name: 'Real Estate Listings',
       description: 'Add property listings with photos, prices, descriptions, and more information buttons.',
       category: 'Real Estate',
+      price: 399,
       isEnabled: true,
       isPurchased: true,
       demoUrl: '/plugins/real-estate'
@@ -114,6 +125,45 @@ router.get('/', async (req, res) => {
       order: [['name', 'ASC']]
     })
     res.json(plugins)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/:slug/checkout-session', async (req, res) => {
+  try {
+    await ensureDemoPlugins()
+    const plugin = await Plugin.findOne({ where: { slug: req.params.slug } })
+    if (!plugin) return res.status(404).json({ error: 'Plugin not found' })
+    if (plugin.isPurchased) return res.status(400).json({ error: 'Plugin is already purchased' })
+
+    const stripe = await getStripeClient()
+    if (!stripe) return res.status(400).json({ error: 'Stripe is not configured' })
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `${plugin.name} Plugin`
+            },
+            unit_amount: Math.round(Number(plugin.price || 0) * 100)
+          }
+        }
+      ],
+      metadata: {
+        pluginSlug: plugin.slug
+      },
+      success_url: `${frontendUrl}/admin/plugins?plugin_payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${frontendUrl}/admin/plugins?plugin_payment=cancelled`
+    })
+
+    res.json({ url: session.url })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

@@ -158,6 +158,7 @@ router.put('/plugins/:slug', async (req, res) => {
     if (!plugin) return res.status(404).json({ error: 'Plugin not found' })
 
     await plugin.update({
+      price: req.body.price === undefined ? plugin.price : Number(req.body.price || 0),
       isEnabled: Boolean(req.body.isEnabled),
       isPurchased: req.body.isPurchased === undefined ? plugin.isPurchased : Boolean(req.body.isPurchased)
     })

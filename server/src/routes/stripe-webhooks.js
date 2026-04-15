@@ -1,6 +1,7 @@
 import express from 'express'
 import Stripe from 'stripe'
 import Invoice from '../models/Invoice.js'
+import Plugin from '../models/Plugin.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
 
 const router = express.Router()
@@ -39,6 +40,19 @@ async function markInvoicePaid(session) {
   })
 }
 
+async function markPluginPurchased(session) {
+  const pluginSlug = session.metadata?.pluginSlug
+  if (!pluginSlug || session.payment_status !== 'paid') return
+
+  const plugin = await Plugin.findOne({ where: { slug: pluginSlug } })
+  if (!plugin) return
+
+  await plugin.update({
+    isPurchased: true,
+    isEnabled: true
+  })
+}
+
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const signature = req.headers['stripe-signature']
@@ -47,6 +61,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
     if (event.type === 'checkout.session.completed') {
       await markInvoicePaid(event.data.object)
+      await markPluginPurchased(event.data.object)
     }
 
     res.json({ received: true })

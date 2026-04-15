@@ -106,6 +106,7 @@ export const contactMessagesAPI = {
 
 export const pluginsAPI = {
   getPlugins: () => unwrap<any[]>(api.get('/plugins')),
+  createPluginCheckoutSession: (slug: string) => unwrap<{ url: string }>(api.post(`/plugins/${slug}/checkout-session`)),
   getRestaurantMenu: () => unwrap<{ plugin: any; items: any[] }>(api.get('/plugins/restaurant/menu')),
   getRealEstateListings: () => unwrap<{ plugin: any; listings: any[] }>(api.get('/plugins/real-estate/listings')),
   getRealEstateListing: (id: string) => unwrap<{ plugin: any; listing: any }>(api.get(`/plugins/real-estate/listings/${id}`))

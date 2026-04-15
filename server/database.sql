@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS Plugins (
   name VARCHAR(255) NOT NULL,
   description LONGTEXT,
   category VARCHAR(255) DEFAULT 'Business',
+  price DECIMAL(10, 2) DEFAULT 0,
   isEnabled BOOLEAN DEFAULT false,
   isPurchased BOOLEAN DEFAULT false,
   demoUrl VARCHAR(500),
@@ -266,24 +267,26 @@ INSERT INTO Users (name, email, password, role, company, isActive)
 VALUES ('Admin', 'admin@creative.com', '$2a$10$YourHashedPasswordHere', 'admin', 'Creative by Caleb', true)
 ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id);
 
-INSERT INTO Plugins (slug, name, description, category, isEnabled, isPurchased, demoUrl)
+INSERT INTO Plugins (slug, name, description, category, price, isEnabled, isPurchased, demoUrl)
 VALUES (
   'restaurant-menu',
   'Restaurant Menu',
   'Create menu categories, item photos, descriptions, and prices for a restaurant website.',
   'Restaurant',
+  299.00,
   true,
   true,
   '/plugins/restaurant'
 )
 ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id);
 
-INSERT INTO Plugins (slug, name, description, category, isEnabled, isPurchased, demoUrl)
+INSERT INTO Plugins (slug, name, description, category, price, isEnabled, isPurchased, demoUrl)
 VALUES (
   'real-estate-listings',
   'Real Estate Listings',
   'Add property listings with photos, prices, descriptions, and more information buttons.',
   'Real Estate',
+  399.00,
   true,
   true,
   '/plugins/real-estate'
