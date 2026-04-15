@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { FiTrash2, FiEdit, FiPlus } from 'react-icons/fi'
+import { useNavigate } from 'react-router-dom'
 import { adminAPI } from '../services/api'
 import { PageSkeleton } from '../components/SkeletonLoaders'
+import AdminLayout from '../components/AdminLayout'
 
 export default function AdminClients() {
+  const navigate = useNavigate()
   const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -60,10 +63,9 @@ export default function AdminClients() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container">
+    <AdminLayout title="Manage Clients">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Manage Clients</h1>
+          <p className="text-gray-600">Create client accounts and update contact details.</p>
           <button
             onClick={() => { setShowForm(!showForm); setEditingId(null) }}
             className="flex items-center gap-2 btn-primary"
@@ -168,6 +170,12 @@ export default function AdminClients() {
                       >
                         <FiTrash2 size={16} /> Delete
                       </button>
+                      <button
+                        onClick={() => navigate('/admin/subscriptions')}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                      >
+                        Add Subscription
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -175,7 +183,6 @@ export default function AdminClients() {
             </table>
           </div>
         )}
-      </div>
-    </div>
+    </AdminLayout>
   )
 }

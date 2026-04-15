@@ -68,10 +68,25 @@ CREATE TABLE IF NOT EXISTS Invoices (
   FOREIGN KEY (projectId) REFERENCES Projects(id) ON DELETE SET NULL
 );
 
+-- Subscription Plans Table
+CREATE TABLE IF NOT EXISTS SubscriptionPlans (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description LONGTEXT,
+  tier ENUM('starter', 'professional', 'enterprise') DEFAULT 'starter',
+  price DECIMAL(10, 2) NOT NULL,
+  billingCycle ENUM('monthly', 'quarterly', 'annually') DEFAULT 'monthly',
+  features JSON,
+  isActive BOOLEAN DEFAULT true,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- Subscriptions Table
 CREATE TABLE IF NOT EXISTS Subscriptions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   clientId INT NOT NULL,
+  planId INT,
   planName VARCHAR(255),
   tier ENUM('starter', 'professional', 'enterprise') NOT NULL,
   status ENUM('active', 'cancelled', 'suspended', 'expired') DEFAULT 'active',
@@ -86,7 +101,8 @@ CREATE TABLE IF NOT EXISTS Subscriptions (
   stripeSubscriptionId VARCHAR(255),
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (clientId) REFERENCES Users(id) ON DELETE CASCADE
+  FOREIGN KEY (clientId) REFERENCES Users(id) ON DELETE CASCADE,
+  FOREIGN KEY (planId) REFERENCES SubscriptionPlans(id) ON DELETE SET NULL
 );
 
 -- Create Indexes for Better Performance
@@ -95,7 +111,9 @@ CREATE INDEX idx_invoices_clientId ON Invoices(clientId);
 CREATE INDEX idx_invoices_projectId ON Invoices(projectId);
 CREATE INDEX idx_invoices_status ON Invoices(status);
 CREATE INDEX idx_subscriptions_clientId ON Subscriptions(clientId);
+CREATE INDEX idx_subscriptions_planId ON Subscriptions(planId);
 CREATE INDEX idx_subscriptions_status ON Subscriptions(status);
+CREATE INDEX idx_subscription_plans_active ON SubscriptionPlans(isActive);
 
 -- Sample Admin User (Password: admin123 - hashed with bcryptjs)
 INSERT INTO Users (name, email, password, role, company, isActive)

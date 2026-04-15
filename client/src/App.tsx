@@ -13,6 +13,9 @@ import ClientPortalPaymentMethods from './pages/ClientPortalPaymentMethods'
 import ClientPortalSettings from './pages/ClientPortalSettings'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminClients from './pages/AdminClients'
+import AdminProjects from './pages/AdminProjects'
+import AdminInvoices from './pages/AdminInvoices'
+import AdminSubscriptions from './pages/AdminSubscriptions'
 import NotFound from './pages/NotFound'
 
 function App() {
@@ -34,6 +37,9 @@ function App() {
             <Route path="/client-dashboard/settings" element={<ClientPortalSettings />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/clients" element={<AdminClients />} />
+            <Route path="/admin/projects" element={<AdminProjects />} />
+            <Route path="/admin/invoices" element={<AdminInvoices />} />
+            <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

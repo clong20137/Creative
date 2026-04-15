@@ -6,6 +6,7 @@ import User from './models/User.js'
 import Project from './models/Project.js'
 import Invoice from './models/Invoice.js'
 import Subscription from './models/Subscription.js'
+import SubscriptionPlan from './models/SubscriptionPlan.js'
 
 // Import routes
 import authRoutes from './routes/auth.js'
@@ -33,6 +34,9 @@ Invoice.belongsTo(Project, { foreignKey: 'projectId' })
 
 User.hasMany(Subscription, { foreignKey: 'clientId' })
 Subscription.belongsTo(User, { foreignKey: 'clientId' })
+
+SubscriptionPlan.hasMany(Subscription, { foreignKey: 'planId' })
+Subscription.belongsTo(SubscriptionPlan, { foreignKey: 'planId' })
 
 // Middleware
 app.use(cors())

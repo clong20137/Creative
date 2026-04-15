@@ -16,6 +16,15 @@ const Subscription = sequelize.define('Subscription', {
     },
     onDelete: 'CASCADE'
   },
+  planId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'SubscriptionPlans',
+      key: 'id'
+    },
+    onDelete: 'SET NULL'
+  },
   planName: {
     type: DataTypes.STRING,
     allowNull: false

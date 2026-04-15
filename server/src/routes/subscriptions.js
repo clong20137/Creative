@@ -6,7 +6,10 @@ const router = express.Router()
 // Get subscription for a client
 router.get('/client/:clientId', async (req, res) => {
   try {
-    const subscription = await Subscription.findOne({ where: { clientId: req.params.clientId } })
+    const subscription = await Subscription.findOne({
+      where: { clientId: req.params.clientId, status: 'active' },
+      order: [['createdAt', 'DESC']]
+    })
     res.json(subscription)
   } catch (error) {
     res.status(500).json({ error: error.message })

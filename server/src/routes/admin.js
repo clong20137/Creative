@@ -4,6 +4,7 @@ import User from '../models/User.js'
 import Project from '../models/Project.js'
 import Invoice from '../models/Invoice.js'
 import Subscription from '../models/Subscription.js'
+import SubscriptionPlan from '../models/SubscriptionPlan.js'
 
 const router = express.Router()
 
@@ -79,10 +80,101 @@ router.get('/invoices', async (req, res) => {
 router.get('/subscriptions', async (req, res) => {
   try {
     const subscriptions = await Subscription.findAll({
-      include: [{ model: User, attributes: ['id', 'name', 'email', 'company'] }],
+      include: [
+        { model: User, attributes: ['id', 'name', 'email', 'company'] },
+        { model: SubscriptionPlan, attributes: ['id', 'name', 'price', 'billingCycle'] }
+      ],
       order: [['createdAt', 'DESC']]
     })
     res.json(subscriptions)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Get subscription plans offered by the studio
+router.get('/subscription-plans', async (req, res) => {
+  try {
+    const plans = await SubscriptionPlan.findAll({ order: [['createdAt', 'DESC']] })
+    res.json(plans)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Create subscription plan
+router.post('/subscription-plans', async (req, res) => {
+  try {
+    const features = Array.isArray(req.body.features)
+      ? req.body.features
+      : String(req.body.features || '')
+        .split('\n')
+        .map(feature => feature.trim())
+        .filter(Boolean)
+
+    const plan = await SubscriptionPlan.create({ ...req.body, features })
+    res.status(201).json(plan)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Update subscription plan
+router.put('/subscription-plans/:id', async (req, res) => {
+  try {
+    const plan = await SubscriptionPlan.findByPk(req.params.id)
+    if (!plan) return res.status(404).json({ error: 'Subscription plan not found' })
+
+    const features = Array.isArray(req.body.features)
+      ? req.body.features
+      : String(req.body.features || '')
+        .split('\n')
+        .map(feature => feature.trim())
+        .filter(Boolean)
+
+    await plan.update({ ...req.body, features })
+    res.json(plan)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Delete subscription plan
+router.delete('/subscription-plans/:id', async (req, res) => {
+  try {
+    const plan = await SubscriptionPlan.findByPk(req.params.id)
+    if (!plan) return res.status(404).json({ error: 'Subscription plan not found' })
+    await plan.destroy()
+    res.json({ message: 'Subscription plan deleted' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Assign a plan to a client
+router.post('/subscriptions/assign', async (req, res) => {
+  try {
+    const { clientId, planId, renewalDate } = req.body
+    const client = await User.findByPk(clientId)
+    if (!client || client.role !== 'client') return res.status(404).json({ error: 'Client not found' })
+
+    const plan = await SubscriptionPlan.findByPk(planId)
+    if (!plan) return res.status(404).json({ error: 'Subscription plan not found' })
+
+    const nextRenewalDate = renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    const subscription = await Subscription.create({
+      clientId,
+      planId,
+      planName: plan.name,
+      tier: plan.tier,
+      status: 'active',
+      price: plan.price,
+      billingCycle: plan.billingCycle,
+      renewalDate: nextRenewalDate,
+      features: plan.features
+    })
+
+    res.status(201).json(subscription)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

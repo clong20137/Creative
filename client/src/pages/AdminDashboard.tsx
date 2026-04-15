@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect } from 'react'
-import { FiLogOut, FiUsers, FiFileText, FiTrendingUp, FiBarChart } from 'react-icons/fi'
+import { FiUsers, FiFileText, FiTrendingUp, FiBarChart } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import { adminAPI } from '../services/api'
 import { DashboardStatsSkeleton } from '../components/SkeletonLoaders'
+import AdminLayout from '../components/AdminLayout'
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
@@ -34,31 +35,8 @@ export default function AdminDashboard() {
     fetchStats()
   }, [checkAdmin, fetchStats])
 
-  const handleLogout = () => {
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('userId')
-    localStorage.removeItem('userRole')
-    localStorage.removeItem('userEmail')
-    navigate('/')
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="container h-16 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-          >
-            <FiLogOut /> Logout
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="container py-8">
+    <AdminLayout title="Admin Dashboard">
         {error && (
           <div className="mb-6 p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">
             {error}
@@ -112,19 +90,18 @@ export default function AdminDashboard() {
           ].map((link, i) => {
             const Icon = link.icon
             return (
-              <a
+              <button
                 key={i}
-                href={link.url}
+                onClick={() => navigate(link.url)}
                 className="card p-6 hover:shadow-lg transition text-center"
               >
                 <Icon size={32} className="mx-auto mb-3 text-blue-600" />
                 <p className="font-semibold text-gray-900">{link.label}</p>
-              </a>
+              </button>
             )
           })}
         </div>
-      </div>
-    </div>
+    </AdminLayout>
   )
 }
 

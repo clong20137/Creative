@@ -85,10 +85,15 @@ export const adminAPI = {
   getProjects: () => unwrap<any[]>(api.get('/admin/projects')),
   getInvoices: () => unwrap<any[]>(api.get('/admin/invoices')),
   getSubscriptions: () => unwrap<any[]>(api.get('/admin/subscriptions')),
+  getSubscriptionPlans: () => unwrap<any[]>(api.get('/admin/subscription-plans')),
   getMonthlyRevenue: () => unwrap(api.get('/admin/revenue/monthly')),
   createUser: (data: any) => unwrap(api.post('/admin/users', data)),
   updateUser: (id: string, data: any) => unwrap(api.put(`/admin/users/${id}`, data)),
-  deleteUser: (id: string) => unwrap(api.delete(`/admin/users/${id}`))
+  deleteUser: (id: string) => unwrap(api.delete(`/admin/users/${id}`)),
+  createSubscriptionPlan: (data: any) => unwrap(api.post('/admin/subscription-plans', data)),
+  updateSubscriptionPlan: (id: string, data: any) => unwrap(api.put(`/admin/subscription-plans/${id}`, data)),
+  deleteSubscriptionPlan: (id: string) => unwrap(api.delete(`/admin/subscription-plans/${id}`)),
+  assignSubscription: (data: any) => unwrap(api.post('/admin/subscriptions/assign', data))
 }
 
 // Users API - Profile Management
