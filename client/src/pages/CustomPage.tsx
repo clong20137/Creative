@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import PageSections from '../components/PageSections'
-import { customPagesAPI } from '../services/api'
+import { customPagesAPI, siteSettingsAPI } from '../services/api'
+import EditableBuiltInPage from './EditableBuiltInPage'
 import NotFound from './NotFound'
 
 export default function CustomPage() {
   const { slug = '' } = useParams()
+  const location = useLocation()
   const [page, setPage] = useState<any>(null)
+  const [builtInPageKey, setBuiltInPageKey] = useState('')
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
@@ -15,6 +18,13 @@ export default function CustomPage() {
       try {
         setLoading(true)
         setNotFound(false)
+        setBuiltInPageKey('')
+        const settings = await siteSettingsAPI.getSettings()
+        const matchedPage = Object.entries(settings.pageMetadata || {}).find(([, metadata]: any) => metadata?.pageUrl === location.pathname)
+        if (matchedPage) {
+          setBuiltInPageKey(matchedPage[0])
+          return
+        }
         const data = await customPagesAPI.getPage(slug)
         setPage(data)
         document.title = data.metaTitle || `${data.title} | Creative by Caleb`
@@ -28,7 +38,7 @@ export default function CustomPage() {
     }
 
     fetchPage()
-  }, [slug])
+  }, [slug, location.pathname])
 
   if (loading) {
     return (
@@ -38,6 +48,7 @@ export default function CustomPage() {
     )
   }
 
+  if (builtInPageKey) return <EditableBuiltInPage pageKey={builtInPageKey} />
   if (notFound || !page) return <NotFound />
   const sections = Array.isArray(page.sections) ? page.sections : []
 

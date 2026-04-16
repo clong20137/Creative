@@ -41,6 +41,16 @@ export default function Navigation() {
         setLogoSize(Number(settings.logoSize) || 40)
         if (Array.isArray(settings.navigationItems) && settings.navigationItems.length) {
           setNavigationItems(settings.navigationItems)
+        } else if (settings.pageMetadata) {
+          setNavigationItems(defaultNavigationItems.map(item => {
+            const key = item.url === '/' ? 'home' : item.url.replace('/', '')
+            const page = settings.pageMetadata?.[key] || {}
+            return {
+              ...item,
+              label: page.pageTitle || item.label,
+              url: page.pageUrl || item.url
+            }
+          }))
         }
       } catch (error) {
         console.error('Error loading site settings:', error)

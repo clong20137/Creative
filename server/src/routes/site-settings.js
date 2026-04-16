@@ -33,6 +33,7 @@ function publicSiteSettings(settings) {
     'heroMediaType',
     'heroMediaUrl',
     'pageHeaders',
+    'pageMetadata',
     'navigationItems',
     'pageSections',
     'facebookUrl',

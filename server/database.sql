@@ -227,6 +227,7 @@ CREATE TABLE IF NOT EXISTS SiteSettings (
   heroMediaType ENUM('none', 'image', 'video') DEFAULT 'none',
   heroMediaUrl LONGTEXT,
   pageHeaders JSON,
+  pageMetadata JSON,
   navigationItems JSON,
   pageSections JSON,
   facebookUrl VARCHAR(500),

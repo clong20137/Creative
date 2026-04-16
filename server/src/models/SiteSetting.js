@@ -83,6 +83,10 @@ const SiteSetting = sequelize.define('SiteSetting', {
     type: DataTypes.JSON,
     defaultValue: {}
   },
+  pageMetadata: {
+    type: DataTypes.JSON,
+    defaultValue: {}
+  },
   navigationItems: {
     type: DataTypes.JSON,
     defaultValue: []

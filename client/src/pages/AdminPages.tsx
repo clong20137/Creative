@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
 import { FiArrowDown, FiArrowUp, FiMove, FiTrash2 } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
+import PageSections from '../components/PageSections'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import { adminAPI, resolveAssetUrl } from '../services/api'
 
 const publicPages = [
-  { id: 'Homepage', label: 'Homepage', description: 'Banner, what we do, featured work' },
-  { id: 'portfolio', label: 'Portfolio', description: 'Portfolio header' },
-  { id: 'services', label: 'Services', description: 'Header and service sections' },
-  { id: 'pricing', label: 'Pricing', description: 'Header, packages, and FAQ' },
-  { id: 'plugins', label: 'Plugins', description: 'Plugin page header' },
-  { id: 'contact', label: 'Contact', description: 'Contact page header' },
-  { id: 'Testimonials', label: 'Testimonials', description: 'Reviews and manual testimonials' }
+  { id: 'home', label: 'Homepage', url: '/' },
+  { id: 'portfolio', label: 'Portfolio', url: '/portfolio' },
+  { id: 'services', label: 'Services', url: '/services' },
+  { id: 'pricing', label: 'Pricing', url: '/pricing' },
+  { id: 'plugins', label: 'Plugins', url: '/plugins' },
+  { id: 'contact', label: 'Contact', url: '/contact' }
 ]
 
 const emptySettings = {
@@ -24,6 +24,7 @@ const emptySettings = {
   heroMediaType: 'none',
   heroMediaUrl: '',
   pageHeaders: {} as Record<string, { title: string; subtitle: string }>,
+  pageMetadata: {} as Record<string, any>,
   pageSections: {} as Record<string, any[]>,
   whatWeDoHeader: { title: 'What We Do', subtitle: '' },
   whatWeDoEnabled: true,
@@ -53,6 +54,7 @@ const pluginOptions = [
 ]
 
 const sectionTypeOptions = [
+  { value: 'hero', label: 'Hero' },
   { value: 'banner', label: 'Banner' },
   { value: 'header', label: 'Header' },
   { value: 'paragraph', label: 'Paragraph' },
@@ -61,7 +63,17 @@ const sectionTypeOptions = [
   { value: 'section', label: 'Text + Image' },
   { value: 'testimonials', label: 'Testimonials' },
   { value: 'portfolio', label: 'Portfolio Items' },
-  { value: 'services', label: 'Services' }
+  { value: 'services', label: 'Services' },
+  { value: 'whatWeDo', label: 'Image + Name Cards' },
+  { value: 'featuredWork', label: 'Featured Work' },
+  { value: 'portfolioGallery', label: 'Portfolio Gallery' },
+  { value: 'servicesList', label: 'Services List' },
+  { value: 'pricingPackages', label: 'Pricing Packages' },
+  { value: 'servicePricing', label: 'A La Carte Pricing' },
+  { value: 'faq', label: 'FAQ' },
+  { value: 'pluginsList', label: 'Plugins List' },
+  { value: 'contactForm', label: 'Contact Form' },
+  { value: 'cta', label: 'CTA' }
 ]
 
 const MAX_IMAGE_WIDTH = 1200
@@ -117,7 +129,7 @@ async function getUploadDataUrl(file: File) {
 
 function getActivePayload(settings: typeof emptySettings, activeTab: string) {
   const payloadMap: Record<string, string[]> = {
-    Homepage: [
+    home: [
       'heroTitle',
       'heroSubtitle',
       'heroPrimaryLabel',
@@ -131,17 +143,23 @@ function getActivePayload(settings: typeof emptySettings, activeTab: string) {
       'whatWeDo',
       'featuredWork'
     ],
-    Headers: ['pageHeaders'],
-    'Services Page': ['services'],
-    'Pricing Page': ['webDesignPackages', 'faqs'],
-    Testimonials: ['googleReviewsEnabled', 'googlePlaceId', 'googleApiKey', 'testimonials']
+    portfolio: ['pageHeaders'],
+    plugins: ['pageHeaders'],
+    contact: ['pageHeaders'],
+    services: ['pageHeaders', 'services'],
+    pricing: ['pageHeaders', 'webDesignPackages', 'faqs']
   }
 
   const payload = (payloadMap[activeTab] || []).reduce((nextPayload: any, key) => {
     nextPayload[key] = (settings as any)[key]
     return nextPayload
   }, {})
+  payload.pageMetadata = settings.pageMetadata || {}
   payload.pageSections = settings.pageSections || {}
+  payload.googleReviewsEnabled = settings.googleReviewsEnabled
+  payload.googlePlaceId = settings.googlePlaceId
+  payload.googleApiKey = settings.googleApiKey
+  payload.testimonials = settings.testimonials
   return payload
 }
 
@@ -160,10 +178,14 @@ function makePageSection(type: string) {
     title: '',
     body: '',
     imageUrl: '',
+    mediaType: 'image',
     alt: '',
     pluginSlug: 'restaurant',
     buttonLabel: 'Get Started',
     buttonUrl: '/contact',
+    secondaryButtonLabel: '',
+    secondaryButtonUrl: '',
+    items: [],
     itemLimit: type === 'portfolio' ? 8 : 6,
     columns: type === 'portfolio' ? 4 : 3
   }
@@ -175,8 +197,7 @@ function getSectionTitle(section: any, index: number) {
 }
 
 export default function AdminPages() {
-  const [activeTab, setActiveTab] = useState('Homepage')
-  const [selectedHeaderPage, setSelectedHeaderPage] = useState('portfolio')
+  const [activeTab, setActiveTab] = useState('home')
   const [settings, setSettings] = useState(emptySettings)
   const [pages, setPages] = useState<any[]>([])
   const [portfolioItems, setPortfolioItems] = useState<any[]>([])
@@ -200,15 +221,7 @@ export default function AdminPages() {
   const [draggingSectionIndex, setDraggingSectionIndex] = useState<number | null>(null)
   const [editingSectionId, setEditingSectionId] = useState('')
 
-  const activeBuiltInPageKey = activeTab === 'Homepage'
-    ? 'home'
-    : activeTab === 'Services Page'
-      ? 'services'
-      : activeTab === 'Pricing Page'
-        ? 'pricing'
-        : activeTab === 'Headers' && ['portfolio', 'plugins', 'contact'].includes(selectedHeaderPage)
-          ? selectedHeaderPage
-          : ''
+  const activeBuiltInPageKey = publicPages.some(page => page.id === activeTab) ? activeTab : ''
 
   useEffect(() => {
     const fetchData = async () => {
@@ -236,15 +249,7 @@ export default function AdminPages() {
   const handleChange = (key: string, value: any) => setSettings(prev => ({ ...prev, [key]: value }))
   const selectPublicPage = (page: any) => {
     setEditingSectionId('')
-    if (page.id === 'Homepage' || page.id === 'Testimonials') {
-      setActiveTab(page.id)
-      return
-    }
-
-    setSelectedHeaderPage(page.id)
-    if (page.id === 'services') setActiveTab('Services Page')
-    else if (page.id === 'pricing') setActiveTab('Pricing Page')
-    else setActiveTab('Headers')
+    setActiveTab(page.id)
   }
 
   const updateListItem = (key: string, index: number, field: string, value: any) => {
@@ -265,6 +270,19 @@ export default function AdminPages() {
         ...(prev.pageHeaders || {}),
         [page]: {
           ...(prev.pageHeaders?.[page] || {}),
+          [field]: value
+        }
+      }
+    }))
+  }
+
+  const updatePageMetadata = (page: string, field: string, value: string) => {
+    setSettings(prev => ({
+      ...prev,
+      pageMetadata: {
+        ...(prev.pageMetadata || {}),
+        [page]: {
+          ...(prev.pageMetadata?.[page] || {}),
           [field]: value
         }
       }
@@ -447,11 +465,7 @@ export default function AdminPages() {
             </div>
             <div className="space-y-2">
               {publicPages.map(page => {
-                const isActivePage = page.id === 'Homepage'
-                  ? activeTab === 'Homepage'
-                  : page.id === 'Testimonials'
-                    ? activeTab === 'Testimonials'
-                    : selectedHeaderPage === page.id && !['Homepage', 'Testimonials', 'Custom Pages'].includes(activeTab)
+                const isActivePage = activeTab === page.id
                 return (
                   <button
                     key={page.id}
@@ -460,7 +474,6 @@ export default function AdminPages() {
                     className={`w-full rounded-lg px-4 py-3 text-left transition ${isActivePage ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-blue-50'}`}
                   >
                     <span className="font-bold">{page.label}</span>
-                    <span className="mt-1 block text-xs opacity-80">{page.description}</span>
                   </button>
                 )
               })}
@@ -508,7 +521,7 @@ export default function AdminPages() {
                         if (draggingSectionIndex !== null) movePageSection(draggingSectionIndex, index)
                         setDraggingSectionIndex(null)
                       }}
-                      className={`rounded-lg border bg-white p-2 ${draggingSectionIndex === index ? 'opacity-60 ring-2 ring-blue-500' : editingSectionId === section.id ? 'ring-2 ring-blue-500' : ''}`}
+                      className={`rounded-lg border bg-white p-2 transition duration-200 ${draggingSectionIndex === index ? 'scale-[0.98] opacity-60 shadow-lg ring-2 ring-blue-500' : editingSectionId === section.id ? 'ring-2 ring-blue-500' : 'hover:-translate-y-0.5 hover:shadow-md'}`}
                     >
                       <div className="flex items-center gap-2">
                         <button type="button" onClick={() => {
@@ -567,7 +580,7 @@ export default function AdminPages() {
                           setDraggingSectionIndex(null)
                         }}
                         onClick={() => setEditingSectionId(section.id || String(index))}
-                        className={`rounded-lg border bg-gray-50 p-4 transition ${draggingSectionIndex === index ? 'opacity-60 ring-2 ring-blue-500' : editingSectionId === section.id ? 'ring-2 ring-blue-500' : ''}`}
+                        className={`rounded-lg border bg-gray-50 p-4 transition duration-200 ${draggingSectionIndex === index ? 'scale-[0.98] opacity-60 shadow-xl ring-2 ring-blue-500' : editingSectionId === section.id ? 'ring-2 ring-blue-500' : 'hover:-translate-y-0.5 hover:shadow-md'}`}
                       >
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                           <div className="flex flex-wrap items-center gap-2">
@@ -623,15 +636,17 @@ export default function AdminPages() {
                           </div>
                         </div>
 
-                        {section.type === 'banner' && (
+                        {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta') && (
                           <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                            <input value={section.title || ''} onChange={(e) => updatePageSection(index, 'title', e.target.value)} placeholder="Banner heading" className="px-4 py-2 border rounded-lg md:col-span-2" />
-                            <textarea value={section.body || ''} onChange={(e) => updatePageSection(index, 'body', e.target.value)} placeholder="Banner subtext" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                            <input value={section.title || ''} onChange={(e) => updatePageSection(index, 'title', e.target.value)} placeholder="Heading" className="px-4 py-2 border rounded-lg md:col-span-2" />
+                            <textarea value={section.body || ''} onChange={(e) => updatePageSection(index, 'body', e.target.value)} placeholder="Text" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
                             <input value={section.buttonLabel || ''} onChange={(e) => updatePageSection(index, 'buttonLabel', e.target.value)} placeholder="Button label" className="px-4 py-2 border rounded-lg" />
                             <input value={section.buttonUrl || ''} onChange={(e) => updatePageSection(index, 'buttonUrl', e.target.value)} placeholder="Button URL" className="px-4 py-2 border rounded-lg" />
-                            <input value={section.imageUrl || ''} onChange={(e) => updatePageSection(index, 'imageUrl', e.target.value)} placeholder="Optional banner image URL" className="px-4 py-2 border rounded-lg md:col-span-2" />
-                            <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url) => updatePageSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />
-                            {section.imageUrl && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
+                            {section.type === 'hero' && <input value={section.secondaryButtonLabel || ''} onChange={(e) => updatePageSection(index, 'secondaryButtonLabel', e.target.value)} placeholder="Secondary button label" className="px-4 py-2 border rounded-lg" />}
+                            {section.type === 'hero' && <input value={section.secondaryButtonUrl || ''} onChange={(e) => updatePageSection(index, 'secondaryButtonUrl', e.target.value)} placeholder="Secondary button URL" className="px-4 py-2 border rounded-lg" />}
+                            {section.type !== 'cta' && <input value={section.imageUrl || ''} onChange={(e) => updatePageSection(index, 'imageUrl', e.target.value)} placeholder="Optional image URL" className="px-4 py-2 border rounded-lg md:col-span-2" />}
+                            {section.type !== 'cta' && <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url) => updatePageSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />}
+                            {section.imageUrl && section.type !== 'cta' && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
                           </div>
                         )}
 
@@ -687,7 +702,18 @@ export default function AdminPages() {
           ) : (
             <form onSubmit={saveSettingsTab} className="space-y-6">
               <div className="card p-6 space-y-6">
-                {activeTab === 'Homepage' && (
+                {activeBuiltInPageKey && (
+                  <PageMetadataEditor
+                    page={activeBuiltInPageKey}
+                    fallback={publicPages.find(page => page.id === activeBuiltInPageKey)}
+                    metadata={settings.pageMetadata?.[activeBuiltInPageKey] || {}}
+                    legacyHeader={settings.pageHeaders?.[activeBuiltInPageKey] || {}}
+                    updatePageMetadata={updatePageMetadata}
+                    updatePageHeader={updatePageHeader}
+                  />
+                )}
+
+                {false && activeTab === 'home' && (
                   <section className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <input value={settings.heroTitle || ''} onChange={(e) => handleChange('heroTitle', e.target.value)} placeholder="Homepage headline" className="px-4 py-2 border rounded-lg md:col-span-2" />
@@ -743,15 +769,9 @@ export default function AdminPages() {
                   </section>
                 )}
 
-                {activeTab === 'Headers' && (
+                {false && ['portfolio', 'plugins', 'contact'].includes(activeTab) && (
                   <section className="space-y-4">
-                    <PageHeaderEditor
-                      page={selectedHeaderPage}
-                      label={pageHeaderLabels[selectedHeaderPage] || 'Page'}
-                      header={settings.pageHeaders?.[selectedHeaderPage] || { title: '', subtitle: '' }}
-                      updatePageHeader={updatePageHeader}
-                    />
-                    {selectedHeaderPage === 'portfolio' && (
+                    {activeTab === 'portfolio' && (
                       <SimpleCollectionEditor
                         title="Portfolio Items"
                         items={portfolioItems}
@@ -775,25 +795,13 @@ export default function AdminPages() {
                   </section>
                 )}
 
-                {activeTab === 'Services Page' && (
+                {false && activeTab === 'services' && (
                   <section className="space-y-6">
-                    <PageHeaderEditor
-                      page="services"
-                      label="Services"
-                      header={settings.pageHeaders?.services || { title: '', subtitle: '' }}
-                      updatePageHeader={updatePageHeader}
-                    />
                     <ListEditor title="Services Sections" listKey="services" items={settings.services} fields={['title', 'description', 'features', 'url', 'image']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />
                   </section>
                 )}
-                {activeTab === 'Pricing Page' && (
+                {false && activeTab === 'pricing' && (
                   <section className="space-y-6">
-                    <PageHeaderEditor
-                      page="pricing"
-                      label="Pricing"
-                      header={settings.pageHeaders?.pricing || { title: '', subtitle: '' }}
-                      updatePageHeader={updatePageHeader}
-                    />
                     <ListEditor title="Web Design Packages" listKey="webDesignPackages" items={settings.webDesignPackages} fields={['name', 'description', 'price', 'billingPeriod', 'features']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />
                     <SimpleCollectionEditor
                       title="A La Carte Services"
@@ -817,8 +825,9 @@ export default function AdminPages() {
                     <ListEditor title="FAQ" listKey="faqs" items={settings.faqs} fields={['q', 'a']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />
                   </section>
                 )}
-                {activeTab === 'Testimonials' && (
+                {false && activeBuiltInPageKey && (
                   <section className="space-y-4">
+                    <h3 className="text-xl font-bold text-gray-900">Testimonials Section Sources</h3>
                     <label className="flex items-center gap-2">
                       <input type="checkbox" checked={settings.googleReviewsEnabled} onChange={(e) => handleChange('googleReviewsEnabled', e.target.checked)} />
                       Pull testimonials from Google Reviews
@@ -844,6 +853,20 @@ export default function AdminPages() {
                     moveSection={(fromIndex: number, toIndex: number) => moveBuiltInSection(activeBuiltInPageKey, fromIndex, toIndex)}
                     uploadImageToField={uploadImageToField}
                   />
+                )}
+                {activeBuiltInPageKey && (
+                  <section className="overflow-hidden rounded-lg border p-4">
+                    <div className="mb-4">
+                      <h3 className="text-xl font-bold text-gray-900">Live Page Preview</h3>
+                      <p className="text-gray-600">Edit the sections above and review the page layout here before saving.</p>
+                    </div>
+                    <div className="max-h-[42rem] overflow-auto rounded-lg border bg-white">
+                      <PageSections sections={getBuiltInSections(activeBuiltInPageKey)} />
+                      {getBuiltInSections(activeBuiltInPageKey).length === 0 && (
+                        <div className="p-8 text-center text-gray-600">Add sections to preview this page.</div>
+                      )}
+                    </div>
+                  </section>
                 )}
               </div>
               <button type="submit" className="btn-primary">Save Page Edits</button>
@@ -881,7 +904,7 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
               if (draggingSectionIndex !== null) moveSection(draggingSectionIndex, index)
               setDraggingSectionIndex(null)
             }}
-            className={`rounded-lg border bg-gray-50 p-4 transition ${draggingSectionIndex === index ? 'opacity-60 ring-2 ring-blue-500' : editingSectionId === section.id ? 'ring-2 ring-blue-500' : ''}`}
+            className={`rounded-lg border bg-gray-50 p-4 transition duration-200 ${draggingSectionIndex === index ? 'scale-[0.98] opacity-60 shadow-xl ring-2 ring-blue-500' : editingSectionId === section.id ? 'ring-2 ring-blue-500' : 'hover:-translate-y-0.5 hover:shadow-md'}`}
           >
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -912,15 +935,17 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
               </div>
             </div>
 
-            {section.type === 'banner' && (
+            {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta') && (
               <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Banner heading" className="px-4 py-2 border rounded-lg md:col-span-2" />
-                <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Banner subtext" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Heading" className="px-4 py-2 border rounded-lg md:col-span-2" />
+                <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Text" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
                 <input value={section.buttonLabel || ''} onChange={(e) => updateSection(index, 'buttonLabel', e.target.value)} placeholder="Button label" className="px-4 py-2 border rounded-lg" />
                 <input value={section.buttonUrl || ''} onChange={(e) => updateSection(index, 'buttonUrl', e.target.value)} placeholder="Button URL" className="px-4 py-2 border rounded-lg" />
-                <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Optional banner image URL" className="px-4 py-2 border rounded-lg md:col-span-2" />
-                <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url: string) => updateSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />
-                {section.imageUrl && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
+                {section.type === 'hero' && <input value={section.secondaryButtonLabel || ''} onChange={(e) => updateSection(index, 'secondaryButtonLabel', e.target.value)} placeholder="Secondary button label" className="px-4 py-2 border rounded-lg" />}
+                {section.type === 'hero' && <input value={section.secondaryButtonUrl || ''} onChange={(e) => updateSection(index, 'secondaryButtonUrl', e.target.value)} placeholder="Secondary button URL" className="px-4 py-2 border rounded-lg" />}
+                {section.type !== 'cta' && <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Optional image URL" className="px-4 py-2 border rounded-lg md:col-span-2" />}
+                {section.type !== 'cta' && <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url: string) => updateSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />}
+                {section.imageUrl && section.type !== 'cta' && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
               </div>
             )}
 
@@ -967,24 +992,41 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
   )
 }
 
-function PageHeaderEditor({ page, label, header, updatePageHeader }: any) {
+function PageMetadataEditor({ page, fallback, metadata, legacyHeader, updatePageMetadata, updatePageHeader }: any) {
+  const pageTitle = metadata.pageTitle || fallback?.label || ''
+  const pageUrl = metadata.pageUrl || fallback?.url || ''
+  const description = metadata.description || ''
+  const headerTitle = metadata.headerTitle || legacyHeader.title || ''
+  const headerSubtitle = metadata.headerSubtitle || legacyHeader.subtitle || ''
+
   return (
     <section className="rounded-lg border p-4">
-      <h3 className="mb-3 text-lg font-bold text-gray-900">{label} Header</h3>
-      <div className="grid grid-cols-1 gap-3">
+      <h3 className="mb-4 text-xl font-bold text-gray-900">Page Settings</h3>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <input value={pageTitle} onChange={(e) => updatePageMetadata(page, 'pageTitle', e.target.value)} placeholder="Page Title" className="px-4 py-2 border rounded-lg" />
+        <input value={pageUrl} onChange={(e) => updatePageMetadata(page, 'pageUrl', e.target.value)} placeholder="Page URL" className="px-4 py-2 border rounded-lg" />
+        <textarea value={description} onChange={(e) => updatePageMetadata(page, 'description', e.target.value)} placeholder="Page Description" rows={2} className="px-4 py-2 border rounded-lg md:col-span-2" />
         <input
-          value={header.title || ''}
-          onChange={(e) => updatePageHeader(page, 'title', e.target.value)}
-          placeholder={`${label} title`}
+          value={headerTitle}
+          onChange={(e) => {
+            updatePageMetadata(page, 'headerTitle', e.target.value)
+            updatePageHeader(page, 'title', e.target.value)
+          }}
+          placeholder="Header Title"
           className="px-4 py-2 border rounded-lg"
         />
+        <input value={metadata.metaTitle || ''} onChange={(e) => updatePageMetadata(page, 'metaTitle', e.target.value)} placeholder="SEO Title" className="px-4 py-2 border rounded-lg" />
         <textarea
-          value={header.subtitle || ''}
-          onChange={(e) => updatePageHeader(page, 'subtitle', e.target.value)}
-          placeholder={`${label} subtitle`}
+          value={headerSubtitle}
+          onChange={(e) => {
+            updatePageMetadata(page, 'headerSubtitle', e.target.value)
+            updatePageHeader(page, 'subtitle', e.target.value)
+          }}
+          placeholder="Header Text"
           rows={2}
-          className="px-4 py-2 border rounded-lg"
+          className="px-4 py-2 border rounded-lg md:col-span-2"
         />
+        <textarea value={metadata.metaDescription || ''} onChange={(e) => updatePageMetadata(page, 'metaDescription', e.target.value)} placeholder="SEO Description" rows={2} className="px-4 py-2 border rounded-lg md:col-span-2" />
       </div>
     </section>
   )
