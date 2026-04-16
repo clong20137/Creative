@@ -543,16 +543,17 @@ export default function AdminPages() {
 
   return (
     <AdminLayout title="Website Pages">
-      {message && <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">{message}</div>}
-      {error && <div className="mb-6 p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">{error}</div>}
+      {message && <div className="mx-4 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">{message}</div>}
+      {error && <div className="mx-4 mb-6 p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">{error}</div>}
       {loading ? <PageSkeleton /> : (
-        <div className="grid grid-cols-1 items-start gap-6 transition-all duration-300 xl:grid-cols-[var(--editor-grid)]" style={{ '--editor-grid': editorGridColumns } as any}>
-          <aside className="card h-fit overflow-hidden p-0 transition-all duration-300">
+        <div className="grid min-h-[calc(100vh-12rem)] grid-cols-1 items-start gap-4 transition-all duration-300 xl:grid-cols-[var(--editor-grid)]" style={{ '--editor-grid': editorGridColumns } as any}>
+          <aside className="h-[calc(100vh-12rem)] overflow-auto rounded-none border border-l-0 bg-white shadow transition-all duration-300 xl:sticky xl:top-4">
             <button
               type="button"
               onClick={() => setPagesPanelOpen(!pagesPanelOpen)}
               className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
               aria-label={pagesPanelOpen ? 'Collapse pages panel' : 'Expand pages panel'}
+              title={pagesPanelOpen ? 'Collapse pages panel' : 'Expand pages panel'}
             >
               <span className="inline-flex items-center gap-2 font-bold text-gray-900">
                 <FiSidebar />
@@ -601,7 +602,7 @@ export default function AdminPages() {
             </div>}
           </aside>
 
-          <div className="space-y-6">
+          <div className="space-y-6 px-1">
 
           {activeTab === 'Custom Pages' ? (
             <section className="block">
@@ -1015,7 +1016,7 @@ export default function AdminPages() {
           )}
           </div>
 
-          <aside className="h-fit xl:sticky xl:top-6">
+          <aside className="h-[calc(100vh-12rem)] overflow-auto rounded-none border border-r-0 bg-white shadow transition-all duration-300 xl:sticky xl:top-4">
             <PageSectionEditor
               title={`${activePageLabel} Sections`}
               sections={activeSections}
@@ -1048,7 +1049,7 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
       <div
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
-        className="min-h-[30rem] overflow-auto rounded-lg border bg-white"
+        className="min-h-[calc(100vh-24rem)] overflow-auto rounded-lg border bg-white"
       >
         {(sections || []).length > 0 ? (
           <div>
@@ -1080,7 +1081,7 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
             ))}
           </div>
         ) : (
-          <div className="flex min-h-[30rem] items-center justify-center p-8 text-center text-gray-600">
+          <div className="flex min-h-[calc(100vh-24rem)] items-center justify-center p-8 text-center text-gray-600">
             <div>
               <h3 className="text-xl font-bold text-gray-900">{title}</h3>
               <p className="mt-2">{emptyText}</p>
@@ -1095,7 +1096,7 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
 function PageSectionEditor({ title, sections, editingSectionId, draggingSectionIndex, setEditingSectionId, setDraggingSectionIndex, addSection, updateSection, removeSection, moveSection, uploadImageToField, isOpen = true, setIsOpen = () => {} }: any) {
   if (!isOpen) {
     return (
-      <section className="card overflow-hidden p-0">
+      <section className="h-full overflow-hidden bg-white">
         <button
           type="button"
           onClick={() => setIsOpen(true)}
@@ -1110,17 +1111,19 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
   }
 
   return (
-    <section className="card p-0">
+    <section className="h-full bg-white">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-4 text-left"
+        aria-label="Collapse sections panel"
+        title="Collapse sections panel"
       >
         <span>
           <span className="block text-xl font-bold text-gray-900">{title}</span>
           <span className="block text-sm text-gray-600">Drag section pieces into the preview, then edit them here.</span>
         </span>
-        <span className="text-sm font-bold text-blue-600">{isOpen ? 'Collapse' : 'Expand'}</span>
+        <FiArrowRight className="text-blue-600" />
       </button>
       <div className="space-y-4 border-t p-4">
       <div className="grid grid-cols-2 gap-2">

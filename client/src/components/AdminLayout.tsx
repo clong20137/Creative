@@ -54,6 +54,7 @@ const utilityLinks = [
 export default function AdminLayout({ title, children }: { title: string; children: ReactNode }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const isPageEditor = location.pathname === '/admin/pages'
   const [notifications, setNotifications] = useState({ newMessages: 0, newTickets: 0, total: 0 })
   const [theme, setTheme] = useState(() => localStorage.getItem('siteTheme') || 'light')
 
@@ -261,7 +262,7 @@ export default function AdminLayout({ title, children }: { title: string; childr
         </div>
       </div>
 
-      <div className="container py-8">{children}</div>
+      <div className={isPageEditor ? 'w-full py-6' : 'container py-8'}>{children}</div>
     </div>
   )
 }
