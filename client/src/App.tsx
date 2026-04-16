@@ -14,6 +14,7 @@ import RealEstatePluginDemo from './pages/RealEstatePluginDemo'
 import RealEstateListingDetail from './pages/RealEstateListingDetail'
 import BookingPluginDemo from './pages/BookingPluginDemo'
 import EventsPluginDemo from './pages/EventsPluginDemo'
+import ProtectedContentPluginDemo from './pages/ProtectedContentPluginDemo'
 import Login from './pages/Login'
 import ClientDashboard from './pages/ClientDashboard'
 import ClientPortalBilling from './pages/ClientPortalBilling'
@@ -57,6 +58,7 @@ function AppRoutes() {
           <Route path="/plugins/real-estate/:id" element={<RealEstateListingDetail />} />
           <Route path="/plugins/booking" element={<BookingPluginDemo />} />
           <Route path="/plugins/events" element={<EventsPluginDemo />} />
+          <Route path="/plugins/protected-content" element={<ProtectedContentPluginDemo />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
           <Route path="/client-dashboard" element={<ClientDashboard />} />

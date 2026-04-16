@@ -51,7 +51,8 @@ const pluginOptions = [
   { value: 'restaurant', label: 'Restaurant Menu' },
   { value: 'real-estate', label: 'Real Estate Listings' },
   { value: 'booking', label: 'Booking Appointments' },
-  { value: 'events', label: 'Events' }
+  { value: 'events', label: 'Events' },
+  { value: 'protected-content', label: 'Protected Content' }
 ]
 
 const sectionTypeOptions = [

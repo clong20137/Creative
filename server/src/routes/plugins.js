@@ -8,6 +8,8 @@ import ClientPluginPurchase from '../models/ClientPluginPurchase.js'
 import BookingAvailabilitySlot from '../models/BookingAvailabilitySlot.js'
 import BookingAppointment from '../models/BookingAppointment.js'
 import EventItem from '../models/EventItem.js'
+import ProtectedContentItem from '../models/ProtectedContentItem.js'
+import ProtectedContentPurchase from '../models/ProtectedContentPurchase.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
 
 const router = express.Router()
@@ -23,6 +25,18 @@ function verifyClient(req, res, next) {
     next()
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' })
+  }
+}
+
+function optionalClient(req, res, next) {
+  try {
+    const token = req.headers.authorization?.split(' ')[1]
+    if (!token) return next()
+    const decoded = jwt.verify(token, JWT_SECRET)
+    if (decoded.role === 'client') req.userId = decoded.userId
+    next()
+  } catch (error) {
+    next()
   }
 }
 
@@ -224,12 +238,57 @@ export async function getOrCreateEventsPlugin() {
   return plugin
 }
 
+export async function getOrCreateProtectedContentPlugin() {
+  const [plugin] = await Plugin.findOrCreate({
+    where: { slug: 'protected-content' },
+    defaults: {
+      slug: 'protected-content',
+      name: 'Protected Content Library',
+      description: 'Sell private images, videos, and documents that unlock only for logged-in clients who purchased access.',
+      category: 'Content',
+      price: 499,
+      isEnabled: true,
+      isPurchased: true,
+      demoUrl: '/plugins/protected-content'
+    }
+  })
+
+  const itemCount = await ProtectedContentItem.count()
+  if (itemCount === 0) {
+    await ProtectedContentItem.bulkCreate([
+      {
+        title: 'Towing Safety Basics',
+        description: 'A private training module for drivers covering jobsite awareness, vehicle positioning, and basic towing safety.',
+        contentType: 'video',
+        previewImage: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1000&q=80',
+        contentUrl: 'https://example.com/private/towing-safety-basics',
+        price: 79,
+        buttonLabel: 'Unlock Training',
+        sortOrder: 1
+      },
+      {
+        title: 'Inspection Checklist PDF',
+        description: 'A downloadable checklist for pre-trip inspections, equipment readiness, and incident documentation.',
+        contentType: 'document',
+        previewImage: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1000&q=80',
+        contentUrl: 'https://example.com/private/inspection-checklist.pdf',
+        price: 29,
+        buttonLabel: 'Buy Checklist',
+        sortOrder: 2
+      }
+    ])
+  }
+
+  return plugin
+}
+
 export async function ensureDemoPlugins() {
   await Promise.all([
     getOrCreateRestaurantPlugin(),
     getOrCreateRealEstatePlugin(),
     getOrCreateBookingPlugin(),
-    getOrCreateEventsPlugin()
+    getOrCreateEventsPlugin(),
+    getOrCreateProtectedContentPlugin()
   ])
 }
 
@@ -327,6 +386,70 @@ router.post('/:slug/checkout-session', verifyClient, async (req, res) => {
   }
 })
 
+router.post('/protected-content/items/:id/checkout-session', verifyClient, async (req, res) => {
+  try {
+    const plugin = await getOrCreateProtectedContentPlugin()
+    const item = await ProtectedContentItem.findOne({
+      where: { id: req.params.id, isActive: true }
+    })
+    if (!item) return res.status(404).json({ error: 'Protected content not found' })
+
+    const existingPurchase = await ProtectedContentPurchase.findOne({
+      where: { clientId: req.userId, contentItemId: item.id, status: 'active' }
+    })
+    if (existingPurchase) return res.status(400).json({ error: 'You already have access to this content' })
+
+    const stripe = await getStripeClient()
+    if (!stripe) return res.status(400).json({ error: 'Stripe is not configured' })
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: item.title
+            },
+            unit_amount: Math.round(Number(item.price || 0) * 100)
+          }
+        }
+      ],
+      metadata: {
+        protectedContentItemId: String(item.id),
+        clientId: String(req.userId)
+      },
+      success_url: `${frontendUrl}/plugins/protected-content?content_payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${frontendUrl}/plugins/protected-content?content_payment=cancelled`
+    })
+
+    const pendingPurchase = await ProtectedContentPurchase.findOne({
+      where: { clientId: req.userId, contentItemId: item.id }
+    })
+    const purchaseData = {
+      clientId: req.userId,
+      contentItemId: item.id,
+      itemTitle: item.title,
+      price: item.price,
+      status: 'pending',
+      stripeCheckoutSessionId: session.id
+    }
+
+    if (pendingPurchase) {
+      await pendingPurchase.update(purchaseData)
+    } else {
+      await ProtectedContentPurchase.create(purchaseData)
+    }
+
+    res.json({ url: session.url })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
 router.get('/booking/slots', async (req, res) => {
   try {
     const plugin = await getOrCreateBookingPlugin()
@@ -394,6 +517,57 @@ router.get('/events', async (req, res) => {
     })
 
     res.json({ plugin, events })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/protected-content/items', optionalClient, async (req, res) => {
+  try {
+    const plugin = await getOrCreateProtectedContentPlugin()
+    const items = await ProtectedContentItem.findAll({
+      where: { isActive: true },
+      order: [['sortOrder', 'ASC'], ['createdAt', 'DESC']]
+    })
+    const purchases = req.userId
+      ? await ProtectedContentPurchase.findAll({
+        where: { clientId: req.userId, status: 'active' }
+      })
+      : []
+    const purchasedIds = new Set(purchases.map(purchase => purchase.contentItemId))
+
+    res.json({
+      plugin,
+      items: items.map(item => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        contentType: item.contentType,
+        previewImage: item.previewImage,
+        price: item.price,
+        buttonLabel: item.buttonLabel,
+        isUnlocked: purchasedIds.has(item.id)
+      }))
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/protected-content/items/:id', verifyClient, async (req, res) => {
+  try {
+    await getOrCreateProtectedContentPlugin()
+    const item = await ProtectedContentItem.findOne({
+      where: { id: req.params.id, isActive: true }
+    })
+    if (!item) return res.status(404).json({ error: 'Protected content not found' })
+
+    const purchase = await ProtectedContentPurchase.findOne({
+      where: { clientId: req.userId, contentItemId: item.id, status: 'active' }
+    })
+    if (!purchase) return res.status(403).json({ error: 'Purchase required to view this content' })
+
+    res.json(item)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

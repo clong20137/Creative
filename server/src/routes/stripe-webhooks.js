@@ -3,6 +3,8 @@ import Stripe from 'stripe'
 import Invoice from '../models/Invoice.js'
 import Plugin from '../models/Plugin.js'
 import ClientPluginPurchase from '../models/ClientPluginPurchase.js'
+import ProtectedContentItem from '../models/ProtectedContentItem.js'
+import ProtectedContentPurchase from '../models/ProtectedContentPurchase.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
 
 const router = express.Router()
@@ -78,6 +80,34 @@ async function markPluginPurchased(session) {
   })
 }
 
+async function markProtectedContentPurchased(session) {
+  const contentItemId = session.metadata?.protectedContentItemId
+  const clientId = session.metadata?.clientId
+  if (!contentItemId || !clientId || session.payment_status !== 'paid') return
+
+  const item = await ProtectedContentItem.findByPk(contentItemId)
+  if (!item) return
+
+  const purchaseData = {
+    clientId: Number(clientId),
+    contentItemId: item.id,
+    itemTitle: item.title,
+    price: item.price,
+    status: 'active',
+    stripeCheckoutSessionId: session.id,
+    stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+    purchasedAt: new Date()
+  }
+  const purchase = await ProtectedContentPurchase.findOne({
+    where: { clientId: Number(clientId), contentItemId: item.id }
+  })
+  if (purchase) {
+    await purchase.update(purchaseData)
+  } else {
+    await ProtectedContentPurchase.create(purchaseData)
+  }
+}
+
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const signature = req.headers['stripe-signature']
@@ -87,6 +117,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     if (event.type === 'checkout.session.completed') {
       await markInvoicePaid(event.data.object)
       await markPluginPurchased(event.data.object)
+      await markProtectedContentPurchased(event.data.object)
     }
 
     res.json({ received: true })

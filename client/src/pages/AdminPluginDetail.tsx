@@ -45,6 +45,18 @@ const emptyEventItem = {
   sortOrder: '0'
 }
 
+const emptyProtectedContentItem = {
+  title: '',
+  description: '',
+  contentType: 'video',
+  previewImage: '',
+  contentUrl: '',
+  price: '',
+  buttonLabel: 'Unlock Access',
+  isActive: true,
+  sortOrder: '0'
+}
+
 const meetingOptions = [
   { value: 'phone', label: 'Phone Call' },
   { value: 'zoom', label: 'Zoom' },
@@ -100,18 +112,22 @@ export default function AdminPluginDetail() {
   const [bookingSlots, setBookingSlots] = useState<any[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
   const [eventItems, setEventItems] = useState<any[]>([])
+  const [protectedContentItems, setProtectedContentItems] = useState<any[]>([])
   const [menuForm, setMenuForm] = useState(emptyMenuItem)
   const [listingForm, setListingForm] = useState(emptyListing)
   const [bookingForm, setBookingForm] = useState(emptyBookingSlot)
   const [eventForm, setEventForm] = useState(emptyEventItem)
+  const [protectedContentForm, setProtectedContentForm] = useState(emptyProtectedContentItem)
   const [editingMenuId, setEditingMenuId] = useState<string | null>(null)
   const [editingListingId, setEditingListingId] = useState<string | null>(null)
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null)
   const [editingEventId, setEditingEventId] = useState<string | null>(null)
+  const [editingProtectedContentId, setEditingProtectedContentId] = useState<string | null>(null)
   const [showMenuForm, setShowMenuForm] = useState(false)
   const [showListingForm, setShowListingForm] = useState(false)
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [showEventForm, setShowEventForm] = useState(false)
+  const [showProtectedContentForm, setShowProtectedContentForm] = useState(false)
   const [loading, setLoading] = useState(true)
   const [imageUploading, setImageUploading] = useState(false)
   const [message, setMessage] = useState('')
@@ -147,6 +163,9 @@ export default function AdminPluginDetail() {
       if (foundPlugin.slug === 'events') {
         setEventItems(await adminAPI.getEventItems())
       }
+      if (foundPlugin.slug === 'protected-content') {
+        setProtectedContentItems(await adminAPI.getProtectedContentAdminItems())
+      }
     } catch (err: any) {
       setError(err.error || 'Failed to load plugin')
     } finally {
@@ -171,14 +190,14 @@ export default function AdminPluginDetail() {
     }
   }
 
-  const uploadImage = async (file: File | undefined, setter: React.Dispatch<React.SetStateAction<any>>) => {
+  const uploadImage = async (file: File | undefined, setter: React.Dispatch<React.SetStateAction<any>>, field = 'image') => {
     if (!file) return
     try {
       setImageUploading(true)
       setError('')
       const dataUrl = await compressImage(file)
       const upload = await adminAPI.uploadImage(dataUrl)
-      setter((current: any) => ({ ...current, image: upload.url }))
+      setter((current: any) => ({ ...current, [field]: upload.url }))
       setMessage('Image uploaded')
     } catch (err: any) {
       setError(err.error || 'Failed to upload image')
@@ -394,6 +413,57 @@ export default function AdminPluginDetail() {
     await adminAPI.deleteEventItem(id)
     setMessage('Event deleted')
     setEventItems(await adminAPI.getEventItems())
+  }
+
+  const resetProtectedContentForm = () => {
+    setProtectedContentForm(emptyProtectedContentItem)
+    setEditingProtectedContentId(null)
+    setShowProtectedContentForm(false)
+  }
+
+  const saveProtectedContentItem = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const payload = {
+        ...protectedContentForm,
+        price: Number(protectedContentForm.price || 0),
+        sortOrder: Number(protectedContentForm.sortOrder || 0)
+      }
+      if (editingProtectedContentId) {
+        await adminAPI.updateProtectedContentAdminItem(editingProtectedContentId, payload)
+        setMessage('Protected content updated')
+      } else {
+        await adminAPI.createProtectedContentAdminItem(payload)
+        setMessage('Protected content created')
+      }
+      resetProtectedContentForm()
+      setProtectedContentItems(await adminAPI.getProtectedContentAdminItems())
+    } catch (err: any) {
+      setError(err.error || 'Failed to save protected content')
+    }
+  }
+
+  const editProtectedContentItem = (item: any) => {
+    setEditingProtectedContentId(String(item.id))
+    setProtectedContentForm({
+      title: item.title || '',
+      description: item.description || '',
+      contentType: item.contentType || 'video',
+      previewImage: item.previewImage || '',
+      contentUrl: item.contentUrl || '',
+      price: String(item.price || ''),
+      buttonLabel: item.buttonLabel || 'Unlock Access',
+      isActive: item.isActive !== false,
+      sortOrder: String(item.sortOrder || 0)
+    })
+    setShowProtectedContentForm(true)
+  }
+
+  const deleteProtectedContentItem = async (id: string) => {
+    if (!confirm('Delete this protected content item?')) return
+    await adminAPI.deleteProtectedContentAdminItem(id)
+    setMessage('Protected content deleted')
+    setProtectedContentItems(await adminAPI.getProtectedContentAdminItems())
   }
 
   return (
@@ -699,6 +769,76 @@ export default function AdminPluginDetail() {
                   </div>
                 ))}
                 {eventItems.length === 0 && <div className="card p-8 text-center text-gray-600 xl:col-span-3">No events yet.</div>}
+              </div>
+            </>
+          )}
+
+          {plugin.slug === 'protected-content' && (
+            <>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Protected Content</h2>
+                  <p className="text-gray-600">Sell private videos, images, and documents to logged-in clients.</p>
+                </div>
+                <button onClick={() => { setShowProtectedContentForm(!showProtectedContentForm); setEditingProtectedContentId(null) }} className="inline-flex items-center gap-2 btn-primary">
+                  {showProtectedContentForm ? <FiX /> : <FiPlus />}
+                  {showProtectedContentForm ? 'Close Form' : 'Add Protected Item'}
+                </button>
+              </div>
+
+              {showProtectedContentForm && (
+                <form onSubmit={saveProtectedContentItem} className="card p-6 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" placeholder="Content title" value={protectedContentForm.title} onChange={(e) => setProtectedContentForm({ ...protectedContentForm, title: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" required />
+                    <select value={protectedContentForm.contentType} onChange={(e) => setProtectedContentForm({ ...protectedContentForm, contentType: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                      <option value="video">Video</option>
+                      <option value="image">Image</option>
+                      <option value="document">Document</option>
+                    </select>
+                    <input type="number" min="0" step="0.01" placeholder="Price" value={protectedContentForm.price} onChange={(e) => setProtectedContentForm({ ...protectedContentForm, price: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" required />
+                    <input type="number" placeholder="Sort order" value={protectedContentForm.sortOrder} onChange={(e) => setProtectedContentForm({ ...protectedContentForm, sortOrder: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
+                    <input type="text" placeholder="Button label" value={protectedContentForm.buttonLabel} onChange={(e) => setProtectedContentForm({ ...protectedContentForm, buttonLabel: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
+                  </div>
+                  <textarea placeholder="Description" value={protectedContentForm.description} onChange={(e) => setProtectedContentForm({ ...protectedContentForm, description: e.target.value })} className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" rows={4} />
+                  <div className="grid grid-cols-1 gap-4">
+                    <input type="text" placeholder="Private content URL, returned only after purchase" value={protectedContentForm.contentUrl} onChange={(e) => setProtectedContentForm({ ...protectedContentForm, contentUrl: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" required />
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-start">
+                      <input type="text" placeholder="Preview image URL" value={protectedContentForm.previewImage} onChange={(e) => setProtectedContentForm({ ...protectedContentForm, previewImage: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
+                      <label className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-blue-50 hover:text-blue-700">
+                        <FiImage /> {imageUploading ? 'Uploading...' : 'Upload Preview'}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadImage(e.target.files?.[0], setProtectedContentForm, 'previewImage')} />
+                      </label>
+                    </div>
+                  </div>
+                  {protectedContentForm.previewImage && <img src={resolveAssetUrl(protectedContentForm.previewImage)} alt={protectedContentForm.title || 'Preview'} className="h-32 w-48 rounded-lg object-cover border" />}
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" checked={protectedContentForm.isActive} onChange={(e) => setProtectedContentForm({ ...protectedContentForm, isActive: e.target.checked })} />
+                    Show this content publicly
+                  </label>
+                  <button type="submit" className="btn-primary">{editingProtectedContentId ? 'Save Protected Item' : 'Create Protected Item'}</button>
+                </form>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {protectedContentItems.map((item) => (
+                  <div key={item.id} className="card overflow-hidden">
+                    {item.previewImage ? <img src={resolveAssetUrl(item.previewImage)} alt={item.title} className="h-48 w-full object-cover" /> : <div className="h-48 bg-gray-100 flex items-center justify-center text-gray-500">No preview</div>}
+                    <div className="p-6">
+                      <div className="mb-2 flex flex-wrap gap-2">
+                        <span className="rounded bg-gray-100 px-2 py-1 text-xs font-semibold capitalize text-gray-700">{item.contentType}</span>
+                        <span className={`rounded px-2 py-1 text-xs font-semibold ${item.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>{item.isActive ? 'Shown' : 'Hidden'}</span>
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900">{item.title}</h3>
+                      <p className="mt-2 text-2xl font-bold text-blue-600">{formatPrice(item.price)}</p>
+                      <p className="text-gray-600 my-4">{item.description || 'No description'}</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => editProtectedContentItem(item)} className="inline-flex items-center gap-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"><FiEdit /> Edit</button>
+                        <button onClick={() => deleteProtectedContentItem(String(item.id))} className="inline-flex items-center gap-1 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"><FiTrash2 /> Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {protectedContentItems.length === 0 && <div className="card p-8 text-center text-gray-600 xl:col-span-3">No protected content yet.</div>}
               </div>
             </>
           )}

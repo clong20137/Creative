@@ -22,6 +22,8 @@ import ClientPluginPurchase from './models/ClientPluginPurchase.js'
 import BookingAvailabilitySlot from './models/BookingAvailabilitySlot.js'
 import BookingAppointment from './models/BookingAppointment.js'
 import EventItem from './models/EventItem.js'
+import ProtectedContentItem from './models/ProtectedContentItem.js'
+import ProtectedContentPurchase from './models/ProtectedContentPurchase.js'
 
 // Import routes
 import authRoutes from './routes/auth.js'
@@ -79,6 +81,11 @@ ClientPluginPurchase.belongsTo(Plugin, { foreignKey: 'pluginId' })
 
 BookingAvailabilitySlot.hasOne(BookingAppointment, { foreignKey: 'availabilitySlotId' })
 BookingAppointment.belongsTo(BookingAvailabilitySlot, { foreignKey: 'availabilitySlotId' })
+
+User.hasMany(ProtectedContentPurchase, { foreignKey: 'clientId' })
+ProtectedContentPurchase.belongsTo(User, { foreignKey: 'clientId' })
+ProtectedContentItem.hasMany(ProtectedContentPurchase, { foreignKey: 'contentItemId' })
+ProtectedContentPurchase.belongsTo(ProtectedContentItem, { foreignKey: 'contentItemId' })
 
 // Middleware
 app.disable('x-powered-by')

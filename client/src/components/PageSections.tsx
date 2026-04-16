@@ -10,6 +10,7 @@ const pluginLabels: Record<string, string> = {
   'real-estate': 'Real Estate Listings',
   booking: 'Booking Appointments',
   events: 'Events',
+  'protected-content': 'Protected Content',
   plugins: 'Website Plugins'
 }
 
@@ -502,6 +503,8 @@ function EmbeddedPluginSection({ section }: { section: any }) {
           setData(await pluginsAPI.getBookingSlots())
         } else if (section.pluginSlug === 'events') {
           setData(await pluginsAPI.getEvents())
+        } else if (section.pluginSlug === 'protected-content') {
+          setData(await pluginsAPI.getProtectedContentItems())
         } else {
           setData({ plugins: await pluginsAPI.getPlugins() })
         }
@@ -783,6 +786,29 @@ function PluginContent({ pluginSlug, data }: { pluginSlug: string; data: any }) 
               <h3 className="mt-1 font-bold text-gray-900">{event.title}</h3>
               {event.description && <p className="mt-2 text-sm text-gray-600">{event.description}</p>}
               {event.buttonLabel && event.buttonUrl && <a href={event.buttonUrl} className="mt-4 inline-flex font-semibold text-blue-600 hover:text-blue-800">{event.buttonLabel}</a>}
+            </div>
+          </article>
+        ))}
+      </div>
+    )
+  }
+
+  if (pluginSlug === 'protected-content') {
+    const items = data.items || []
+    if (items.length === 0) return <div className="text-gray-600">No protected content has been added yet.</div>
+
+    return (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {items.slice(0, 4).map((item: any) => (
+          <article key={item.id} className="overflow-hidden rounded-lg bg-white shadow">
+            {item.previewImage && <img src={resolveAssetUrl(item.previewImage)} alt={item.title} className="h-44 w-full object-cover" />}
+            <div className="p-4">
+              <p className="text-sm font-bold uppercase text-blue-600">{item.contentType}</p>
+              <h3 className="mt-1 font-bold text-gray-900">{item.title}</h3>
+              {item.description && <p className="mt-2 text-sm text-gray-600">{item.description}</p>}
+              <Link to="/plugins/protected-content" className="mt-4 inline-flex font-semibold text-blue-600 hover:text-blue-800">
+                {item.isUnlocked ? 'View Content' : item.buttonLabel || 'Unlock Access'}
+              </Link>
             </div>
           </article>
         ))}

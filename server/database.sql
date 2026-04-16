@@ -220,6 +220,39 @@ CREATE TABLE IF NOT EXISTS EventItems (
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Protected Content Plugin Items Table
+CREATE TABLE IF NOT EXISTS ProtectedContentItems (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description LONGTEXT,
+  contentType ENUM('image', 'video', 'document') DEFAULT 'video',
+  previewImage LONGTEXT,
+  contentUrl LONGTEXT NOT NULL,
+  price DECIMAL(10, 2) DEFAULT 0,
+  buttonLabel VARCHAR(255) DEFAULT 'Unlock Access',
+  isActive BOOLEAN DEFAULT true,
+  sortOrder INT DEFAULT 0,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Protected Content Purchases Table
+CREATE TABLE IF NOT EXISTS ProtectedContentPurchases (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  clientId INT NOT NULL,
+  contentItemId INT NOT NULL,
+  itemTitle VARCHAR(255) NOT NULL,
+  price DECIMAL(10, 2) DEFAULT 0,
+  status ENUM('pending', 'active', 'cancelled') DEFAULT 'pending',
+  stripeCheckoutSessionId VARCHAR(255),
+  stripePaymentIntentId VARCHAR(255),
+  purchasedAt DATETIME,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (clientId) REFERENCES Users(id) ON DELETE CASCADE,
+  FOREIGN KEY (contentItemId) REFERENCES ProtectedContentItems(id) ON DELETE CASCADE
+);
+
 -- Site Settings Table
 CREATE TABLE IF NOT EXISTS SiteSettings (
   id INT PRIMARY KEY DEFAULT 1,
@@ -349,6 +382,10 @@ CREATE INDEX idx_booking_slots_date ON BookingAvailabilitySlots(date);
 CREATE INDEX idx_booking_appointments_slot ON BookingAppointments(availabilitySlotId);
 CREATE INDEX idx_events_date ON EventItems(eventDate);
 CREATE INDEX idx_events_active ON EventItems(isActive);
+CREATE INDEX idx_protected_content_active ON ProtectedContentItems(isActive);
+CREATE INDEX idx_protected_content_type ON ProtectedContentItems(contentType);
+CREATE INDEX idx_protected_content_purchase_client ON ProtectedContentPurchases(clientId);
+CREATE INDEX idx_protected_content_purchase_item ON ProtectedContentPurchases(contentItemId);
 
 -- Sample Admin User (Password: admin123 - hashed with bcryptjs)
 INSERT INTO Users (name, email, password, role, company, isActive)
@@ -404,5 +441,18 @@ VALUES (
   true,
   true,
   '/plugins/events'
+)
+ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id);
+
+INSERT INTO Plugins (slug, name, description, category, price, isEnabled, isPurchased, demoUrl)
+VALUES (
+  'protected-content',
+  'Protected Content Library',
+  'Sell private images, videos, and documents that unlock only for logged-in clients who purchased access.',
+  'Content',
+  499.00,
+  true,
+  true,
+  '/plugins/protected-content'
 )
 ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id);

@@ -152,7 +152,10 @@ export const pluginsAPI = {
   getRealEstateListing: (id: string) => unwrap<{ plugin: any; listing: any }>(api.get(`/plugins/real-estate/listings/${id}`)),
   getBookingSlots: () => unwrap<{ plugin: any; slots: any[] }>(api.get('/plugins/booking/slots')),
   createBookingAppointment: (data: any) => unwrap(api.post('/plugins/booking/appointments', data)),
-  getEvents: () => unwrap<{ plugin: any; events: any[] }>(api.get('/plugins/events'))
+  getEvents: () => unwrap<{ plugin: any; events: any[] }>(api.get('/plugins/events')),
+  getProtectedContentItems: () => unwrap<{ plugin: any; items: any[] }>(api.get('/plugins/protected-content/items')),
+  getProtectedContentItem: (id: string) => unwrap(api.get(`/plugins/protected-content/items/${id}`)),
+  createProtectedContentCheckoutSession: (id: string) => unwrap<{ url: string }>(api.post(`/plugins/protected-content/items/${id}/checkout-session`))
 }
 
 // Admin API
@@ -200,6 +203,10 @@ export const adminAPI = {
   createEventItem: (data: any) => unwrap(api.post('/admin/plugins/events/items', data)),
   updateEventItem: (id: string, data: any) => unwrap(api.put(`/admin/plugins/events/items/${id}`, data)),
   deleteEventItem: (id: string) => unwrap(api.delete(`/admin/plugins/events/items/${id}`)),
+  getProtectedContentAdminItems: () => unwrap<any[]>(api.get('/admin/plugins/protected-content/items')),
+  createProtectedContentAdminItem: (data: any) => unwrap(api.post('/admin/plugins/protected-content/items', data)),
+  updateProtectedContentAdminItem: (id: string, data: any) => unwrap(api.put(`/admin/plugins/protected-content/items/${id}`, data)),
+  deleteProtectedContentAdminItem: (id: string) => unwrap(api.delete(`/admin/plugins/protected-content/items/${id}`)),
   getPages: () => unwrap<any[]>(api.get('/admin/pages')),
   createPage: (data: any) => unwrap(api.post('/admin/pages', data)),
   updatePage: (id: string, data: any) => unwrap(api.put(`/admin/pages/${id}`, data)),

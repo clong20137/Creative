@@ -19,9 +19,10 @@ import RealEstateListing from '../models/RealEstateListing.js'
 import BookingAvailabilitySlot from '../models/BookingAvailabilitySlot.js'
 import BookingAppointment from '../models/BookingAppointment.js'
 import EventItem from '../models/EventItem.js'
+import ProtectedContentItem from '../models/ProtectedContentItem.js'
 import CustomPage from '../models/CustomPage.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
-import { ensureDemoPlugins, getOrCreateBookingPlugin, getOrCreateEventsPlugin, getOrCreateRestaurantPlugin, getOrCreateRealEstatePlugin } from './plugins.js'
+import { ensureDemoPlugins, getOrCreateBookingPlugin, getOrCreateEventsPlugin, getOrCreateProtectedContentPlugin, getOrCreateRestaurantPlugin, getOrCreateRealEstatePlugin } from './plugins.js'
 import crypto from 'crypto'
 import { base32Encode, verifyTotp } from './auth.js'
 import jwt from 'jsonwebtoken'
@@ -436,6 +437,71 @@ router.delete('/plugins/events/items/:id', async (req, res) => {
 
     await event.destroy()
     res.json({ message: 'Event deleted' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/plugins/protected-content/items', async (req, res) => {
+  try {
+    await getOrCreateProtectedContentPlugin()
+    const items = await ProtectedContentItem.findAll({
+      order: [['sortOrder', 'ASC'], ['createdAt', 'DESC']]
+    })
+    res.json(items)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/plugins/protected-content/items', async (req, res) => {
+  try {
+    const item = await ProtectedContentItem.create({
+      title: req.body.title,
+      description: req.body.description || '',
+      contentType: req.body.contentType || 'video',
+      previewImage: req.body.previewImage || '',
+      contentUrl: req.body.contentUrl || '',
+      price: Number(req.body.price || 0),
+      buttonLabel: req.body.buttonLabel || 'Unlock Access',
+      isActive: req.body.isActive !== false,
+      sortOrder: Number(req.body.sortOrder || 0)
+    })
+    res.status(201).json(item)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.put('/plugins/protected-content/items/:id', async (req, res) => {
+  try {
+    const item = await ProtectedContentItem.findByPk(req.params.id)
+    if (!item) return res.status(404).json({ error: 'Protected content not found' })
+
+    await item.update({
+      title: req.body.title,
+      description: req.body.description || '',
+      contentType: req.body.contentType || 'video',
+      previewImage: req.body.previewImage || '',
+      contentUrl: req.body.contentUrl || '',
+      price: Number(req.body.price || 0),
+      buttonLabel: req.body.buttonLabel || 'Unlock Access',
+      isActive: req.body.isActive !== false,
+      sortOrder: Number(req.body.sortOrder || 0)
+    })
+    res.json(item)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.delete('/plugins/protected-content/items/:id', async (req, res) => {
+  try {
+    const item = await ProtectedContentItem.findByPk(req.params.id)
+    if (!item) return res.status(404).json({ error: 'Protected content not found' })
+
+    await item.destroy()
+    res.json({ message: 'Protected content deleted' })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
