@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { FiBarChart, FiBell, FiCreditCard, FiFileText, FiGrid, FiHelpCircle, FiHome, FiImage, FiInbox, FiLogOut, FiMoon, FiSettings, FiSun, FiUsers } from 'react-icons/fi'
+import { FiArrowLeft, FiArrowRight, FiBarChart, FiBell, FiChevronDown, FiChevronRight, FiCreditCard, FiFileText, FiGrid, FiHelpCircle, FiHome, FiImage, FiInbox, FiLogOut, FiMoon, FiSearch, FiSettings, FiSun, FiUsers } from 'react-icons/fi'
 import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { adminAPI } from '../services/api'
@@ -66,6 +66,14 @@ export default function AdminLayout({ title, children }: { title: string; childr
   const [notifications, setNotifications] = useState({ newMessages: 0, newTickets: 0, total: 0 })
   const [customPages, setCustomPages] = useState<any[]>([])
   const [theme, setTheme] = useState(() => localStorage.getItem('siteTheme') || 'light')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [menuSearch, setMenuSearch] = useState('')
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    Pages: true,
+    Revenue: true,
+    Website: true,
+    Support: true
+  })
 
   useEffect(() => {
     if (localStorage.getItem('userRole') !== 'admin') {
@@ -157,27 +165,58 @@ export default function AdminLayout({ title, children }: { title: string; childr
         ? 'bg-blue-600 text-white'
         : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
     }`
+  const collapsedLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `flex h-10 items-center justify-center rounded-lg transition ${
+      isActive
+        ? 'bg-blue-600 text-white'
+        : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
+    }`
+  const searchTerm = menuSearch.trim().toLowerCase()
+  const matchesSearch = (label: string) => !searchTerm || label.toLowerCase().includes(searchTerm)
+  const toggleGroup = (label: string) => setOpenGroups(current => ({ ...current, [label]: !(current[label] ?? true) }))
 
   return (
     <div className="min-h-screen bg-gray-50 lg:flex">
-      <aside className="flex bg-white shadow-sm lg:sticky lg:top-0 lg:h-screen lg:w-72 lg:shrink-0 lg:flex-col">
+      <aside className={`flex bg-white shadow-sm transition-all duration-300 lg:sticky lg:top-0 lg:h-screen lg:shrink-0 lg:flex-col ${sidebarOpen ? 'lg:w-72' : 'lg:w-16'}`}>
         <div className="flex w-full flex-col border-b border-gray-200 lg:h-full lg:border-b-0 lg:border-r">
-          <div className="border-b border-gray-200 p-5">
-            <Link to="/admin/dashboard" className="inline-flex items-center gap-2 text-lg font-black text-gray-900">
-              <FiGrid className="text-blue-600" />
-              Admin Portal
-            </Link>
+          <div className={`border-b border-gray-200 ${sidebarOpen ? 'p-5' : 'p-3'}`}>
+            <div className={`flex items-center ${sidebarOpen ? 'justify-between gap-3' : 'justify-center'}`}>
+              <Link to="/admin/dashboard" className={`inline-flex min-w-0 items-center gap-2 text-lg font-black text-gray-900 ${sidebarOpen ? '' : 'justify-center'}`} title="Admin Portal">
+                <FiGrid className="shrink-0 text-blue-600" />
+                {sidebarOpen && <span className="truncate">Admin Portal</span>}
+              </Link>
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(current => !current)}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
+                aria-label={sidebarOpen ? 'Collapse admin sidebar' : 'Expand admin sidebar'}
+                title={sidebarOpen ? 'Collapse admin sidebar' : 'Expand admin sidebar'}
+              >
+                {sidebarOpen ? <FiArrowLeft /> : <FiArrowRight />}
+              </button>
+            </div>
+            {sidebarOpen && (
+              <label className="mt-4 flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm text-gray-600">
+                <FiSearch className="shrink-0" />
+                <input
+                  value={menuSearch}
+                  onChange={(e) => setMenuSearch(e.target.value)}
+                  placeholder="Search menu"
+                  className="w-full border-0 bg-transparent p-0 text-sm outline-none focus:ring-0"
+                />
+              </label>
+            )}
           </div>
 
-          <nav className="flex-1 space-y-5 overflow-auto p-4">
+          <nav className={`flex-1 overflow-auto ${sidebarOpen ? 'space-y-5 p-4' : 'space-y-2 p-3'}`}>
             <div className="space-y-1">
-              {primaryLinks.map((link) => {
+              {primaryLinks.filter(link => matchesSearch(link.label)).map((link) => {
                 const Icon = link.icon
                 return (
-                  <NavLink key={link.path} to={link.path} className={sidebarLinkClass}>
+                  <NavLink key={link.path} to={link.path} className={sidebarOpen ? sidebarLinkClass : collapsedLinkClass} title={link.label}>
                     <span className="inline-flex items-center gap-2">
                       <Icon size={16} />
-                      {link.label}
+                      {sidebarOpen && link.label}
                     </span>
                   </NavLink>
                 )
@@ -187,68 +226,62 @@ export default function AdminLayout({ title, children }: { title: string; childr
             {adminGroups.map((group) => {
               const GroupIcon = group.icon
               const groupActive = group.label === 'Pages' ? location.pathname.startsWith('/admin/pages') || isGroupActive(group.links) : isGroupActive(group.links)
+              const pageLinks = group.label === 'Pages'
+                ? [
+                    ...builtInPageLinks.map(link => ({ title: link.label, path: `/admin/pages?page=${link.page}`, active: isPageLinkActive(link.page) })),
+                    ...customPages.map(page => ({ title: page.title || 'Custom Page', path: `/admin/pages?custom=${page.id}`, active: isCustomPageLinkActive(String(page.id)) })),
+                    { title: 'Add New Page', path: '/admin/pages?page=new', active: isPageLinkActive('new') }
+                  ]
+                : []
+              const filteredPageLinks = pageLinks.filter(link => matchesSearch(link.title))
+              const filteredGroupLinks = group.links.filter(link => matchesSearch(link.label))
+              const groupHasResults = matchesSearch(group.label) || filteredPageLinks.length > 0 || filteredGroupLinks.length > 0
+              if (!groupHasResults) return null
+              const groupExpanded = sidebarOpen && (searchTerm ? true : (openGroups[group.label] ?? true))
 
               return (
                 <div key={group.label} className="space-y-1">
-                  <div className={`flex items-center justify-between px-3 text-xs font-bold uppercase tracking-wide ${groupActive ? 'text-blue-600' : 'text-gray-500'}`}>
+                  <button
+                    type="button"
+                    onClick={() => sidebarOpen ? toggleGroup(group.label) : setSidebarOpen(true)}
+                    className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wide transition ${groupActive ? 'text-blue-600' : 'text-gray-500'} ${sidebarOpen ? 'hover:bg-gray-100' : 'justify-center hover:bg-blue-50 hover:text-blue-700'}`}
+                    aria-expanded={groupExpanded}
+                    title={group.label}
+                  >
                     <span className="inline-flex items-center gap-2">
                       <GroupIcon size={14} />
-                      {group.label}
+                      {sidebarOpen && group.label}
                     </span>
-                    {group.label === 'Support' && notifications.total > 0 && (
+                    {sidebarOpen && group.label === 'Support' && notifications.total > 0 && (
                       <span className="min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[11px] font-bold flex items-center justify-center">
                         {notifications.total > 99 ? '99+' : notifications.total}
                       </span>
                     )}
-                  </div>
+                    {sidebarOpen && (groupExpanded ? <FiChevronDown size={14} /> : <FiChevronRight size={14} />)}
+                  </button>
 
-                  {group.label === 'Pages' && (
+                  {groupExpanded && group.label === 'Pages' && (
                     <div className="space-y-1 border-l border-gray-200 ml-4 pl-3">
-                      {builtInPageLinks.map(link => (
+                      {filteredPageLinks.map(link => (
                         <Link
-                          key={link.page}
-                          to={`/admin/pages?page=${link.page}`}
+                          key={link.path}
+                          to={link.path}
                           className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                            isPageLinkActive(link.page)
+                            link.active
                               ? 'bg-blue-600 text-white'
                               : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
                           }`}
                         >
                           <FiFileText size={16} />
-                          {link.label}
+                          {link.title}
                         </Link>
                       ))}
-                      {customPages.map(page => (
-                        <Link
-                          key={page.id}
-                          to={`/admin/pages?custom=${page.id}`}
-                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                            isCustomPageLinkActive(String(page.id))
-                              ? 'bg-blue-600 text-white'
-                              : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
-                          }`}
-                        >
-                          <FiFileText size={16} />
-                          {page.title || 'Custom Page'}
-                        </Link>
-                      ))}
-                      <Link
-                        to="/admin/pages?page=new"
-                        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                          isPageLinkActive('new')
-                            ? 'bg-blue-600 text-white'
-                            : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
-                        }`}
-                      >
-                        <FiFileText size={16} />
-                        Add New Page
-                      </Link>
                     </div>
                   )}
 
-                  {group.links.map((link) => {
+                  {groupExpanded && filteredGroupLinks.map((link) => {
                     const Icon = link.icon
-                    const badgeCount = getBadgeCount('badgeKey' in link ? link.badgeKey : undefined)
+                    const badgeCount = getBadgeCount('badgeKey' in link ? (link as any).badgeKey : undefined)
                     return (
                       <NavLink key={link.path} to={link.path} className={sidebarLinkClass}>
                         <span className="inline-flex items-center gap-2">
@@ -268,13 +301,13 @@ export default function AdminLayout({ title, children }: { title: string; childr
             })}
 
             <div className="space-y-1">
-              {utilityLinks.map((link) => {
+              {utilityLinks.filter(link => matchesSearch(link.label)).map((link) => {
                 const Icon = link.icon
                 return (
-                  <NavLink key={link.path} to={link.path} className={sidebarLinkClass}>
+                  <NavLink key={link.path} to={link.path} className={sidebarOpen ? sidebarLinkClass : collapsedLinkClass} title={link.label}>
                     <span className="inline-flex items-center gap-2">
                       <Icon size={16} />
-                      {link.label}
+                      {sidebarOpen && link.label}
                     </span>
                   </NavLink>
                 )
@@ -282,13 +315,14 @@ export default function AdminLayout({ title, children }: { title: string; childr
             </div>
           </nav>
 
-          <div className="mt-auto space-y-2 border-t border-gray-200 p-4">
+          <div className={`mt-auto space-y-2 border-t border-gray-200 ${sidebarOpen ? 'p-4' : 'p-3'}`}>
             <Link
               to="/"
               className="flex items-center justify-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
+              title="Back to Website"
             >
               <FiHome />
-              Back to Website
+              {sidebarOpen && 'Back to Website'}
             </Link>
             <button
               onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}
@@ -297,14 +331,14 @@ export default function AdminLayout({ title, children }: { title: string; childr
               title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
               {theme === 'dark' ? <FiSun /> : <FiMoon />}
-              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+              {sidebarOpen && (theme === 'dark' ? 'Light Mode' : 'Dark Mode')}
             </button>
             <button
               onClick={handleLogout}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-red-700"
             >
               <FiLogOut />
-              Logout
+              {sidebarOpen && 'Logout'}
             </button>
           </div>
         </div>

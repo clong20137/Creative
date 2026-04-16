@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiFileText, FiGrid, FiImage, FiLayout, FiMove, FiSave, FiTrash2, FiType } from 'react-icons/fi'
+import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiFileText, FiGrid, FiImage, FiLayout, FiMove, FiSave, FiSearch, FiTrash2, FiType } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import PageSections from '../components/PageSections'
 import { PageSkeleton } from '../components/SkeletonLoaders'
@@ -1081,34 +1081,63 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
 }
 
 function SectionBlockLibrary({ addSection }: any) {
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [sectionSearch, setSectionSearch] = useState('')
+  const filteredSections = sectionTypeOptions.filter(option => option.label.toLowerCase().includes(sectionSearch.trim().toLowerCase()))
+  const scrollSections = (direction: 'left' | 'right') => {
+    scrollRef.current?.scrollBy({ left: direction === 'left' ? -360 : 360, behavior: 'smooth' })
+  }
+
   return (
     <div className="min-w-0">
-      <div className="mb-3 flex items-end justify-between gap-4">
+      <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Sections</h2>
           <p className="text-sm text-gray-600">Drag into the preview or click to add.</p>
         </div>
+        <label className="flex w-full items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm text-gray-600 lg:w-72">
+          <FiSearch className="shrink-0" />
+          <input
+            value={sectionSearch}
+            onChange={(e) => setSectionSearch(e.target.value)}
+            placeholder="Search sections"
+            className="w-full border-0 bg-transparent p-0 text-sm outline-none focus:ring-0"
+          />
+        </label>
       </div>
-      <div className="no-scrollbar flex gap-3 overflow-x-auto overscroll-x-contain pb-1">
-        {sectionTypeOptions.map(option => {
-          const Icon = option.icon
-          return (
-            <button
-              key={option.value}
-              type="button"
-              draggable
-              onClick={() => addSection(option.value)}
-              onDragStart={(e) => {
-                e.dataTransfer.setData('application/x-section-type', option.value)
-                e.dataTransfer.effectAllowed = 'copy'
-              }}
-              className="flex min-h-20 w-24 shrink-0 flex-col items-center justify-center gap-2 rounded-lg border px-3 py-2 text-center text-xs font-semibold transition hover:bg-gray-50 hover:text-blue-700"
-            >
-              <Icon size={20} />
-              <span className="leading-tight">{option.label}</span>
-            </button>
-          )
-        })}
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => scrollSections('left')} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-white text-gray-700 transition hover:bg-blue-50 hover:text-blue-700" aria-label="Scroll sections left">
+          <FiArrowLeft />
+        </button>
+        <div ref={scrollRef} className="no-scrollbar flex min-w-0 flex-1 gap-3 overflow-x-auto overscroll-x-contain pb-1">
+          {filteredSections.map(option => {
+            const Icon = option.icon
+            return (
+              <button
+                key={option.value}
+                type="button"
+                draggable
+                onClick={() => addSection(option.value)}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('application/x-section-type', option.value)
+                  e.dataTransfer.effectAllowed = 'copy'
+                }}
+                className="flex min-h-20 w-24 shrink-0 flex-col items-center justify-center gap-2 rounded-lg border px-3 py-2 text-center text-xs font-semibold transition hover:bg-gray-50 hover:text-blue-700"
+              >
+                <Icon size={20} />
+                <span className="leading-tight">{option.label}</span>
+              </button>
+            )
+          })}
+          {filteredSections.length === 0 && (
+            <div className="flex min-h-20 min-w-48 items-center justify-center rounded-lg border border-dashed px-4 text-sm text-gray-600">
+              No sections found.
+            </div>
+          )}
+        </div>
+        <button type="button" onClick={() => scrollSections('right')} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-white text-gray-700 transition hover:bg-blue-50 hover:text-blue-700" aria-label="Scroll sections right">
+          <FiArrowRight />
+        </button>
       </div>
     </div>
   )
