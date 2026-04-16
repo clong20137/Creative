@@ -47,9 +47,13 @@ function getSectionSpacingStyle(section: any) {
 
   return {
     marginTop: toPixels(section.marginTop),
+    marginRight: toPixels(section.marginRight),
     marginBottom: toPixels(section.marginBottom),
+    marginLeft: toPixels(section.marginLeft),
     paddingTop: toPixels(section.paddingTop),
-    paddingBottom: toPixels(section.paddingBottom)
+    paddingRight: toPixels(section.paddingRight),
+    paddingBottom: toPixels(section.paddingBottom),
+    paddingLeft: toPixels(section.paddingLeft)
   }
 }
 

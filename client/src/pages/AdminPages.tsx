@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiFileText, FiGrid, FiImage, FiLayout, FiMove, FiSidebar, FiTrash2, FiType } from 'react-icons/fi'
+import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiFileText, FiGrid, FiImage, FiLayout, FiMove, FiSave, FiSidebar, FiTrash2, FiType } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import PageSections from '../components/PageSections'
 import { PageSkeleton } from '../components/SkeletonLoaders'
@@ -208,9 +208,13 @@ function makePageSection(type: string) {
     secondaryButtonUrl: '',
     items: defaultItems(),
     marginTop: '',
+    marginRight: '',
     marginBottom: '',
+    marginLeft: '',
     paddingTop: '',
+    paddingRight: '',
     paddingBottom: '',
+    paddingLeft: '',
     itemLimit: type === 'portfolio' ? 8 : 6,
     columns: type === 'portfolio' ? 4 : type === 'columns' ? 2 : 3
   }
@@ -512,7 +516,7 @@ export default function AdminPages() {
   const selectedSectionIndex = activeSections.findIndex((section: any, index: number) => (section.id || String(index)) === editingSectionId)
   const selectedSection = selectedSectionIndex >= 0 ? activeSections[selectedSectionIndex] : null
   const saveActivePage = () => activeTab === 'Custom Pages' ? saveCustomPageEdits() : saveBuiltInPageEdits()
-  const editorGridColumns = `${pagesPanelOpen ? '18rem' : '3.25rem'} minmax(0, 1fr) ${sectionsPanelOpen ? '23rem' : '3.25rem'}`
+  const editorGridColumns = `${pagesPanelOpen ? '20rem' : '3.5rem'} minmax(0, 1fr) ${sectionsPanelOpen ? '23rem' : '3.25rem'}`
 
   const saveCustomPage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -559,29 +563,44 @@ export default function AdminPages() {
       {error && <div className="mx-4 mb-6 p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">{error}</div>}
       {loading ? <PageSkeleton /> : (
         <div className="grid min-h-[calc(100vh-12rem)] grid-cols-1 items-start gap-4 transition-all duration-300 xl:grid-cols-[var(--editor-grid)]" style={{ '--editor-grid': editorGridColumns } as any}>
-          <aside className="h-[calc(100vh-12rem)] overflow-auto rounded-none border border-l-0 bg-white shadow transition-all duration-300 xl:sticky xl:top-4">
-            <button
-              type="button"
-              onClick={() => setPagesPanelOpen(!pagesPanelOpen)}
-              className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
-              aria-label={pagesPanelOpen ? 'Collapse pages panel' : 'Expand pages panel'}
-              title={pagesPanelOpen ? 'Collapse pages panel' : 'Expand pages panel'}
-            >
-              <span className="inline-flex items-center gap-2 font-bold text-gray-900">
-                <FiSidebar />
-                {pagesPanelOpen && (leftPanelView === 'pages' ? 'Pages' : 'Sections')}
-              </span>
-              {pagesPanelOpen ? <FiArrowLeft /> : <FiArrowRight />}
-            </button>
-            {pagesPanelOpen && <div className="border-t p-4">
-            <div className="mb-4 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setLeftPanelView('pages')} className={`rounded-lg px-3 py-2 text-sm font-bold ${leftPanelView === 'pages' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-blue-50'}`}>
-                Pages
-              </button>
-              <button type="button" onClick={() => setLeftPanelView('sections')} className={`rounded-lg px-3 py-2 text-sm font-bold ${leftPanelView === 'sections' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-blue-50'}`}>
-                Sections
-              </button>
-            </div>
+          <aside className="h-[calc(100vh-12rem)] overflow-hidden rounded-none border border-l-0 bg-white shadow transition-all duration-300 xl:sticky xl:top-4">
+            <div className="flex h-full">
+              <div className="flex w-14 shrink-0 flex-col items-center gap-2 border-r bg-gray-50 py-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLeftPanelView('pages')
+                    setPagesPanelOpen(true)
+                  }}
+                  className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${leftPanelView === 'pages' && pagesPanelOpen ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
+                  aria-label="Open pages"
+                  title="Pages"
+                >
+                  <FiSidebar />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLeftPanelView('sections')
+                    setPagesPanelOpen(true)
+                  }}
+                  className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${leftPanelView === 'sections' && pagesPanelOpen ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
+                  aria-label="Open sections"
+                  title="Sections"
+                >
+                  <FiGrid />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPagesPanelOpen(!pagesPanelOpen)}
+                  className="mt-auto flex h-10 w-10 items-center justify-center rounded-lg text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
+                  aria-label={pagesPanelOpen ? 'Collapse left panel' : 'Expand left panel'}
+                  title={pagesPanelOpen ? 'Collapse left panel' : 'Expand left panel'}
+                >
+                  {pagesPanelOpen ? <FiArrowLeft /> : <FiArrowRight />}
+                </button>
+              </div>
+              {pagesPanelOpen && <div className="min-w-0 flex-1 overflow-auto p-4">
             {leftPanelView === 'pages' ? <>
             <div className="mb-4">
               <h2 className="text-xl font-bold text-gray-900">Pages</h2>
@@ -621,7 +640,8 @@ export default function AdminPages() {
               </div>
             </div>
             </> : <SectionBlockLibrary addSection={addActiveSection} />}
-            </div>}
+              </div>}
+            </div>
           </aside>
 
           <div className="space-y-6 px-1">
@@ -1170,7 +1190,7 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
   }
 
   return (
-    <section className="h-full bg-white">
+    <section className="flex h-full flex-col bg-white">
       <button type="button" onClick={() => setIsOpen(false)} className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left" aria-label="Collapse section settings" title="Collapse section settings">
         <span>
           <span className="block text-xl font-bold text-gray-900">{title}</span>
@@ -1179,12 +1199,7 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
         <FiArrowRight className="text-blue-600" />
       </button>
 
-      <div className="space-y-4 border-t p-4">
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={savePage} className="btn-primary px-4 py-2">Save</button>
-          <button type="button" onClick={() => removeSection(index)} className="btn-secondary px-4 py-2 text-red-600">Delete</button>
-        </div>
-
+      <div className="min-h-0 flex-1 space-y-4 overflow-auto border-t p-4 pb-8">
         <div className="rounded-lg border bg-gray-50 p-4">
           <label className="mb-2 block text-sm font-bold text-gray-700">Section Type</label>
           <select value={section.type || 'paragraph'} onChange={(e) => updateSection(index, 'type', e.target.value)} className="w-full px-4 py-2 border rounded-lg">
@@ -1251,6 +1266,25 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
             {pluginOptions.map(plugin => <option key={plugin.value} value={plugin.value}>{plugin.label}</option>)}
           </select>
         )}
+      </div>
+
+      <div className="flex shrink-0 gap-3 border-t bg-white p-4">
+        <button
+          type="button"
+          onClick={() => removeSection(index)}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 font-bold text-white transition hover:bg-red-700"
+        >
+          <FiTrash2 />
+          Delete
+        </button>
+        <button
+          type="button"
+          onClick={savePage}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-bold text-white transition hover:bg-blue-700"
+        >
+          <FiSave />
+          Save
+        </button>
       </div>
     </section>
   )
@@ -1610,14 +1644,67 @@ function SectionItemsEditor({ section, index, updateSection, uploadImageToField 
 }
 
 function SectionSpacingControls({ section, index, updateSection }: any) {
+  const spacingGroups = [
+    {
+      title: 'Margin',
+      fields: [
+        { key: 'marginTop', label: 'Top' },
+        { key: 'marginRight', label: 'Right' },
+        { key: 'marginBottom', label: 'Bottom' },
+        { key: 'marginLeft', label: 'Left' }
+      ]
+    },
+    {
+      title: 'Padding',
+      fields: [
+        { key: 'paddingTop', label: 'Top' },
+        { key: 'paddingRight', label: 'Right' },
+        { key: 'paddingBottom', label: 'Bottom' },
+        { key: 'paddingLeft', label: 'Left' }
+      ]
+    }
+  ]
+
+  const getNumericValue = (key: string) => {
+    const value = Number(section[key] || 0)
+    return Number.isFinite(value) ? value : 0
+  }
+
   return (
     <details className="mb-3 rounded-lg border bg-white p-3">
       <summary className="cursor-pointer text-sm font-bold text-gray-800">Spacing</summary>
-      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
-        <input type="number" min="0" value={section.marginTop ?? ''} onChange={(e) => updateSection(index, 'marginTop', e.target.value)} placeholder="Margin top px" className="px-4 py-2 border rounded-lg" />
-        <input type="number" min="0" value={section.marginBottom ?? ''} onChange={(e) => updateSection(index, 'marginBottom', e.target.value)} placeholder="Margin bottom px" className="px-4 py-2 border rounded-lg" />
-        <input type="number" min="0" value={section.paddingTop ?? ''} onChange={(e) => updateSection(index, 'paddingTop', e.target.value)} placeholder="Padding top px" className="px-4 py-2 border rounded-lg" />
-        <input type="number" min="0" value={section.paddingBottom ?? ''} onChange={(e) => updateSection(index, 'paddingBottom', e.target.value)} placeholder="Padding bottom px" className="px-4 py-2 border rounded-lg" />
+      <div className="mt-3 space-y-5">
+        {spacingGroups.map(group => (
+          <div key={group.title} className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500">{group.title}</h4>
+            {group.fields.map(field => (
+              <label key={field.key} className="grid grid-cols-[4rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
+                <span className="font-semibold">{field.label}</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="160"
+                  step="1"
+                  value={getNumericValue(field.key)}
+                  onChange={(e) => updateSection(index, field.key, e.target.value)}
+                  className="w-full accent-blue-600"
+                />
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    max="320"
+                    value={section[field.key] ?? ''}
+                    onChange={(e) => updateSection(index, field.key, e.target.value)}
+                    className="w-full rounded-lg border px-2 py-1 text-right"
+                    aria-label={`${group.title} ${field.label} pixels`}
+                  />
+                  <span className="text-xs text-gray-500">px</span>
+                </div>
+              </label>
+            ))}
+          </div>
+        ))}
       </div>
     </details>
   )
