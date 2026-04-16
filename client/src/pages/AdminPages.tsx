@@ -61,6 +61,8 @@ const sectionTypeOptions = [
   { value: 'header', label: 'Header' },
   { value: 'paragraph', label: 'Paragraph' },
   { value: 'image', label: 'Image' },
+  { value: 'imageOverlay', label: 'Image Overlay' },
+  { value: 'gallery', label: 'Gallery' },
   { value: 'plugin', label: 'Plugin' },
   { value: 'section', label: 'Text + Image' },
   { value: 'testimonials', label: 'Testimonials' },
@@ -187,7 +189,9 @@ function makePageSection(type: string) {
     buttonUrl: '/contact',
     secondaryButtonLabel: '',
     secondaryButtonUrl: '',
-    items: [],
+    items: type === 'gallery' ? [
+      { id: crypto.randomUUID(), title: '', description: '', image: '' }
+    ] : [],
     marginTop: '',
     marginBottom: '',
     paddingTop: '',
@@ -644,7 +648,7 @@ export default function AdminPages() {
 
                         <SectionSpacingControls section={section} index={index} updateSection={updatePageSection} />
 
-                        {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta') && (
+                        {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta' || section.type === 'imageOverlay') && (
                           <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                             <input value={section.title || ''} onChange={(e) => updatePageSection(index, 'title', e.target.value)} placeholder="Heading" className="px-4 py-2 border rounded-lg md:col-span-2" />
                             <textarea value={section.body || ''} onChange={(e) => updatePageSection(index, 'body', e.target.value)} placeholder="Text" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
@@ -671,6 +675,17 @@ export default function AdminPages() {
                             <input type="number" min="1" max="6" value={section.columns || ''} onChange={(e) => updatePageSection(index, 'columns', Number(e.target.value || 0))} placeholder="Columns" className="px-4 py-2 border rounded-lg" />
                             <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updatePageSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Items to show" className="px-4 py-2 border rounded-lg" />
                           </div>
+                        )}
+
+                        {section.type === 'gallery' && (
+                          <>
+                            <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                              <input value={section.title || ''} onChange={(e) => updatePageSection(index, 'title', e.target.value)} placeholder="Gallery title" className="px-4 py-2 border rounded-lg" />
+                              <input type="number" min="1" max="6" value={section.columns || ''} onChange={(e) => updatePageSection(index, 'columns', Number(e.target.value || 0))} placeholder="Columns" className="px-4 py-2 border rounded-lg" />
+                              <textarea value={section.body || ''} onChange={(e) => updatePageSection(index, 'body', e.target.value)} placeholder="Gallery description" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                            </div>
+                            <SectionItemsEditor section={section} index={index} updateSection={updatePageSection} uploadImageToField={uploadImageToField} />
+                          </>
                         )}
 
                         {section.type === 'services' && (
@@ -945,7 +960,7 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
 
             <SectionSpacingControls section={section} index={index} updateSection={updateSection} />
 
-            {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta') && (
+            {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta' || section.type === 'imageOverlay') && (
               <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Heading" className="px-4 py-2 border rounded-lg md:col-span-2" />
                 <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Text" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
@@ -974,6 +989,17 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
               </div>
             )}
 
+            {section.type === 'gallery' && (
+              <>
+                <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Gallery title" className="px-4 py-2 border rounded-lg" />
+                  <input type="number" min="1" max="6" value={section.columns || ''} onChange={(e) => updateSection(index, 'columns', Number(e.target.value || 0))} placeholder="Columns" className="px-4 py-2 border rounded-lg" />
+                  <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Gallery description" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                </div>
+                <SectionItemsEditor section={section} index={index} updateSection={updateSection} uploadImageToField={uploadImageToField} />
+              </>
+            )}
+
             {section.type === 'services' && (
               <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updateSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Items to show" className="mb-3 w-full px-4 py-2 border rounded-lg" />
             )}
@@ -999,6 +1025,36 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
       </div>
       {(sections || []).length === 0 && <div className="rounded-lg border border-dashed p-6 text-center text-gray-600">No extra sections yet. Add one above to place reusable content on this page.</div>}
     </section>
+  )
+}
+
+function SectionItemsEditor({ section, index, updateSection, uploadImageToField }: any) {
+  const items = Array.isArray(section.items) ? section.items : []
+  const updateItem = (itemIndex: number, field: string, value: any) => {
+    const nextItems = items.map((item: any, currentIndex: number) => currentIndex === itemIndex ? { ...item, [field]: value } : item)
+    updateSection(index, 'items', nextItems)
+  }
+  const addItem = () => updateSection(index, 'items', [...items, { id: crypto.randomUUID(), title: '', description: '', image: '' }])
+  const removeItem = (itemIndex: number) => updateSection(index, 'items', items.filter((_: any, currentIndex: number) => currentIndex !== itemIndex))
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h4 className="font-bold text-gray-900">Gallery Images</h4>
+        <button type="button" onClick={addItem} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add Image</button>
+      </div>
+      {items.map((item: any, itemIndex: number) => (
+        <div key={item.id || itemIndex} className="grid grid-cols-1 gap-3 rounded-lg border p-3 md:grid-cols-2">
+          <input value={item.title || ''} onChange={(e) => updateItem(itemIndex, 'title', e.target.value)} placeholder="Image title" className="px-4 py-2 border rounded-lg" />
+          <input value={item.image || ''} onChange={(e) => updateItem(itemIndex, 'image', e.target.value)} placeholder="Image URL" className="px-4 py-2 border rounded-lg" />
+          <textarea value={item.description || ''} onChange={(e) => updateItem(itemIndex, 'description', e.target.value)} placeholder="Image description" rows={2} className="px-4 py-2 border rounded-lg md:col-span-2" />
+          <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url: string) => updateItem(itemIndex, 'image', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />
+          {item.image && <img src={resolveAssetUrl(item.image)} alt={item.title || 'Gallery image'} className="h-40 w-full rounded-lg object-cover md:col-span-2" />}
+          <button type="button" onClick={() => removeItem(itemIndex)} className="rounded-lg border px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 md:col-span-2">Remove Image</button>
+        </div>
+      ))}
+      {items.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-gray-600">No gallery images yet.</div>}
+    </div>
   )
 }
 

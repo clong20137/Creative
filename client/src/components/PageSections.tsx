@@ -107,6 +107,8 @@ function PageSection({ section }: { section: any }) {
   if (section.type === 'portfolio') return <PortfolioSection section={section} />
   if (section.type === 'services') return <ServicesSection section={section} />
   if (section.type === 'hero') return <HeroSection section={section} />
+  if (section.type === 'imageOverlay') return <ImageOverlaySection section={section} />
+  if (section.type === 'gallery') return <GallerySection section={section} />
   if (section.type === 'whatWeDo') return <WhatWeDoSection section={section} />
   if (section.type === 'featuredWork') return <FeaturedWorkSection section={section} />
   if (section.type === 'portfolioGallery') return <PortfolioGallerySection section={section} />
@@ -138,6 +140,48 @@ function PageSection({ section }: { section: any }) {
     <section className="section-padding">
       <div className="container max-w-4xl">
         <p className="text-lg leading-relaxed text-gray-700 whitespace-pre-line">{section.body}</p>
+      </div>
+    </section>
+  )
+}
+
+function ImageOverlaySection({ section }: { section: any }) {
+  return (
+    <section className="relative min-h-[30rem] overflow-hidden bg-gray-950 text-white">
+      {section.imageUrl && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+      <div className="absolute inset-0 bg-black/55"></div>
+      <div className="container relative flex min-h-[30rem] items-center py-16">
+        <div className="max-w-2xl">
+          {section.title && <h2 className="text-4xl font-bold md:text-6xl">{section.title}</h2>}
+          {section.body && <p className="mt-5 text-lg text-gray-100 whitespace-pre-line md:text-xl">{section.body}</p>}
+          {section.buttonLabel && section.buttonUrl && <Link to={section.buttonUrl} className="btn-primary mt-8 inline-flex">{section.buttonLabel}</Link>}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function GallerySection({ section }: { section: any }) {
+  const items = Array.isArray(section.items) ? section.items : []
+
+  return (
+    <section className="py-16">
+      <div className="container">
+        <SectionHeading section={section} fallbackTitle="Gallery" />
+        <div className={`grid grid-cols-1 gap-4 ${columnClasses[Number(section.columns || 3)] || columnClasses[3]}`}>
+          {items.map((item: any, index: number) => (
+            <figure key={item.id || index} className="group overflow-hidden rounded-lg bg-gray-100">
+              {item.image && <img src={resolveAssetUrl(item.image)} alt={item.title || section.title || ''} className="h-72 w-full object-cover transition duration-300 group-hover:scale-105" />}
+              {(item.title || item.description) && (
+                <figcaption className="p-4">
+                  {item.title && <h3 className="font-bold text-gray-900">{item.title}</h3>}
+                  {item.description && <p className="mt-1 text-sm text-gray-600">{item.description}</p>}
+                </figcaption>
+              )}
+            </figure>
+          ))}
+          {items.length === 0 && <div className="rounded-lg border p-6 text-center text-gray-600 md:col-span-2 lg:col-span-3">No gallery images have been added yet.</div>}
+        </div>
       </div>
     </section>
   )
