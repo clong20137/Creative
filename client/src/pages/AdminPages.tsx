@@ -4,7 +4,15 @@ import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import { adminAPI, resolveAssetUrl } from '../services/api'
 
-const pageTabs = ['Homepage', 'Headers', 'Services Page', 'Pricing Page', 'Testimonials', 'Custom Pages']
+const publicPages = [
+  { id: 'Homepage', label: 'Homepage', description: 'Banner, what we do, featured work' },
+  { id: 'portfolio', label: 'Portfolio', description: 'Portfolio header' },
+  { id: 'services', label: 'Services', description: 'Header and service sections' },
+  { id: 'pricing', label: 'Pricing', description: 'Header, packages, and FAQ' },
+  { id: 'plugins', label: 'Plugins', description: 'Plugin page header' },
+  { id: 'contact', label: 'Contact', description: 'Contact page header' },
+  { id: 'Testimonials', label: 'Testimonials', description: 'Reviews and manual testimonials' }
+]
 
 const emptySettings = {
   heroTitle: '',
@@ -129,6 +137,7 @@ function makeSlug(value: string) {
 
 export default function AdminPages() {
   const [activeTab, setActiveTab] = useState('Homepage')
+  const [selectedHeaderPage, setSelectedHeaderPage] = useState('portfolio')
   const [settings, setSettings] = useState(emptySettings)
   const [pages, setPages] = useState<any[]>([])
   const [selectedPageId, setSelectedPageId] = useState<string>('new')
@@ -167,6 +176,17 @@ export default function AdminPages() {
   }, [])
 
   const handleChange = (key: string, value: any) => setSettings(prev => ({ ...prev, [key]: value }))
+  const selectPublicPage = (page: any) => {
+    if (page.id === 'Homepage' || page.id === 'Testimonials') {
+      setActiveTab(page.id)
+      return
+    }
+
+    setSelectedHeaderPage(page.id)
+    if (page.id === 'services') setActiveTab('Services Page')
+    else if (page.id === 'pricing') setActiveTab('Pricing Page')
+    else setActiveTab('Headers')
+  }
 
   const updateListItem = (key: string, index: number, field: string, value: any) => {
     setSettings(prev => {
@@ -328,27 +348,104 @@ export default function AdminPages() {
       {message && <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">{message}</div>}
       {error && <div className="mb-6 p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">{error}</div>}
       {loading ? <PageSkeleton /> : (
-        <div className="space-y-6">
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {pageTabs.map(tab => (
-              <button key={tab} type="button" onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border'}`}>
-                {tab}
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[18rem_1fr]">
+          <aside className="card p-4">
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Pages</h2>
+              <p className="text-sm text-gray-600">Pick a page, then edit its sections.</p>
+            </div>
+            <div className="space-y-2">
+              {publicPages.map(page => {
+                const isActivePage = page.id === 'Homepage'
+                  ? activeTab === 'Homepage'
+                  : page.id === 'Testimonials'
+                    ? activeTab === 'Testimonials'
+                    : selectedHeaderPage === page.id && activeTab !== 'Custom Pages'
+                return (
+                  <button
+                    key={page.id}
+                    type="button"
+                    onClick={() => selectPublicPage(page)}
+                    className={`w-full rounded-lg px-4 py-3 text-left transition ${isActivePage ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-blue-50'}`}
+                  >
+                    <span className="font-bold">{page.label}</span>
+                    <span className="mt-1 block text-xs opacity-80">{page.description}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="mt-5 border-t pt-4">
+              <button type="button" onClick={() => { setActiveTab('Custom Pages'); startNewPage() }} className={`mb-2 w-full rounded-lg px-4 py-3 text-left font-bold ${activeTab === 'Custom Pages' && selectedPageId === 'new' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-blue-50'}`}>
+                Add New Page
               </button>
-            ))}
-          </div>
+              <div className="space-y-2">
+                {pages.map(page => (
+                  <button
+                    key={page.id}
+                    type="button"
+                    onClick={() => { setActiveTab('Custom Pages'); selectPage(page) }}
+                    className={`w-full rounded-lg px-4 py-3 text-left transition ${activeTab === 'Custom Pages' && selectedPageId === String(page.id) ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-blue-50'}`}
+                  >
+                    <span className="font-bold">{page.title}</span>
+                    <span className="mt-1 block text-xs opacity-80">{page.isPublished ? `/${page.slug}` : 'Draft'}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
+
+          <div className="space-y-6">
 
           {activeTab === 'Custom Pages' ? (
             <section className="grid grid-cols-1 gap-6 lg:grid-cols-[18rem_1fr]">
               <div className="card p-4 space-y-3">
-                <button type="button" onClick={startNewPage} className={`w-full rounded-lg px-4 py-2 text-left font-semibold ${selectedPageId === 'new' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
-                  Add New Page
-                </button>
-                {pages.map(page => (
-                  <button key={page.id} type="button" onClick={() => selectPage(page)} className={`w-full rounded-lg px-4 py-2 text-left font-semibold ${selectedPageId === String(page.id) ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
-                    {page.title}
-                    <span className="block text-xs font-normal">{page.isPublished ? `/${page.slug}` : 'Draft'}</span>
-                  </button>
-                ))}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Sections</h3>
+                  <p className="text-sm text-gray-600">Add, drag, and jump to sections.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => addPageSection('header')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Header</button>
+                  <button type="button" onClick={() => addPageSection('paragraph')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Paragraph</button>
+                  <button type="button" onClick={() => addPageSection('image')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Image</button>
+                  <button type="button" onClick={() => addPageSection('plugin')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Plugin</button>
+                  <button type="button" onClick={() => addPageSection('section')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Section</button>
+                </div>
+                <div className="space-y-2">
+                  {(pageDraft.sections || []).map((section: any, index: number) => (
+                    <div
+                      key={section.id || index}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        if (draggingSectionIndex !== null) movePageSection(draggingSectionIndex, index)
+                        setDraggingSectionIndex(null)
+                      }}
+                      className={`rounded-lg border bg-white p-2 ${draggingSectionIndex === index ? 'opacity-60 ring-2 ring-blue-500' : ''}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => document.getElementById(`page-section-${section.id || index}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="min-w-0 flex-1 text-left">
+                          <span className="block truncate font-semibold text-gray-900">{section.title || `${section.type || 'Section'} ${index + 1}`}</span>
+                          <span className="block text-xs text-gray-500">#{index + 1}</span>
+                        </button>
+                        <button type="button" onClick={() => movePageSection(index, index - 1)} disabled={index === 0} className="inline-flex h-8 w-8 items-center justify-center rounded border text-gray-700 disabled:opacity-40" title="Move up" aria-label="Move section up"><FiArrowUp /></button>
+                        <button type="button" onClick={() => movePageSection(index, index + 1)} disabled={index === (pageDraft.sections || []).length - 1} className="inline-flex h-8 w-8 items-center justify-center rounded border text-gray-700 disabled:opacity-40" title="Move down" aria-label="Move section down"><FiArrowDown /></button>
+                        <button
+                          type="button"
+                          draggable
+                          onDragStart={(e) => {
+                            setDraggingSectionIndex(index)
+                            e.dataTransfer.effectAllowed = 'move'
+                          }}
+                          onDragEnd={() => setDraggingSectionIndex(null)}
+                          className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded border text-gray-700 active:cursor-grabbing"
+                          title="Drag to reorder"
+                          aria-label="Drag section to reorder"
+                        >
+                          <FiMove />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <form onSubmit={saveCustomPage} className="card p-6 space-y-4">
@@ -365,19 +462,13 @@ export default function AdminPages() {
                 <div className="space-y-4 rounded-lg border p-4">
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">Page Sections</h3>
-                    <p className="text-gray-600">Build this page with headers, paragraphs, images, plugin callouts, and content sections.</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => addPageSection('header')} className="btn-secondary">Add Header</button>
-                    <button type="button" onClick={() => addPageSection('paragraph')} className="btn-secondary">Add Paragraph</button>
-                    <button type="button" onClick={() => addPageSection('image')} className="btn-secondary">Add Image</button>
-                    <button type="button" onClick={() => addPageSection('plugin')} className="btn-secondary">Add Plugin</button>
-                    <button type="button" onClick={() => addPageSection('section')} className="btn-secondary">Add Section</button>
+                    <p className="text-gray-600">Use the section navigation to add, reorder, and jump between sections.</p>
                   </div>
                   <div className="space-y-3">
                     {(pageDraft.sections || []).map((section: any, index: number) => (
                       <div
                         key={section.id || index}
+                        id={`page-section-${section.id || index}`}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={() => {
                           if (draggingSectionIndex !== null) movePageSection(draggingSectionIndex, index)
@@ -527,24 +618,34 @@ export default function AdminPages() {
 
                 {activeTab === 'Headers' && (
                   <section className="space-y-4">
-                    {Object.entries(pageHeaderLabels).map(([page, label]) => {
-                      const header = settings.pageHeaders?.[page] || { title: '', subtitle: '' }
-                      return (
-                        <div key={page} className="rounded-lg border p-4">
-                          <h3 className="mb-3 text-lg font-bold text-gray-900">{label}</h3>
-                          <div className="grid grid-cols-1 gap-3">
-                            <input value={header.title || ''} onChange={(e) => updatePageHeader(page, 'title', e.target.value)} placeholder={`${label} title`} className="px-4 py-2 border rounded-lg" />
-                            <textarea value={header.subtitle || ''} onChange={(e) => updatePageHeader(page, 'subtitle', e.target.value)} placeholder={`${label} subtitle`} rows={2} className="px-4 py-2 border rounded-lg" />
-                          </div>
-                        </div>
-                      )
-                    })}
+                    <PageHeaderEditor
+                      page={selectedHeaderPage}
+                      label={pageHeaderLabels[selectedHeaderPage] || 'Page'}
+                      header={settings.pageHeaders?.[selectedHeaderPage] || { title: '', subtitle: '' }}
+                      updatePageHeader={updatePageHeader}
+                    />
                   </section>
                 )}
 
-                {activeTab === 'Services Page' && <ListEditor title="Services Page" listKey="services" items={settings.services} fields={['title', 'description', 'features', 'url', 'image']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />}
+                {activeTab === 'Services Page' && (
+                  <section className="space-y-6">
+                    <PageHeaderEditor
+                      page="services"
+                      label="Services"
+                      header={settings.pageHeaders?.services || { title: '', subtitle: '' }}
+                      updatePageHeader={updatePageHeader}
+                    />
+                    <ListEditor title="Services Sections" listKey="services" items={settings.services} fields={['title', 'description', 'features', 'url', 'image']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />
+                  </section>
+                )}
                 {activeTab === 'Pricing Page' && (
                   <section className="space-y-6">
+                    <PageHeaderEditor
+                      page="pricing"
+                      label="Pricing"
+                      header={settings.pageHeaders?.pricing || { title: '', subtitle: '' }}
+                      updatePageHeader={updatePageHeader}
+                    />
                     <ListEditor title="Web Design Packages" listKey="webDesignPackages" items={settings.webDesignPackages} fields={['name', 'description', 'price', 'billingPeriod', 'features']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />
                     <ListEditor title="FAQ" listKey="faqs" items={settings.faqs} fields={['q', 'a']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />
                   </section>
@@ -566,9 +667,33 @@ export default function AdminPages() {
               <button type="submit" className="btn-primary">Save Page Edits</button>
             </form>
           )}
+          </div>
         </div>
       )}
     </AdminLayout>
+  )
+}
+
+function PageHeaderEditor({ page, label, header, updatePageHeader }: any) {
+  return (
+    <section className="rounded-lg border p-4">
+      <h3 className="mb-3 text-lg font-bold text-gray-900">{label} Header</h3>
+      <div className="grid grid-cols-1 gap-3">
+        <input
+          value={header.title || ''}
+          onChange={(e) => updatePageHeader(page, 'title', e.target.value)}
+          placeholder={`${label} title`}
+          className="px-4 py-2 border rounded-lg"
+        />
+        <textarea
+          value={header.subtitle || ''}
+          onChange={(e) => updatePageHeader(page, 'subtitle', e.target.value)}
+          placeholder={`${label} subtitle`}
+          rows={2}
+          className="px-4 py-2 border rounded-lg"
+        />
+      </div>
+    </section>
   )
 }
 
