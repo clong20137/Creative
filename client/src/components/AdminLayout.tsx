@@ -10,12 +10,20 @@ const primaryLinks = [
   { label: 'Projects', path: '/admin/projects', icon: FiFileText }
 ]
 
+const builtInPageLinks = [
+  { label: 'Homepage', page: 'home' },
+  { label: 'Portfolio', page: 'portfolio' },
+  { label: 'Services', page: 'services' },
+  { label: 'Pricing', page: 'pricing' },
+  { label: 'Plugins', page: 'plugins' },
+  { label: 'Contact', page: 'contact' }
+]
+
 const adminGroups = [
   {
     label: 'Pages',
     icon: FiFileText,
     links: [
-      { label: 'Web Pages', path: '/admin/pages', icon: FiFileText },
       { label: 'Navigation', path: '/admin/navigation', icon: FiGrid }
     ]
   },
@@ -56,6 +64,7 @@ export default function AdminLayout({ title, children }: { title: string; childr
   const location = useLocation()
   const isPageEditor = location.pathname === '/admin/pages'
   const [notifications, setNotifications] = useState({ newMessages: 0, newTickets: 0, total: 0 })
+  const [customPages, setCustomPages] = useState<any[]>([])
   const [theme, setTheme] = useState(() => localStorage.getItem('siteTheme') || 'light')
 
   useEffect(() => {
@@ -72,7 +81,22 @@ export default function AdminLayout({ title, children }: { title: string; childr
   useEffect(() => {
     let isMounted = true
 
-    const fetchNotifications = async () => {
+    const fetchAdminChrome = async () => {
+      try {
+        const [notificationData, pagesData] = await Promise.all([
+          adminAPI.getNotifications(),
+          adminAPI.getPages()
+        ])
+        if (isMounted) {
+          setNotifications(notificationData)
+          setCustomPages(Array.isArray(pagesData) ? pagesData : [])
+        }
+      } catch (error) {
+        console.error('Error loading admin navigation:', error)
+      }
+    }
+
+    const refreshNotifications = async () => {
       try {
         const data = await adminAPI.getNotifications()
         if (isMounted) setNotifications(data)
@@ -81,16 +105,18 @@ export default function AdminLayout({ title, children }: { title: string; childr
       }
     }
 
-    fetchNotifications()
-    window.addEventListener('admin-notifications-refresh', fetchNotifications)
-    window.addEventListener('focus', fetchNotifications)
+    fetchAdminChrome()
+    window.addEventListener('admin-notifications-refresh', refreshNotifications)
+    window.addEventListener('admin-pages-refresh', fetchAdminChrome)
+    window.addEventListener('focus', refreshNotifications)
 
-    const intervalId = window.setInterval(fetchNotifications, 60000)
+    const intervalId = window.setInterval(refreshNotifications, 60000)
 
     return () => {
       isMounted = false
-      window.removeEventListener('admin-notifications-refresh', fetchNotifications)
-      window.removeEventListener('focus', fetchNotifications)
+      window.removeEventListener('admin-notifications-refresh', refreshNotifications)
+      window.removeEventListener('admin-pages-refresh', fetchAdminChrome)
+      window.removeEventListener('focus', refreshNotifications)
       window.clearInterval(intervalId)
     }
   }, [])
@@ -111,6 +137,18 @@ export default function AdminLayout({ title, children }: { title: string; childr
     if (badgeKey === 'newMessages') return notifications.newMessages
     if (badgeKey === 'newTickets') return notifications.newTickets
     return 0
+  }
+
+  const isPageLinkActive = (page: string) => {
+    if (location.pathname !== '/admin/pages') return false
+    const params = new URLSearchParams(location.search)
+    if (!params.get('page') && !params.get('custom')) return page === 'home'
+    return params.get('page') === page
+  }
+
+  const isCustomPageLinkActive = (pageId: string) => {
+    if (location.pathname !== '/admin/pages') return false
+    return new URLSearchParams(location.search).get('custom') === pageId
   }
 
   const sidebarLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -148,7 +186,7 @@ export default function AdminLayout({ title, children }: { title: string; childr
 
             {adminGroups.map((group) => {
               const GroupIcon = group.icon
-              const groupActive = isGroupActive(group.links)
+              const groupActive = group.label === 'Pages' ? location.pathname.startsWith('/admin/pages') || isGroupActive(group.links) : isGroupActive(group.links)
 
               return (
                 <div key={group.label} className="space-y-1">
@@ -163,6 +201,50 @@ export default function AdminLayout({ title, children }: { title: string; childr
                       </span>
                     )}
                   </div>
+
+                  {group.label === 'Pages' && (
+                    <>
+                      {builtInPageLinks.map(link => (
+                        <Link
+                          key={link.page}
+                          to={`/admin/pages?page=${link.page}`}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                            isPageLinkActive(link.page)
+                              ? 'bg-blue-600 text-white'
+                              : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
+                          }`}
+                        >
+                          <FiFileText size={16} />
+                          {link.label}
+                        </Link>
+                      ))}
+                      {customPages.map(page => (
+                        <Link
+                          key={page.id}
+                          to={`/admin/pages?custom=${page.id}`}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                            isCustomPageLinkActive(String(page.id))
+                              ? 'bg-blue-600 text-white'
+                              : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
+                          }`}
+                        >
+                          <FiFileText size={16} />
+                          {page.title || 'Custom Page'}
+                        </Link>
+                      ))}
+                      <Link
+                        to="/admin/pages?page=new"
+                        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                          isPageLinkActive('new')
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
+                        }`}
+                      >
+                        <FiFileText size={16} />
+                        Add New Page
+                      </Link>
+                    </>
+                  )}
 
                   {group.links.map((link) => {
                     const Icon = link.icon

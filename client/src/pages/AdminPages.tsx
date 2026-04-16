@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiFileText, FiGrid, FiImage, FiLayout, FiMove, FiSave, FiSidebar, FiTrash2, FiType } from 'react-icons/fi'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiFileText, FiGrid, FiImage, FiLayout, FiMove, FiSave, FiTrash2, FiType } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import PageSections from '../components/PageSections'
 import { PageSkeleton } from '../components/SkeletonLoaders'
@@ -260,6 +261,8 @@ function getSectionTitle(section: any, index: number) {
 }
 
 export default function AdminPages() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('home')
   const [settings, setSettings] = useState(emptySettings)
   const [pages, setPages] = useState<any[]>([])
@@ -284,8 +287,6 @@ export default function AdminPages() {
   const [draggingSectionIndex, setDraggingSectionIndex] = useState<number | null>(null)
   const [editingSectionId, setEditingSectionId] = useState('')
   const [sectionsPanelOpen, setSectionsPanelOpen] = useState(true)
-  const [pagesPanelOpen, setPagesPanelOpen] = useState(true)
-  const [leftPanelView, setLeftPanelView] = useState<'pages' | 'sections'>('pages')
 
   const activeBuiltInPageKey = publicPages.some(page => page.id === activeTab) ? activeTab : ''
 
@@ -313,10 +314,6 @@ export default function AdminPages() {
   }, [])
 
   const handleChange = (key: string, value: any) => setSettings(prev => ({ ...prev, [key]: value }))
-  const selectPublicPage = (page: any) => {
-    setEditingSectionId('')
-    setActiveTab(page.id)
-  }
 
   const updateListItem = (key: string, index: number, field: string, value: any) => {
     setSettings(prev => {
@@ -373,12 +370,8 @@ export default function AdminPages() {
     }
   }
 
-  const selectPage = (page: any) => {
-    setSelectedPageId(String(page.id))
-    setPageDraft({ ...page, sections: Array.isArray(page.sections) ? page.sections : [] })
-  }
-
-  const startNewPage = () => {
+  const startNewPage = (syncUrl = true) => {
+    setActiveTab('Custom Pages')
     setSelectedPageId('new')
     setPageDraft({
       title: '',
@@ -392,7 +385,38 @@ export default function AdminPages() {
       isPublished: false,
       sortOrder: pages.length * 10
     })
+    if (syncUrl) navigate('/admin/pages?page=new')
   }
+
+  useEffect(() => {
+    if (loading) return
+
+    const params = new URLSearchParams(location.search)
+    const pageParam = params.get('page')
+    const customParam = params.get('custom')
+
+    if (pageParam === 'new') {
+      setEditingSectionId('')
+      startNewPage(false)
+      return
+    }
+
+    if (pageParam && publicPages.some(page => page.id === pageParam)) {
+      setEditingSectionId('')
+      setActiveTab(pageParam)
+      return
+    }
+
+    if (customParam) {
+      const customPage = pages.find(page => String(page.id) === customParam)
+      if (customPage) {
+        setEditingSectionId('')
+        setActiveTab('Custom Pages')
+        setSelectedPageId(String(customPage.id))
+        setPageDraft({ ...customPage, sections: Array.isArray(customPage.sections) ? customPage.sections : [] })
+      }
+    }
+  }, [location.search, loading, pages])
 
   const updatePageDraft = (field: string, value: any) => {
     setPageDraft((current: any) => ({
@@ -516,7 +540,7 @@ export default function AdminPages() {
   const selectedSectionIndex = activeSections.findIndex((section: any, index: number) => (section.id || String(index)) === editingSectionId)
   const selectedSection = selectedSectionIndex >= 0 ? activeSections[selectedSectionIndex] : null
   const saveActivePage = () => activeTab === 'Custom Pages' ? saveCustomPageEdits() : saveBuiltInPageEdits()
-  const editorGridColumns = `${pagesPanelOpen ? '20rem' : '3.5rem'} minmax(0, 1fr) ${sectionsPanelOpen ? '23rem' : '3.25rem'}`
+  const editorGridColumns = `minmax(0, 1fr) ${sectionsPanelOpen ? '23rem' : '3.25rem'}`
 
   const saveCustomPage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -537,6 +561,8 @@ export default function AdminPages() {
       })
       setSelectedPageId(String(savedPage.id))
       setPageDraft(savedPage)
+      navigate(`/admin/pages?custom=${savedPage.id}`)
+      window.dispatchEvent(new Event('admin-pages-refresh'))
       setMessage('Custom page saved')
     } catch (err: any) {
       setMessage('')
@@ -551,6 +577,7 @@ export default function AdminPages() {
       await adminAPI.deletePage(selectedPageId)
       setPages(current => current.filter(page => String(page.id) !== selectedPageId))
       startNewPage()
+      window.dispatchEvent(new Event('admin-pages-refresh'))
       setMessage('Custom page deleted')
     } catch (err: any) {
       setError(err.error || 'Failed to delete custom page')
@@ -563,88 +590,10 @@ export default function AdminPages() {
       {error && <div className="mx-4 mb-6 p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">{error}</div>}
       {loading ? <PageSkeleton /> : (
         <div className="grid min-h-[calc(100vh-12rem)] grid-cols-1 items-start gap-4 transition-all duration-300 xl:grid-cols-[var(--editor-grid)]" style={{ '--editor-grid': editorGridColumns } as any}>
-          <aside className="h-[calc(100vh-12rem)] overflow-hidden rounded-none border border-l-0 bg-white shadow transition-all duration-300 xl:sticky xl:top-4">
-            <div className="flex h-full">
-              <div className="flex w-14 shrink-0 flex-col items-center gap-2 border-r bg-gray-50 py-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLeftPanelView('pages')
-                    setPagesPanelOpen(true)
-                  }}
-                  className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${leftPanelView === 'pages' && pagesPanelOpen ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
-                  aria-label="Open pages"
-                  title="Pages"
-                >
-                  <FiSidebar />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLeftPanelView('sections')
-                    setPagesPanelOpen(true)
-                  }}
-                  className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${leftPanelView === 'sections' && pagesPanelOpen ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
-                  aria-label="Open sections"
-                  title="Sections"
-                >
-                  <FiGrid />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPagesPanelOpen(!pagesPanelOpen)}
-                  className="mt-auto flex h-10 w-10 items-center justify-center rounded-lg text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
-                  aria-label={pagesPanelOpen ? 'Collapse left panel' : 'Expand left panel'}
-                  title={pagesPanelOpen ? 'Collapse left panel' : 'Expand left panel'}
-                >
-                  {pagesPanelOpen ? <FiArrowLeft /> : <FiArrowRight />}
-                </button>
-              </div>
-              {pagesPanelOpen && <div className="min-w-0 flex-1 overflow-auto p-4">
-            {leftPanelView === 'pages' ? <>
-            <div className="mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Pages</h2>
-              <p className="text-sm text-gray-600">Pick a page, then edit its sections.</p>
-            </div>
-            <div className="space-y-2">
-              {publicPages.map(page => {
-                const isActivePage = activeTab === page.id
-                return (
-                  <button
-                    key={page.id}
-                    type="button"
-                    onClick={() => selectPublicPage(page)}
-                    className={`w-full rounded-lg px-4 py-3 text-left transition ${isActivePage ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-blue-50'}`}
-                  >
-                    <span className="font-bold">{page.label}</span>
-                  </button>
-                )
-              })}
-            </div>
-            <div className="mt-5 border-t pt-4">
-              <button type="button" onClick={() => { setActiveTab('Custom Pages'); startNewPage() }} className={`mb-2 w-full rounded-lg px-4 py-3 text-left font-bold ${activeTab === 'Custom Pages' && selectedPageId === 'new' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-blue-50'}`}>
-                Add New Page
-              </button>
-              <div className="space-y-2">
-                {pages.map(page => (
-                  <button
-                    key={page.id}
-                    type="button"
-                    onClick={() => { setActiveTab('Custom Pages'); selectPage(page) }}
-                    className={`w-full rounded-lg px-4 py-3 text-left transition ${activeTab === 'Custom Pages' && selectedPageId === String(page.id) ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-blue-50'}`}
-                  >
-                    <span className="font-bold">{page.title}</span>
-                    <span className="mt-1 block text-xs opacity-80">{page.isPublished ? `/${page.slug}` : 'Draft'}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            </> : <SectionBlockLibrary addSection={addActiveSection} />}
-              </div>}
-            </div>
-          </aside>
-
           <div className="space-y-6 px-1">
+            <section className="rounded-lg border bg-white p-4 shadow-sm">
+              <SectionBlockLibrary addSection={addActiveSection} />
+            </section>
 
           {activeTab === 'Custom Pages' ? (
             <section className="block">
