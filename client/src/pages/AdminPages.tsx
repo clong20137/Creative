@@ -281,6 +281,7 @@ export default function AdminPages() {
   const [editingSectionId, setEditingSectionId] = useState('')
   const [sectionsPanelOpen, setSectionsPanelOpen] = useState(true)
   const [pagesPanelOpen, setPagesPanelOpen] = useState(true)
+  const [leftPanelView, setLeftPanelView] = useState<'pages' | 'sections'>('pages')
 
   const activeBuiltInPageKey = publicPages.some(page => page.id === activeTab) ? activeTab : ''
 
@@ -352,6 +353,10 @@ export default function AdminPages() {
 
   const saveSettingsTab = async (e: React.FormEvent) => {
     e.preventDefault()
+    await saveBuiltInPageEdits()
+  }
+
+  const saveBuiltInPageEdits = async () => {
     try {
       setError('')
       setMessage('Saving page edits...')
@@ -504,10 +509,17 @@ export default function AdminPages() {
       setDraggingSectionIndex(null)
     }
   }
+  const selectedSectionIndex = activeSections.findIndex((section: any, index: number) => (section.id || String(index)) === editingSectionId)
+  const selectedSection = selectedSectionIndex >= 0 ? activeSections[selectedSectionIndex] : null
+  const saveActivePage = () => activeTab === 'Custom Pages' ? saveCustomPageEdits() : saveBuiltInPageEdits()
   const editorGridColumns = `${pagesPanelOpen ? '18rem' : '3.25rem'} minmax(0, 1fr) ${sectionsPanelOpen ? '23rem' : '3.25rem'}`
 
   const saveCustomPage = async (e: React.FormEvent) => {
     e.preventDefault()
+    await saveCustomPageEdits()
+  }
+
+  const saveCustomPageEdits = async () => {
     try {
       setError('')
       setMessage('Saving page...')
@@ -557,11 +569,20 @@ export default function AdminPages() {
             >
               <span className="inline-flex items-center gap-2 font-bold text-gray-900">
                 <FiSidebar />
-                {pagesPanelOpen && 'Pages'}
+                {pagesPanelOpen && (leftPanelView === 'pages' ? 'Pages' : 'Sections')}
               </span>
               {pagesPanelOpen ? <FiArrowLeft /> : <FiArrowRight />}
             </button>
             {pagesPanelOpen && <div className="border-t p-4">
+            <div className="mb-4 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setLeftPanelView('pages')} className={`rounded-lg px-3 py-2 text-sm font-bold ${leftPanelView === 'pages' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-blue-50'}`}>
+                Pages
+              </button>
+              <button type="button" onClick={() => setLeftPanelView('sections')} className={`rounded-lg px-3 py-2 text-sm font-bold ${leftPanelView === 'sections' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-blue-50'}`}>
+                Sections
+              </button>
+            </div>
+            {leftPanelView === 'pages' ? <>
             <div className="mb-4">
               <h2 className="text-xl font-bold text-gray-900">Pages</h2>
               <p className="text-sm text-gray-600">Pick a page, then edit its sections.</p>
@@ -599,6 +620,7 @@ export default function AdminPages() {
                 ))}
               </div>
             </div>
+            </> : <SectionBlockLibrary addSection={addActiveSection} />}
             </div>}
           </aside>
 
@@ -1017,18 +1039,14 @@ export default function AdminPages() {
           </div>
 
           <aside className="h-[calc(100vh-12rem)] overflow-auto rounded-none border border-r-0 bg-white shadow transition-all duration-300 xl:sticky xl:top-4">
-            <PageSectionEditor
-              title={`${activePageLabel} Sections`}
-              sections={activeSections}
-              editingSectionId={editingSectionId}
-              draggingSectionIndex={draggingSectionIndex}
-              setEditingSectionId={setEditingSectionId}
-              setDraggingSectionIndex={setDraggingSectionIndex}
-              addSection={addActiveSection}
+            <SectionInspector
+              title="Section Settings"
+              section={selectedSection}
+              index={selectedSectionIndex}
               updateSection={updateActiveSection}
               removeSection={removeActiveSection}
-              moveSection={moveActiveSection}
               uploadImageToField={uploadImageToField}
+              savePage={saveActivePage}
               isOpen={sectionsPanelOpen}
               setIsOpen={setSectionsPanelOpen}
             />
@@ -1090,6 +1108,162 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
         )}
       </div>
     </section>
+  )
+}
+
+function SectionBlockLibrary({ addSection }: any) {
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-xl font-bold text-gray-900">Sections</h2>
+        <p className="text-sm text-gray-600">Drag a block into the preview or click to add it.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {sectionTypeOptions.map(option => {
+          const Icon = option.icon
+          return (
+            <button
+              key={option.value}
+              type="button"
+              draggable
+              onClick={() => addSection(option.value)}
+              onDragStart={(e) => {
+                e.dataTransfer.setData('application/x-section-type', option.value)
+                e.dataTransfer.effectAllowed = 'copy'
+              }}
+              className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-lg border px-3 py-2 text-center text-xs font-semibold hover:bg-gray-50"
+            >
+              <Icon size={20} />
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function SectionInspector({ title, section, index, updateSection, removeSection, uploadImageToField, savePage, isOpen = true, setIsOpen = () => {} }: any) {
+  if (!isOpen) {
+    return (
+      <section className="h-full overflow-hidden bg-white">
+        <button type="button" onClick={() => setIsOpen(true)} className="flex h-16 w-full items-center justify-center text-gray-900" aria-label="Expand section settings" title="Expand section settings">
+          <FiArrowLeft />
+        </button>
+      </section>
+    )
+  }
+
+  if (!section || index < 0) {
+    return (
+      <section className="h-full bg-white">
+        <button type="button" onClick={() => setIsOpen(false)} className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left" aria-label="Collapse section settings" title="Collapse section settings">
+          <span>
+            <span className="block text-xl font-bold text-gray-900">{title}</span>
+            <span className="block text-sm text-gray-600">Select a section in the preview to edit it here.</span>
+          </span>
+          <FiArrowRight className="text-blue-600" />
+        </button>
+        <div className="border-t p-4 text-sm text-gray-600">No section selected.</div>
+      </section>
+    )
+  }
+
+  return (
+    <section className="h-full bg-white">
+      <button type="button" onClick={() => setIsOpen(false)} className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left" aria-label="Collapse section settings" title="Collapse section settings">
+        <span>
+          <span className="block text-xl font-bold text-gray-900">{title}</span>
+          <span className="block text-sm text-gray-600">{getSectionTitle(section, index)}</span>
+        </span>
+        <FiArrowRight className="text-blue-600" />
+      </button>
+
+      <div className="space-y-4 border-t p-4">
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={savePage} className="btn-primary px-4 py-2">Save</button>
+          <button type="button" onClick={() => removeSection(index)} className="btn-secondary px-4 py-2 text-red-600">Delete</button>
+        </div>
+
+        <div className="rounded-lg border bg-gray-50 p-4">
+          <label className="mb-2 block text-sm font-bold text-gray-700">Section Type</label>
+          <select value={section.type || 'paragraph'} onChange={(e) => updateSection(index, 'type', e.target.value)} className="w-full px-4 py-2 border rounded-lg">
+            {sectionTypeOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </div>
+
+        <SectionSpacingControls section={section} index={index} updateSection={updateSection} />
+
+        {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta' || section.type === 'imageOverlay') && (
+          <div className="space-y-3">
+            <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Heading" className="w-full px-4 py-2 border rounded-lg" />
+            <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Text" rows={3} className="w-full px-4 py-2 border rounded-lg" />
+            <input value={section.buttonLabel || ''} onChange={(e) => updateSection(index, 'buttonLabel', e.target.value)} placeholder="Button label" className="w-full px-4 py-2 border rounded-lg" />
+            <input value={section.buttonUrl || ''} onChange={(e) => updateSection(index, 'buttonUrl', e.target.value)} placeholder="Button URL" className="w-full px-4 py-2 border rounded-lg" />
+            {section.type === 'hero' && <input value={section.secondaryButtonLabel || ''} onChange={(e) => updateSection(index, 'secondaryButtonLabel', e.target.value)} placeholder="Secondary button label" className="w-full px-4 py-2 border rounded-lg" />}
+            {section.type === 'hero' && <input value={section.secondaryButtonUrl || ''} onChange={(e) => updateSection(index, 'secondaryButtonUrl', e.target.value)} placeholder="Secondary button URL" className="w-full px-4 py-2 border rounded-lg" />}
+            {section.type !== 'cta' && <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Optional image URL" className="w-full px-4 py-2 border rounded-lg" />}
+            {section.type !== 'cta' && <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url: string) => updateSection(index, 'imageUrl', url), e.target.files?.[0])} className="w-full px-4 py-2 border rounded-lg" />}
+            {section.imageUrl && section.type !== 'cta' && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-40 w-full rounded-lg object-cover" />}
+          </div>
+        )}
+
+        {(section.type === 'header' || section.type === 'section' || section.type === 'services') && (
+          <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Section title" className="w-full px-4 py-2 border rounded-lg" />
+        )}
+
+        {(section.type === 'paragraph' || section.type === 'section' || section.type === 'services') && (
+          <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Text content" rows={4} className="w-full px-4 py-2 border rounded-lg" />
+        )}
+
+        {section.type === 'portfolio' && <ListCountControls section={section} index={index} updateSection={updateSection} />}
+        {section.type === 'services' && <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updateSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Items to show" className="w-full px-4 py-2 border rounded-lg" />}
+
+        {section.type === 'gallery' && (
+          <>
+            <ListCountControls section={section} index={index} updateSection={updateSection} titlePlaceholder="Gallery title" />
+            <SectionItemsEditor section={section} index={index} updateSection={updateSection} uploadImageToField={uploadImageToField} />
+          </>
+        )}
+
+        {section.type === 'imageCards' && (
+          <>
+            <ListCountControls section={section} index={index} updateSection={updateSection} titlePlaceholder="Section title" maxColumns={3} />
+            <ImageCardsEditor section={section} index={index} updateSection={updateSection} uploadImageToField={uploadImageToField} />
+          </>
+        )}
+
+        {section.type === 'columns' && <ColumnsEditor section={section} index={index} updateSection={updateSection} uploadImageToField={uploadImageToField} />}
+
+        {section.type === 'siteDemos' && <ListCountControls section={section} index={index} updateSection={updateSection} titlePlaceholder="Section title" />}
+
+        {(section.type === 'image' || section.type === 'section') && (
+          <div className="space-y-3">
+            <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Image URL" className="w-full px-4 py-2 border rounded-lg" />
+            <input value={section.alt || ''} onChange={(e) => updateSection(index, 'alt', e.target.value)} placeholder="Alt text" className="w-full px-4 py-2 border rounded-lg" />
+            <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url: string) => updateSection(index, 'imageUrl', url), e.target.files?.[0])} className="w-full px-4 py-2 border rounded-lg" />
+            {section.imageUrl && <img src={resolveAssetUrl(section.imageUrl)} alt={section.alt || section.title || 'Section image'} className="h-40 w-full rounded-lg object-cover" />}
+          </div>
+        )}
+
+        {section.type === 'plugin' && (
+          <select value={section.pluginSlug || 'restaurant'} onChange={(e) => updateSection(index, 'pluginSlug', e.target.value)} className="w-full px-4 py-2 border rounded-lg">
+            {pluginOptions.map(plugin => <option key={plugin.value} value={plugin.value}>{plugin.label}</option>)}
+          </select>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function ListCountControls({ section, index, updateSection, titlePlaceholder = 'Section title', maxColumns = 6 }: any) {
+  return (
+    <div className="space-y-3">
+      <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder={titlePlaceholder} className="w-full px-4 py-2 border rounded-lg" />
+      <input type="number" min="1" max={maxColumns} value={section.columns || ''} onChange={(e) => updateSection(index, 'columns', Number(e.target.value || 0))} placeholder="Columns" className="w-full px-4 py-2 border rounded-lg" />
+      <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Section description" rows={3} className="w-full px-4 py-2 border rounded-lg" />
+      <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updateSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Items to show" className="w-full px-4 py-2 border rounded-lg" />
+    </div>
   )
 }
 
