@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiFileText, FiGrid, FiImage, FiLayout, FiMove, FiSave, FiSearch, FiTrash2, FiType } from 'react-icons/fi'
+import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiCopy, FiEye, FiEyeOff, FiFileText, FiGrid, FiImage, FiLayout, FiMonitor, FiMove, FiSave, FiSearch, FiSmartphone, FiTablet, FiTrash2, FiType } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import PageSections from '../components/PageSections'
 import { PageSkeleton } from '../components/SkeletonLoaders'
@@ -221,6 +221,7 @@ function makePageSection(type: string) {
     textColor: '',
     buttonBackgroundColor: '',
     buttonTextColor: '',
+    isHidden: false,
     boxShadow: '',
     borderWidth: '',
     borderColor: '',
@@ -273,6 +274,22 @@ function getSectionTitle(section: any, index: number) {
   return section.title || `${typeLabel} ${index + 1}`
 }
 
+function cloneSectionWithNewIds(section: any) {
+  const cloned = JSON.parse(JSON.stringify(section || {}))
+  const applyIds = (value: any) => {
+    if (!value || typeof value !== 'object') return
+    if ('id' in value) value.id = crypto.randomUUID()
+    Object.values(value).forEach(child => {
+      if (Array.isArray(child)) child.forEach(applyIds)
+      else applyIds(child)
+    })
+  }
+  cloned.id = crypto.randomUUID()
+  cloned.title = cloned.title ? `${cloned.title} Copy` : cloned.title
+  applyIds(cloned)
+  return cloned
+}
+
 export default function AdminPages() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -300,9 +317,12 @@ export default function AdminPages() {
   const [draggingSectionIndex, setDraggingSectionIndex] = useState<number | null>(null)
   const [editingSectionId, setEditingSectionId] = useState('')
   const [highlightedSectionId, setHighlightedSectionId] = useState('')
+  const [previewMode, setPreviewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const [sectionsPanelOpen, setSectionsPanelOpen] = useState(true)
   const [savedSnapshot, setSavedSnapshot] = useState('')
   const [unsavedPrompt, setUnsavedPrompt] = useState<{ open: boolean; href?: string; action?: () => void }>({ open: false })
+  const [undoStack, setUndoStack] = useState<string[]>([])
+  const [redoStack, setRedoStack] = useState<string[]>([])
 
   const activeBuiltInPageKey = publicPages.some(page => page.id === activeTab) ? activeTab : ''
 
@@ -343,6 +363,7 @@ export default function AdminPages() {
   const removeListItem = (key: string, index: number) => setSettings(prev => ({ ...prev, [key]: ((prev as any)[key] || []).filter((_: any, i: number) => i !== index) }))
 
   const updatePageHeader = (page: string, field: 'title' | 'subtitle', value: string) => {
+    recordHistory()
     setSettings(prev => ({
       ...prev,
       pageHeaders: {
@@ -356,6 +377,7 @@ export default function AdminPages() {
   }
 
   const updatePageMetadata = (page: string, field: string, value: string) => {
+    recordHistory()
     setSettings(prev => ({
       ...prev,
       pageMetadata: {
@@ -389,6 +411,8 @@ export default function AdminPages() {
       const payload = getActivePayload(settings, activeTab)
       await adminAPI.updateSiteSettings(payload)
       setSavedSnapshot(JSON.stringify(payload))
+      setUndoStack([])
+      setRedoStack([])
       setMessage('Page edits saved')
     } catch (err: any) {
       setMessage('')
@@ -445,6 +469,7 @@ export default function AdminPages() {
   }, [location.search, loading, pages])
 
   const updatePageDraft = (field: string, value: any) => {
+    recordHistory()
     setPageDraft((current: any) => ({
       ...current,
       [field]: value,
@@ -468,12 +493,14 @@ export default function AdminPages() {
   }
 
   const addPageSection = (type: string) => {
+    recordHistory()
     const baseSection: any = makePageSection(type)
     setPageDraft((current: any) => ({ ...current, sections: [...(current.sections || []), baseSection] }))
     markNewSection(baseSection.id)
   }
 
   const updatePageSection = (index: number, field: string, value: any) => {
+    recordHistory()
     setPageDraft((current: any) => {
       const sections = [...(current.sections || [])]
       sections[index] = { ...sections[index], [field]: value }
@@ -482,13 +509,28 @@ export default function AdminPages() {
   }
 
   const removePageSection = (index: number) => {
+    recordHistory()
     const section = (pageDraft.sections || [])[index]
     if (section?.id === editingSectionId) setEditingSectionId('')
     setPageDraft((current: any) => ({ ...current, sections: (current.sections || []).filter((_: any, i: number) => i !== index) }))
   }
 
+  const duplicatePageSection = (index: number) => {
+    recordHistory()
+    const section = (pageDraft.sections || [])[index]
+    if (!section) return
+    const duplicated = cloneSectionWithNewIds(section)
+    setPageDraft((current: any) => {
+      const sections = [...(current.sections || [])]
+      sections.splice(index + 1, 0, duplicated)
+      return { ...current, sections }
+    })
+    markNewSection(duplicated.id)
+  }
+
   const movePageSection = (fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex || toIndex < 0) return
+    recordHistory()
 
     setPageDraft((current: any) => {
       const sections = [...(current.sections || [])]
@@ -502,6 +544,7 @@ export default function AdminPages() {
   const getBuiltInSections = (pageKey: string) => Array.isArray(settings.pageSections?.[pageKey]) ? settings.pageSections[pageKey] : []
 
   const updateBuiltInSections = (pageKey: string, sections: any[]) => {
+    recordHistory()
     setSettings(prev => ({
       ...prev,
       pageSections: {
@@ -529,6 +572,16 @@ export default function AdminPages() {
     updateBuiltInSections(pageKey, getBuiltInSections(pageKey).filter((_: any, i: number) => i !== index))
   }
 
+  const duplicateBuiltInSection = (pageKey: string, index: number) => {
+    const sections = [...getBuiltInSections(pageKey)]
+    const section = sections[index]
+    if (!section) return
+    const duplicated = cloneSectionWithNewIds(section)
+    sections.splice(index + 1, 0, duplicated)
+    updateBuiltInSections(pageKey, sections)
+    markNewSection(duplicated.id)
+  }
+
   const moveBuiltInSection = (pageKey: string, fromIndex: number, toIndex: number) => {
     const sections = [...getBuiltInSections(pageKey)]
     if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= sections.length || toIndex >= sections.length) return
@@ -548,6 +601,7 @@ export default function AdminPages() {
     ? updatePageSection(index, field, value)
     : updateBuiltInSection(activeBuiltInPageKey, index, field, value)
   const removeActiveSection = (index: number) => activeTab === 'Custom Pages' ? removePageSection(index) : removeBuiltInSection(activeBuiltInPageKey, index)
+  const duplicateActiveSection = (index: number) => activeTab === 'Custom Pages' ? duplicatePageSection(index) : duplicateBuiltInSection(activeBuiltInPageKey, index)
   const moveActiveSection = (fromIndex: number, toIndex: number) => activeTab === 'Custom Pages'
     ? movePageSection(fromIndex, toIndex)
     : moveBuiltInSection(activeBuiltInPageKey, fromIndex, toIndex)
@@ -569,6 +623,36 @@ export default function AdminPages() {
   const editorGridColumns = `minmax(0, 1fr) ${sectionsPanelOpen ? '23rem' : '3.25rem'}`
   const activePageSnapshot = useMemo(() => JSON.stringify(activeTab === 'Custom Pages' ? pageDraft : getActivePayload(settings, activeTab)), [activeTab, pageDraft, settings])
   const hasUnsavedChanges = Boolean(savedSnapshot) && savedSnapshot !== activePageSnapshot
+  const applySnapshot = (snapshot: string) => {
+    const parsed = JSON.parse(snapshot)
+    if (activeTab === 'Custom Pages') {
+      setPageDraft(parsed)
+    } else {
+      setSettings(prev => ({ ...prev, ...parsed }))
+    }
+  }
+  const recordHistory = () => {
+    setUndoStack(current => current[current.length - 1] === activePageSnapshot ? current : [...current.slice(-24), activePageSnapshot])
+    setRedoStack([])
+  }
+  const undoPageChange = () => {
+    setUndoStack(current => {
+      if (current.length === 0) return current
+      const previous = current[current.length - 1]
+      setRedoStack(redo => [activePageSnapshot, ...redo.slice(0, 24)])
+      applySnapshot(previous)
+      return current.slice(0, -1)
+    })
+  }
+  const redoPageChange = () => {
+    setRedoStack(current => {
+      if (current.length === 0) return current
+      const next = current[0]
+      setUndoStack(undo => [...undo.slice(-24), activePageSnapshot])
+      applySnapshot(next)
+      return current.slice(1)
+    })
+  }
   const pageSettingsEditor = activeTab === 'Custom Pages' ? (
     <CustomPageSettingsEditor pageDraft={pageDraft} updatePageDraft={updatePageDraft} />
   ) : activeBuiltInPageKey ? (
@@ -588,7 +672,11 @@ export default function AdminPages() {
   }
 
   useEffect(() => {
-    if (!loading) setSavedSnapshot(activePageSnapshot)
+    if (!loading) {
+      setSavedSnapshot(activePageSnapshot)
+      setUndoStack([])
+      setRedoStack([])
+    }
   }, [loading, activeTab, selectedPageId])
 
   useEffect(() => {
@@ -657,6 +745,8 @@ export default function AdminPages() {
       setSelectedPageId(String(savedPage.id))
       setPageDraft(savedPage)
       setSavedSnapshot(JSON.stringify(savedPage))
+      setUndoStack([])
+      setRedoStack([])
       navigate(`/admin/pages?custom=${savedPage.id}`)
       window.dispatchEvent(new Event('admin-pages-refresh'))
       setMessage('Custom page saved')
@@ -915,6 +1005,12 @@ export default function AdminPages() {
                   setEditingSectionId={setEditingSectionId}
                   clearSelection={() => setEditingSectionId('')}
                   highlightedSectionId={highlightedSectionId}
+                  previewMode={previewMode}
+                  setPreviewMode={setPreviewMode}
+                  canUndo={undoStack.length > 0}
+                  canRedo={redoStack.length > 0}
+                  undoPageChange={undoPageChange}
+                  redoPageChange={redoPageChange}
                   onDrop={handlePreviewDrop}
                   emptyText={pageDraft.content || 'Drag a section from the right panel into the preview.'}
                 />
@@ -1097,6 +1193,12 @@ export default function AdminPages() {
                     setEditingSectionId={setEditingSectionId}
                     clearSelection={() => setEditingSectionId('')}
                     highlightedSectionId={highlightedSectionId}
+                    previewMode={previewMode}
+                    setPreviewMode={setPreviewMode}
+                    canUndo={undoStack.length > 0}
+                    canRedo={redoStack.length > 0}
+                    undoPageChange={undoPageChange}
+                    redoPageChange={redoPageChange}
                     onDrop={handlePreviewDrop}
                     emptyText="Drag a section from the right panel into the preview."
                   />
@@ -1115,6 +1217,7 @@ export default function AdminPages() {
                 index={selectedSectionIndex}
                 updateSection={updateActiveSection}
                 removeSection={removeActiveSection}
+                duplicateSection={duplicateActiveSection}
                 uploadImageToField={uploadImageToField}
                 savePage={saveActivePage}
                 isOpen={sectionsPanelOpen}
@@ -1161,19 +1264,51 @@ export default function AdminPages() {
   )
 }
 
-function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSectionIndex, moveSection, setEditingSectionId, clearSelection, highlightedSectionId, onDrop, emptyText }: any) {
+function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSectionIndex, moveSection, setEditingSectionId, clearSelection, highlightedSectionId, previewMode, setPreviewMode, canUndo, canRedo, undoPageChange, redoPageChange, onDrop, emptyText }: any) {
+  const previewModes = [
+    { value: 'desktop', label: 'Desktop', icon: FiMonitor, width: 'w-full' },
+    { value: 'tablet', label: 'Tablet', icon: FiTablet, width: 'max-w-[820px]' },
+    { value: 'mobile', label: 'Mobile', icon: FiSmartphone, width: 'max-w-[390px]' }
+  ]
+  const activePreview = previewModes.find(mode => mode.value === previewMode) || previewModes[0]
+
   return (
     <section className="card p-6 space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Live Preview</h2>
-        <p className="text-gray-600">Drag section pieces here, reorder them in place, and click a section to edit it on the right.</p>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Live Preview</h2>
+          <p className="text-gray-600">Drag section pieces here, reorder them in place, and click a section to edit it on the right.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+        <div className="flex rounded-lg border bg-gray-50 p-1">
+          {previewModes.map(mode => {
+            const Icon = mode.icon
+            return (
+              <button
+                key={mode.value}
+                type="button"
+                onClick={() => setPreviewMode(mode.value)}
+                className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-bold transition ${previewMode === mode.value ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-white'}`}
+              >
+                <Icon />
+                {mode.label}
+              </button>
+            )
+          })}
+        </div>
+          <div className="flex rounded-lg border bg-gray-50 p-1">
+            <button type="button" onClick={undoPageChange} disabled={!canUndo} className="rounded-md px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:opacity-40">Undo</button>
+            <button type="button" onClick={redoPageChange} disabled={!canRedo} className="rounded-md px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-white disabled:opacity-40">Redo</button>
+          </div>
+        </div>
       </div>
       <div
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
         onClick={() => clearSelection?.()}
-        className="min-h-[calc(100vh-24rem)] overflow-auto rounded-lg border bg-white"
+        className="min-h-[calc(100vh-24rem)] overflow-auto rounded-lg border bg-gray-100 p-3"
       >
+        <div className={`mx-auto min-h-[calc(100vh-26rem)] overflow-hidden rounded-lg bg-white shadow-sm transition-all duration-300 ${activePreview.width}`}>
         {(sections || []).length > 0 ? (
           <div>
             {(sections || []).map((section: any, index: number) => (
@@ -1202,7 +1337,13 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
                 <div className="absolute left-3 top-3 z-10 rounded bg-blue-600 px-2 py-1 text-xs font-bold text-white shadow">
                   {index + 1}
                 </div>
-                <PageSections sections={[section]} />
+                {section.isHidden ? (
+                  <div className="border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-center text-gray-600">
+                    <FiEyeOff className="mx-auto mb-2" />
+                    <p className="font-bold">{getSectionTitle(section, index)} is hidden</p>
+                    <p className="text-sm">It will not appear on the live page until you show it again.</p>
+                  </div>
+                ) : <PageSections sections={[section]} />}
               </div>
             ))}
           </div>
@@ -1214,6 +1355,7 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
             </div>
           </div>
         )}
+        </div>
       </div>
     </section>
   )
@@ -1327,7 +1469,7 @@ function PageSettingsInspector({ title, editor, isCustomPage, isSavedCustomPage,
   )
 }
 
-function SectionInspector({ title, section, index, updateSection, removeSection, uploadImageToField, savePage, isOpen = true, setIsOpen = () => {} }: any) {
+function SectionInspector({ title, section, index, updateSection, removeSection, duplicateSection, uploadImageToField, savePage, isOpen = true, setIsOpen = () => {} }: any) {
   if (!isOpen) {
     return (
       <section className="h-full overflow-hidden bg-white">
@@ -1369,6 +1511,17 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
           <select value={section.type || 'paragraph'} onChange={(e) => updateSection(index, 'type', e.target.value)} className="w-full px-4 py-2 border rounded-lg">
             {sectionTypeOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => duplicateSection(index)} className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50">
+            <FiCopy />
+            Duplicate
+          </button>
+          <button type="button" onClick={() => updateSection(index, 'isHidden', !section.isHidden)} className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50">
+            {section.isHidden ? <FiEye /> : <FiEyeOff />}
+            {section.isHidden ? 'Show' : 'Hide'}
+          </button>
         </div>
 
         <SectionSpacingControls section={section} index={index} updateSection={updateSection} />

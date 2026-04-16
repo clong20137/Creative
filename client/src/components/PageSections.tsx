@@ -25,7 +25,7 @@ const columnClasses: Record<number, string> = {
 }
 
 export default function PageSections({ sections }: { sections?: any[] }) {
-  const visibleSections = Array.isArray(sections) ? sections : []
+  const visibleSections = Array.isArray(sections) ? sections.filter(section => !section?.isHidden) : []
   if (visibleSections.length === 0) return null
 
   return (
