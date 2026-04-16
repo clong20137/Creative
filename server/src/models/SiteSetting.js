@@ -87,6 +87,17 @@ const SiteSetting = sequelize.define('SiteSetting', {
     type: DataTypes.JSON,
     defaultValue: []
   },
+  pageSections: {
+    type: DataTypes.JSON,
+    defaultValue: {
+      home: [],
+      portfolio: [],
+      services: [],
+      pricing: [],
+      plugins: [],
+      contact: []
+    }
+  },
   facebookUrl: {
     type: DataTypes.STRING,
     allowNull: true

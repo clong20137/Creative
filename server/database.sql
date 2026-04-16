@@ -228,6 +228,7 @@ CREATE TABLE IF NOT EXISTS SiteSettings (
   heroMediaUrl LONGTEXT,
   pageHeaders JSON,
   navigationItems JSON,
+  pageSections JSON,
   facebookUrl VARCHAR(500),
   instagramUrl VARCHAR(500),
   twitterUrl VARCHAR(500),

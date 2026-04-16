@@ -34,6 +34,7 @@ function publicSiteSettings(settings) {
     'heroMediaUrl',
     'pageHeaders',
     'navigationItems',
+    'pageSections',
     'facebookUrl',
     'instagramUrl',
     'twitterUrl',

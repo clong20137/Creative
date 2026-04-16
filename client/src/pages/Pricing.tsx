@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FiCheck } from 'react-icons/fi'
 import { servicePackagesAPI, siteSettingsAPI } from '../services/api'
 import SEO from '../components/SEO'
+import PageSections from '../components/PageSections'
 
 const fallbackHeader = {
   title: 'Transparent Pricing',
@@ -96,6 +97,7 @@ export default function Pricing() {
   ]
   const [faqs, setFaqs] = useState<any[]>(fallbackFaqs)
   const [pageHeader, setPageHeader] = useState(fallbackHeader)
+  const [pageSections, setPageSections] = useState<any[]>([])
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -108,6 +110,7 @@ export default function Pricing() {
         if (Array.isArray(settings.webDesignPackages) && settings.webDesignPackages.length > 0) setPricingPlans(settings.webDesignPackages)
         if (Array.isArray(settings.faqs) && settings.faqs.length > 0) setFaqs(settings.faqs)
         setPageHeader({ ...fallbackHeader, ...(settings.pageHeaders?.pricing || {}) })
+        setPageSections(Array.isArray(settings.pageSections?.pricing) ? settings.pageSections.pricing : [])
       } catch (error) {
         console.error('Error loading services:', error)
       }
@@ -230,6 +233,8 @@ export default function Pricing() {
           </div>
         </div>
       </section>
+
+      <PageSections sections={pageSections} />
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { FiMail, FiPhone, FiMapPin } from 'react-icons/fi'
 import { contactMessagesAPI, siteSettingsAPI } from '../services/api'
 import TurnstileWidget from '../components/TurnstileWidget'
 import SEO, { localBusinessSchema } from '../components/SEO'
+import PageSections from '../components/PageSections'
 
 const fallbackHeader = {
   title: 'Get in Touch',
@@ -31,6 +32,7 @@ export default function Contact() {
     locationLine2: 'New York, NY 10001'
   })
   const [pageHeader, setPageHeader] = useState(fallbackHeader)
+  const [pageSections, setPageSections] = useState<any[]>([])
   const socialLinks = [
     ['Facebook', settings.facebookUrl],
     ['Instagram', settings.instagramUrl],
@@ -44,6 +46,7 @@ export default function Contact() {
         const data = await siteSettingsAPI.getSettings()
         setSettings(data)
         setPageHeader({ ...fallbackHeader, ...(data.pageHeaders?.contact || {}) })
+        setPageSections(Array.isArray(data.pageSections?.contact) ? data.pageSections.contact : [])
       } catch (error) {
         console.error('Error loading contact settings:', error)
       }
@@ -300,6 +303,8 @@ export default function Contact() {
           </div>
         </div>
       </section>
+
+      <PageSections sections={pageSections} />
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FiMonitor, FiCamera, FiVideo, FiPenTool } from 'react-icons/fi'
 import { resolveAssetUrl, siteSettingsAPI } from '../services/api'
 import SEO, { localBusinessSchema } from '../components/SEO'
+import PageSections from '../components/PageSections'
 
 const fallbackHeader = {
   title: 'Our Services',
@@ -69,6 +70,7 @@ export default function Services() {
   ]
   const [services, setServices] = useState<any[]>(fallbackServices)
   const [pageHeader, setPageHeader] = useState(fallbackHeader)
+  const [pageSections, setPageSections] = useState<any[]>([])
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -78,6 +80,7 @@ export default function Services() {
           setServices(settings.services)
         }
         setPageHeader({ ...fallbackHeader, ...(settings.pageHeaders?.services || {}) })
+        setPageSections(Array.isArray(settings.pageSections?.services) ? settings.pageSections.services : [])
       } catch (error) {
         console.error('Error loading services:', error)
       }
@@ -167,6 +170,8 @@ export default function Services() {
           </div>
         </div>
       </section>
+
+      <PageSections sections={pageSections} />
     </div>
   )
 }

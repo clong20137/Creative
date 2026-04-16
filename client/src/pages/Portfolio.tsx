@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { portfolioAPI, resolveAssetUrl, siteSettingsAPI } from '../services/api'
 import SEO from '../components/SEO'
+import PageSections from '../components/PageSections'
 
 const fallbackHeader = {
   title: 'Our Portfolio',
@@ -11,6 +12,7 @@ const fallbackHeader = {
 export default function Portfolio() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [pageHeader, setPageHeader] = useState(fallbackHeader)
+  const [pageSections, setPageSections] = useState<any[]>([])
 
   const fallbackPortfolioItems = [
     {
@@ -83,6 +85,7 @@ export default function Portfolio() {
           setPortfolioItems(items)
         }
         setPageHeader({ ...fallbackHeader, ...(settings.pageHeaders?.portfolio || {}) })
+        setPageSections(Array.isArray(settings.pageSections?.portfolio) ? settings.pageSections.portfolio : [])
       } catch (error) {
         console.error('Error loading portfolio:', error)
       }
@@ -170,6 +173,8 @@ export default function Portfolio() {
           </div>
         </div>
       </section>
+
+      <PageSections sections={pageSections} />
     </div>
   )
 }

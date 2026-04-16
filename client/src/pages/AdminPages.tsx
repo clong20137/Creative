@@ -24,6 +24,7 @@ const emptySettings = {
   heroMediaType: 'none',
   heroMediaUrl: '',
   pageHeaders: {} as Record<string, { title: string; subtitle: string }>,
+  pageSections: {} as Record<string, any[]>,
   whatWeDoHeader: { title: 'What We Do', subtitle: '' },
   whatWeDoEnabled: true,
   whatWeDo: [] as any[],
@@ -50,6 +51,17 @@ const pluginOptions = [
   { value: 'real-estate', label: 'Real Estate Listings', url: '/plugins/real-estate' },
   { value: 'booking', label: 'Booking Appointments', url: '/plugins/booking' },
   { value: 'plugins', label: 'All Plugins', url: '/plugins' }
+]
+
+const sectionTypeOptions = [
+  { value: 'header', label: 'Header' },
+  { value: 'paragraph', label: 'Paragraph' },
+  { value: 'image', label: 'Image' },
+  { value: 'plugin', label: 'Plugin' },
+  { value: 'section', label: 'Text + Image' },
+  { value: 'testimonials', label: 'Testimonials' },
+  { value: 'portfolio', label: 'Portfolio Items' },
+  { value: 'services', label: 'Services' }
 ]
 
 const MAX_IMAGE_WIDTH = 1200
@@ -125,10 +137,12 @@ function getActivePayload(settings: typeof emptySettings, activeTab: string) {
     Testimonials: ['googleReviewsEnabled', 'googlePlaceId', 'googleApiKey', 'testimonials']
   }
 
-  return (payloadMap[activeTab] || []).reduce((payload: any, key) => {
-    payload[key] = (settings as any)[key]
-    return payload
+  const payload = (payloadMap[activeTab] || []).reduce((nextPayload: any, key) => {
+    nextPayload[key] = (settings as any)[key]
+    return nextPayload
   }, {})
+  payload.pageSections = settings.pageSections || {}
+  return payload
 }
 
 function makeSlug(value: string) {
@@ -137,6 +151,25 @@ function makeSlug(value: string) {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
+}
+
+function makePageSection(type: string) {
+  return {
+    id: crypto.randomUUID(),
+    type,
+    title: '',
+    body: '',
+    imageUrl: '',
+    alt: '',
+    pluginSlug: 'plugins',
+    buttonLabel: 'View Plugin',
+    itemLimit: type === 'portfolio' ? 8 : 6
+  }
+}
+
+function getSectionTitle(section: any, index: number) {
+  const typeLabel = sectionTypeOptions.find(option => option.value === section.type)?.label || 'Section'
+  return section.title || `${typeLabel} ${index + 1}`
 }
 
 export default function AdminPages() {
@@ -163,6 +196,17 @@ export default function AdminPages() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [draggingSectionIndex, setDraggingSectionIndex] = useState<number | null>(null)
+  const [editingSectionId, setEditingSectionId] = useState('')
+
+  const activeBuiltInPageKey = activeTab === 'Homepage'
+    ? 'home'
+    : activeTab === 'Services Page'
+      ? 'services'
+      : activeTab === 'Pricing Page'
+        ? 'pricing'
+        : activeTab === 'Headers' && ['portfolio', 'plugins', 'contact'].includes(selectedHeaderPage)
+          ? selectedHeaderPage
+          : ''
 
   useEffect(() => {
     const fetchData = async () => {
@@ -189,6 +233,7 @@ export default function AdminPages() {
 
   const handleChange = (key: string, value: any) => setSettings(prev => ({ ...prev, [key]: value }))
   const selectPublicPage = (page: any) => {
+    setEditingSectionId('')
     if (page.id === 'Homepage' || page.id === 'Testimonials') {
       setActiveTab(page.id)
       return
@@ -283,17 +328,9 @@ export default function AdminPages() {
   }
 
   const addPageSection = (type: string) => {
-    const baseSection: any = {
-      id: crypto.randomUUID(),
-      type,
-      title: '',
-      body: '',
-      imageUrl: '',
-      alt: '',
-      pluginSlug: 'plugins',
-      buttonLabel: 'View Plugin'
-    }
+    const baseSection: any = makePageSection(type)
     setPageDraft((current: any) => ({ ...current, sections: [...(current.sections || []), baseSection] }))
+    setEditingSectionId(baseSection.id)
   }
 
   const updatePageSection = (index: number, field: string, value: any) => {
@@ -305,6 +342,8 @@ export default function AdminPages() {
   }
 
   const removePageSection = (index: number) => {
+    const section = (pageDraft.sections || [])[index]
+    if (section?.id === editingSectionId) setEditingSectionId('')
     setPageDraft((current: any) => ({ ...current, sections: (current.sections || []).filter((_: any, i: number) => i !== index) }))
   }
 
@@ -318,6 +357,44 @@ export default function AdminPages() {
       sections.splice(toIndex, 0, movedSection)
       return { ...current, sections }
     })
+  }
+
+  const getBuiltInSections = (pageKey: string) => Array.isArray(settings.pageSections?.[pageKey]) ? settings.pageSections[pageKey] : []
+
+  const updateBuiltInSections = (pageKey: string, sections: any[]) => {
+    setSettings(prev => ({
+      ...prev,
+      pageSections: {
+        ...(prev.pageSections || {}),
+        [pageKey]: sections
+      }
+    }))
+  }
+
+  const addBuiltInSection = (pageKey: string, type: string) => {
+    const section = makePageSection(type)
+    updateBuiltInSections(pageKey, [...getBuiltInSections(pageKey), section])
+    setEditingSectionId(section.id)
+  }
+
+  const updateBuiltInSection = (pageKey: string, index: number, field: string, value: any) => {
+    const sections = [...getBuiltInSections(pageKey)]
+    sections[index] = { ...sections[index], [field]: value }
+    updateBuiltInSections(pageKey, sections)
+  }
+
+  const removeBuiltInSection = (pageKey: string, index: number) => {
+    const section = getBuiltInSections(pageKey)[index]
+    if (section?.id === editingSectionId) setEditingSectionId('')
+    updateBuiltInSections(pageKey, getBuiltInSections(pageKey).filter((_: any, i: number) => i !== index))
+  }
+
+  const moveBuiltInSection = (pageKey: string, fromIndex: number, toIndex: number) => {
+    const sections = [...getBuiltInSections(pageKey)]
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= sections.length || toIndex >= sections.length) return
+    const [movedSection] = sections.splice(fromIndex, 1)
+    sections.splice(toIndex, 0, movedSection)
+    updateBuiltInSections(pageKey, sections)
   }
 
   const saveCustomPage = async (e: React.FormEvent) => {
@@ -416,11 +493,9 @@ export default function AdminPages() {
                   <p className="text-sm text-gray-600">Add, drag, and jump to sections.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => addPageSection('header')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Header</button>
-                  <button type="button" onClick={() => addPageSection('paragraph')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Paragraph</button>
-                  <button type="button" onClick={() => addPageSection('image')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Image</button>
-                  <button type="button" onClick={() => addPageSection('plugin')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Plugin</button>
-                  <button type="button" onClick={() => addPageSection('section')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Section</button>
+                  {sectionTypeOptions.map(option => (
+                    <button key={option.value} type="button" onClick={() => addPageSection(option.value)} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">{option.label}</button>
+                  ))}
                 </div>
                 <div className="space-y-2">
                   {(pageDraft.sections || []).map((section: any, index: number) => (
@@ -431,11 +506,14 @@ export default function AdminPages() {
                         if (draggingSectionIndex !== null) movePageSection(draggingSectionIndex, index)
                         setDraggingSectionIndex(null)
                       }}
-                      className={`rounded-lg border bg-white p-2 ${draggingSectionIndex === index ? 'opacity-60 ring-2 ring-blue-500' : ''}`}
+                      className={`rounded-lg border bg-white p-2 ${draggingSectionIndex === index ? 'opacity-60 ring-2 ring-blue-500' : editingSectionId === section.id ? 'ring-2 ring-blue-500' : ''}`}
                     >
                       <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => document.getElementById(`page-section-${section.id || index}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="min-w-0 flex-1 text-left">
-                          <span className="block truncate font-semibold text-gray-900">{section.title || `${section.type || 'Section'} ${index + 1}`}</span>
+                        <button type="button" onClick={() => {
+                          setEditingSectionId(section.id || String(index))
+                          document.getElementById(`page-section-${section.id || index}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        }} className="min-w-0 flex-1 text-left">
+                          <span className="block truncate font-semibold text-gray-900">{getSectionTitle(section, index)}</span>
                           <span className="block text-xs text-gray-500">#{index + 1}</span>
                         </button>
                         <button type="button" onClick={() => movePageSection(index, index - 1)} disabled={index === 0} className="inline-flex h-8 w-8 items-center justify-center rounded border text-gray-700 disabled:opacity-40" title="Move up" aria-label="Move section up"><FiArrowUp /></button>
@@ -486,16 +564,13 @@ export default function AdminPages() {
                           if (draggingSectionIndex !== null) movePageSection(draggingSectionIndex, index)
                           setDraggingSectionIndex(null)
                         }}
-                        className={`rounded-lg border bg-gray-50 p-4 transition ${draggingSectionIndex === index ? 'opacity-60 ring-2 ring-blue-500' : ''}`}
+                        onClick={() => setEditingSectionId(section.id || String(index))}
+                        className={`rounded-lg border bg-gray-50 p-4 transition ${draggingSectionIndex === index ? 'opacity-60 ring-2 ring-blue-500' : editingSectionId === section.id ? 'ring-2 ring-blue-500' : ''}`}
                       >
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                           <div className="flex flex-wrap items-center gap-2">
                             <select value={section.type || 'paragraph'} onChange={(e) => updatePageSection(index, 'type', e.target.value)} className="px-4 py-2 border rounded-lg">
-                              <option value="header">Header</option>
-                              <option value="paragraph">Paragraph</option>
-                              <option value="image">Image</option>
-                              <option value="plugin">Plugin</option>
-                              <option value="section">Section</option>
+                              {sectionTypeOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                             </select>
                             <span className="text-sm font-semibold text-gray-500">#{index + 1}</span>
                           </div>
@@ -546,12 +621,16 @@ export default function AdminPages() {
                           </div>
                         </div>
 
-                        {(section.type === 'header' || section.type === 'section' || section.type === 'plugin') && (
+                        {(section.type === 'header' || section.type === 'section' || section.type === 'plugin' || section.type === 'testimonials' || section.type === 'portfolio' || section.type === 'services') && (
                           <input value={section.title || ''} onChange={(e) => updatePageSection(index, 'title', e.target.value)} placeholder="Section title" className="mb-3 w-full px-4 py-2 border rounded-lg" />
                         )}
 
-                        {(section.type === 'paragraph' || section.type === 'section' || section.type === 'plugin') && (
+                        {(section.type === 'paragraph' || section.type === 'section' || section.type === 'plugin' || section.type === 'testimonials' || section.type === 'portfolio' || section.type === 'services') && (
                           <textarea value={section.body || ''} onChange={(e) => updatePageSection(index, 'body', e.target.value)} placeholder="Text content" rows={4} className="mb-3 w-full px-4 py-2 border rounded-lg" />
+                        )}
+
+                        {(section.type === 'portfolio' || section.type === 'services') && (
+                          <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updatePageSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Item limit" className="mb-3 w-full px-4 py-2 border rounded-lg" />
                         )}
 
                         {(section.type === 'image' || section.type === 'section') && (
@@ -731,6 +810,21 @@ export default function AdminPages() {
                     <ListEditor title="Manual Testimonials" listKey="testimonials" items={settings.testimonials} fields={['name', 'company', 'role', 'image', 'text']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />
                   </section>
                 )}
+                {activeBuiltInPageKey && (
+                  <PageSectionEditor
+                    title={`${activeBuiltInPageKey === 'home' ? 'Homepage' : pageHeaderLabels[activeBuiltInPageKey] || 'Page'} Additional Sections`}
+                    sections={getBuiltInSections(activeBuiltInPageKey)}
+                    editingSectionId={editingSectionId}
+                    draggingSectionIndex={draggingSectionIndex}
+                    setEditingSectionId={setEditingSectionId}
+                    setDraggingSectionIndex={setDraggingSectionIndex}
+                    addSection={(type: string) => addBuiltInSection(activeBuiltInPageKey, type)}
+                    updateSection={(index: number, field: string, value: any) => updateBuiltInSection(activeBuiltInPageKey, index, field, value)}
+                    removeSection={(index: number) => removeBuiltInSection(activeBuiltInPageKey, index)}
+                    moveSection={(fromIndex: number, toIndex: number) => moveBuiltInSection(activeBuiltInPageKey, fromIndex, toIndex)}
+                    uploadImageToField={uploadImageToField}
+                  />
+                )}
               </div>
               <button type="submit" className="btn-primary">Save Page Edits</button>
             </form>
@@ -739,6 +833,99 @@ export default function AdminPages() {
         </div>
       )}
     </AdminLayout>
+  )
+}
+
+function PageSectionEditor({ title, sections, editingSectionId, draggingSectionIndex, setEditingSectionId, setDraggingSectionIndex, addSection, updateSection, removeSection, moveSection, uploadImageToField }: any) {
+  return (
+    <section className="space-y-4 rounded-lg border p-4">
+      <div>
+        <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+        <p className="text-gray-600">Add sections that can appear on this page, then drag or click to reorder and edit.</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {sectionTypeOptions.map(option => (
+          <button key={option.value} type="button" onClick={() => addSection(option.value)} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-3">
+        {(sections || []).map((section: any, index: number) => (
+          <div
+            key={section.id || index}
+            id={`built-in-section-${section.id || index}`}
+            onClick={() => setEditingSectionId(section.id || String(index))}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => {
+              if (draggingSectionIndex !== null) moveSection(draggingSectionIndex, index)
+              setDraggingSectionIndex(null)
+            }}
+            className={`rounded-lg border bg-gray-50 p-4 transition ${draggingSectionIndex === index ? 'opacity-60 ring-2 ring-blue-500' : editingSectionId === section.id ? 'ring-2 ring-blue-500' : ''}`}
+          >
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <select value={section.type || 'paragraph'} onChange={(e) => updateSection(index, 'type', e.target.value)} className="px-4 py-2 border rounded-lg">
+                  {sectionTypeOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                <span className="text-sm font-semibold text-gray-500">#{index + 1}</span>
+                <span className="text-sm font-semibold text-blue-600">{getSectionTitle(section, index)}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => moveSection(index, index - 1)} disabled={index === 0} className="inline-flex h-10 w-10 items-center justify-center rounded-lg border text-gray-700 hover:bg-white disabled:opacity-40" aria-label="Move section up" title="Move up"><FiArrowUp /></button>
+                <button type="button" onClick={() => moveSection(index, index + 1)} disabled={index === (sections || []).length - 1} className="inline-flex h-10 w-10 items-center justify-center rounded-lg border text-gray-700 hover:bg-white disabled:opacity-40" aria-label="Move section down" title="Move down"><FiArrowDown /></button>
+                <button type="button" onClick={() => removeSection(index)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg border text-red-600 hover:bg-red-50" aria-label="Remove section" title="Remove section"><FiTrash2 /></button>
+                <button
+                  type="button"
+                  draggable
+                  onDragStart={(e) => {
+                    setDraggingSectionIndex(index)
+                    e.dataTransfer.effectAllowed = 'move'
+                  }}
+                  onDragEnd={() => setDraggingSectionIndex(null)}
+                  className="inline-flex h-10 w-10 cursor-grab items-center justify-center rounded-lg border bg-white text-gray-700 active:cursor-grabbing"
+                  aria-label="Drag section to reorder"
+                  title="Drag to reorder"
+                >
+                  <FiMove />
+                </button>
+              </div>
+            </div>
+
+            {(section.type === 'header' || section.type === 'section' || section.type === 'plugin' || section.type === 'testimonials' || section.type === 'portfolio' || section.type === 'services') && (
+              <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Section title" className="mb-3 w-full px-4 py-2 border rounded-lg" />
+            )}
+
+            {(section.type === 'paragraph' || section.type === 'section' || section.type === 'plugin' || section.type === 'testimonials' || section.type === 'portfolio' || section.type === 'services') && (
+              <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Text content" rows={4} className="mb-3 w-full px-4 py-2 border rounded-lg" />
+            )}
+
+            {(section.type === 'portfolio' || section.type === 'services') && (
+              <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updateSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Item limit" className="mb-3 w-full px-4 py-2 border rounded-lg" />
+            )}
+
+            {(section.type === 'image' || section.type === 'section') && (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Image URL" className="px-4 py-2 border rounded-lg" />
+                <input value={section.alt || ''} onChange={(e) => updateSection(index, 'alt', e.target.value)} placeholder="Image description" className="px-4 py-2 border rounded-lg" />
+                <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url: string) => updateSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                {section.imageUrl && <img src={resolveAssetUrl(section.imageUrl)} alt={section.alt || section.title || 'Section image'} className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
+              </div>
+            )}
+
+            {section.type === 'plugin' && (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <select value={section.pluginSlug || 'plugins'} onChange={(e) => updateSection(index, 'pluginSlug', e.target.value)} className="px-4 py-2 border rounded-lg">
+                  {pluginOptions.map(plugin => <option key={plugin.value} value={plugin.value}>{plugin.label}</option>)}
+                </select>
+                <input value={section.buttonLabel || ''} onChange={(e) => updateSection(index, 'buttonLabel', e.target.value)} placeholder="Button label" className="px-4 py-2 border rounded-lg" />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {(sections || []).length === 0 && <div className="rounded-lg border border-dashed p-6 text-center text-gray-600">No extra sections yet. Add one above to place reusable content on this page.</div>}
+    </section>
   )
 }
 

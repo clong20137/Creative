@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
+import PageSections from '../components/PageSections'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import { pluginsAPI, siteSettingsAPI } from '../services/api'
 
@@ -12,6 +13,7 @@ const fallbackHeader = {
 export default function Plugins() {
   const [plugins, setPlugins] = useState<any[]>([])
   const [pageHeader, setPageHeader] = useState(fallbackHeader)
+  const [pageSections, setPageSections] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -23,6 +25,7 @@ export default function Plugins() {
         ])
         setPlugins(pluginData)
         setPageHeader({ ...fallbackHeader, ...(settings.pageHeaders?.plugins || {}) })
+        setPageSections(Array.isArray(settings.pageSections?.plugins) ? settings.pageSections.plugins : [])
       } catch (error) {
         console.error('Error loading plugins:', error)
       } finally {
@@ -73,6 +76,8 @@ export default function Plugins() {
           )}
         </div>
       </section>
+
+      <PageSections sections={pageSections} />
     </div>
   )
 }

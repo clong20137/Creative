@@ -4,6 +4,7 @@ import { FiArrowRight } from 'react-icons/fi'
 import Testimonials from '../components/Testimonials'
 import { resolveAssetUrl, siteSettingsAPI } from '../services/api'
 import SEO, { localBusinessSchema } from '../components/SEO'
+import PageSections from '../components/PageSections'
 
 export default function Home() {
   const fallbackFeaturedWorks = [
@@ -46,6 +47,7 @@ export default function Home() {
   const [whatWeDo, setWhatWeDo] = useState<any[]>(fallbackServices)
   const [whatWeDoHeader, setWhatWeDoHeader] = useState({ title: 'What We Do', subtitle: '' })
   const [whatWeDoEnabled, setWhatWeDoEnabled] = useState(true)
+  const [pageSections, setPageSections] = useState<any[]>([])
   const [hero, setHero] = useState<any>({
     heroTitle: 'Transform Your Vision Into Reality',
     heroSubtitle: 'Professional web design, photography, videography, and branding services that elevate your creative presence.',
@@ -66,6 +68,7 @@ export default function Home() {
         if (settings.whatWeDoHeader) setWhatWeDoHeader({ title: 'What We Do', subtitle: '', ...settings.whatWeDoHeader })
         setWhatWeDoEnabled(settings.whatWeDoEnabled !== false)
         if (Array.isArray(settings.featuredWork) && settings.featuredWork.length > 0) setFeaturedWorks(settings.featuredWork)
+        setPageSections(Array.isArray(settings.pageSections?.home) ? settings.pageSections.home : [])
       } catch (error) {
         console.error('Error loading homepage settings:', error)
       }
@@ -161,6 +164,8 @@ export default function Home() {
 
       {/* Testimonials */}
       <Testimonials />
+
+      <PageSections sections={pageSections} />
 
       {/* CTA Section */}
       <section className="bg-blue-600 text-white py-16">
