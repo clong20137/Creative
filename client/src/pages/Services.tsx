@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FiMonitor, FiCamera, FiVideo, FiPenTool } from 'react-icons/fi'
-import { siteSettingsAPI } from '../services/api'
+import { resolveAssetUrl, siteSettingsAPI } from '../services/api'
 import SEO, { localBusinessSchema } from '../components/SEO'
 
 const fallbackHeader = {
@@ -133,7 +133,7 @@ export default function Services() {
 
                   <div className={isEven ? 'order-2' : 'order-1'}>
                     {service.image ? (
-                      <img src={service.image} alt={service.title} className="rounded-lg h-96 w-full object-cover" />
+                      <img src={resolveAssetUrl(service.image)} alt={service.title} className="rounded-lg h-96 w-full object-cover" />
                     ) : (
                       <div className="bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg h-96 flex items-center justify-center">
                         <IconComponent size={120} className="text-blue-200" />

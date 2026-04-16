@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { FiArrowRight } from 'react-icons/fi'
 import Testimonials from '../components/Testimonials'
-import { siteSettingsAPI } from '../services/api'
+import { resolveAssetUrl, siteSettingsAPI } from '../services/api'
 import SEO, { localBusinessSchema } from '../components/SEO'
 
 export default function Home() {
@@ -81,10 +81,10 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20 md:py-32">
         {hero.heroMediaUrl && hero.heroMediaType === 'image' && (
-          <img src={hero.heroMediaUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={resolveAssetUrl(hero.heroMediaUrl)} alt="" className="absolute inset-0 h-full w-full object-cover" />
         )}
         {hero.heroMediaUrl && hero.heroMediaType === 'video' && (
-          <video src={hero.heroMediaUrl} className="absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline />
+          <video src={resolveAssetUrl(hero.heroMediaUrl)} className="absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline />
         )}
         <div className="absolute inset-0 bg-blue-950/55"></div>
         <div className="container relative">
@@ -130,7 +130,7 @@ export default function Home() {
             {featuredWorks.map((work) => (
               <div key={work.id} className="card overflow-hidden hover:shadow-2xl transition">
                 <img
-                  src={work.image}
+                  src={resolveAssetUrl(work.image)}
                   alt={work.title}
                   className="w-full h-64 object-cover hover:scale-105 transition-transform duration-300"
                 />

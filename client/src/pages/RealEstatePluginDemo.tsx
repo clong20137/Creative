@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import { PageSkeleton } from '../components/SkeletonLoaders'
-import { pluginsAPI } from '../services/api'
+import { pluginsAPI, resolveAssetUrl } from '../services/api'
 
 function formatPrice(price: number | string) {
   return Number(price || 0).toLocaleString('en-US', {
@@ -64,7 +64,7 @@ export default function RealEstatePluginDemo() {
                   {listings.map((listing) => (
                     <article key={listing.id} className="card overflow-hidden">
                       {listing.image ? (
-                        <img src={listing.image} alt={listing.title} className="h-60 w-full object-cover" />
+                        <img src={resolveAssetUrl(listing.image)} alt={listing.title} className="h-60 w-full object-cover" />
                       ) : (
                         <div className="h-60 bg-gray-100 flex items-center justify-center text-gray-500">Property listing</div>
                       )}

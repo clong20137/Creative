@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { FiEdit, FiPlus, FiTrash2, FiX } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
-import { adminAPI } from '../services/api'
+import { adminAPI, resolveAssetUrl } from '../services/api'
 
 const emptyForm = {
   title: '',
@@ -83,14 +83,23 @@ export default function AdminPortfolio() {
     fetchItems()
   }
 
-  const handleImageUpload = (file: File | undefined) => {
+  const handleImageUpload = async (file: File | undefined) => {
     if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      setFormData(prev => ({ ...prev, image: String(reader.result || '') }))
+    try {
+      setError('')
+      const reader = new FileReader()
+      reader.onload = async () => {
+        try {
+          const upload = await adminAPI.uploadImage(String(reader.result || ''))
+          setFormData(prev => ({ ...prev, image: upload.url }))
+        } catch (err: any) {
+          setError(err.error || 'Failed to upload image')
+        }
+      }
+      reader.readAsDataURL(file)
+    } catch (err: any) {
+      setError(err.error || 'Failed to upload image')
     }
-    reader.readAsDataURL(file)
   }
 
   return (
@@ -132,7 +141,7 @@ export default function AdminPortfolio() {
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
             {formData.image && (
-              <img src={formData.image} alt="Portfolio preview" className="mt-4 h-32 w-48 object-cover rounded-lg border" />
+              <img src={resolveAssetUrl(formData.image)} alt="Portfolio preview" className="mt-4 h-32 w-48 object-cover rounded-lg border" />
             )}
           </div>
           <textarea placeholder="Description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" rows={3} />
@@ -149,7 +158,7 @@ export default function AdminPortfolio() {
           {items.map((item) => (
             <div key={item.id} className="card overflow-hidden">
               <div className="h-44 bg-gray-100">
-                {item.image ? <img src={item.image} alt={item.title} className="w-full h-full object-cover" /> : <div className="h-full flex items-center justify-center text-gray-500">No image</div>}
+                {item.image ? <img src={resolveAssetUrl(item.image)} alt={item.title} className="w-full h-full object-cover" /> : <div className="h-full flex items-center justify-center text-gray-500">No image</div>}
               </div>
               <div className="p-4">
                 <span className={`inline-block mb-2 px-2 py-1 rounded text-xs font-semibold ${item.isPublished ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>{item.isPublished ? 'Published' : 'Hidden'}</span>

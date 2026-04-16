@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import SEO from '../components/SEO'
 import { PageSkeleton } from '../components/SkeletonLoaders'
-import { pluginsAPI } from '../services/api'
+import { pluginsAPI, resolveAssetUrl } from '../services/api'
 
 export default function RestaurantPluginDemo() {
   const [plugin, setPlugin] = useState<any>(null)
@@ -68,7 +68,7 @@ export default function RestaurantPluginDemo() {
                         {categoryItems.map((item) => (
                           <article key={item.id} className="card overflow-hidden">
                             {item.image ? (
-                              <img src={item.image} alt={item.name} className="h-56 w-full object-cover" />
+                              <img src={resolveAssetUrl(item.image)} alt={item.name} className="h-56 w-full object-cover" />
                             ) : (
                               <div className="h-56 bg-gray-100 flex items-center justify-center text-gray-500">Menu item</div>
                             )}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { resolveAssetUrl } from '../services/api'
 import { FiStar } from 'react-icons/fi'
 import { siteSettingsAPI } from '../services/api'
 
@@ -70,7 +71,7 @@ export default function Testimonials() {
               <p className="text-gray-600 mb-6 min-h-24">"{testimonial.text}"</p>
               <div className="flex items-center gap-4 border-t pt-4">
                 <img
-                  src={testimonial.image}
+                  src={resolveAssetUrl(testimonial.image)}
                   alt={testimonial.name}
                   className="w-12 h-12 rounded-full object-cover"
                 />

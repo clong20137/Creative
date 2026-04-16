@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import SEO from '../components/SEO'
 import { PageSkeleton } from '../components/SkeletonLoaders'
-import { pluginsAPI } from '../services/api'
+import { pluginsAPI, resolveAssetUrl } from '../services/api'
 
 function formatPrice(price: number | string) {
   return Number(price || 0).toLocaleString('en-US', {
@@ -58,12 +58,12 @@ export default function RealEstateListingDetail() {
         title={`${listing.title} Real Estate Listing`}
         description={listing.description || `View details for ${listing.title}.`}
         path={`/plugins/real-estate/${listing.id}`}
-        image={listing.image || undefined}
+        image={resolveAssetUrl(listing.image) || undefined}
       />
 
       {listing.image ? (
         <section className="h-[45vh] min-h-[340px] bg-gray-900">
-          <img src={listing.image} alt={listing.title} className="h-full w-full object-cover" />
+          <img src={resolveAssetUrl(listing.image)} alt={listing.title} className="h-full w-full object-cover" />
         </section>
       ) : (
         <section className="h-[35vh] min-h-[280px] bg-gray-950" />

@@ -1,6 +1,33 @@
 import axios from 'axios'
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+export const ASSET_BASE_URL = API_URL.replace(/\/api\/?$/, '')
+
+export function resolveAssetUrl(url?: string | null) {
+  if (!url) return ''
+  const value = String(url)
+  if (value.startsWith('data:') || value.startsWith('blob:')) return value
+
+  if (value.startsWith('/uploads/')) {
+    return `${ASSET_BASE_URL}${value}`
+  }
+
+  if (value.startsWith('uploads/')) {
+    return `${ASSET_BASE_URL}/${value}`
+  }
+
+  try {
+    const parsed = new URL(value)
+    const isLocalUpload = ['localhost', '127.0.0.1', '0.0.0.0'].includes(parsed.hostname) && parsed.pathname.startsWith('/uploads/')
+    if (isLocalUpload) {
+      return `${ASSET_BASE_URL}${parsed.pathname}`
+    }
+  } catch (error) {
+    return value
+  }
+
+  return value
+}
 
 const api = axios.create({
   baseURL: API_URL,

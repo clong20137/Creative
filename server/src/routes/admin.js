@@ -379,10 +379,16 @@ router.put('/plugins/booking/appointments/:id', async (req, res) => {
 
 router.post('/uploads', async (req, res) => {
   try {
-    const match = String(req.body.dataUrl || '').match(/^data:image\/(jpeg|jpg|png|webp);base64,(.+)$/)
-    if (!match) return res.status(400).json({ error: 'Only JPG, PNG, and WebP image uploads are supported' })
+    const match = String(req.body.dataUrl || '').match(/^data:image\/(jpeg|jpg|png|webp|gif|svg\+xml|x-icon|vnd\.microsoft\.icon);base64,(.+)$/)
+    if (!match) return res.status(400).json({ error: 'Only JPG, PNG, WebP, GIF, SVG, and ICO image uploads are supported' })
 
-    const extension = match[1] === 'jpeg' ? 'jpg' : match[1]
+    const extensionMap = {
+      jpeg: 'jpg',
+      'svg+xml': 'svg',
+      'x-icon': 'ico',
+      'vnd.microsoft.icon': 'ico'
+    }
+    const extension = extensionMap[match[1]] || match[1]
     const buffer = Buffer.from(match[2], 'base64')
     if (buffer.length > 500 * 1024) return res.status(413).json({ error: 'Image upload is too large' })
 
@@ -390,9 +396,8 @@ router.post('/uploads', async (req, res) => {
     const filename = `${randomUUID()}.${extension}`
     await fs.writeFile(path.join(uploadsDir, filename), buffer)
 
-    const protocol = req.get('x-forwarded-proto') || req.protocol
     res.status(201).json({
-      url: `${protocol}://${req.get('host')}/uploads/${filename}`
+      url: `/uploads/${filename}`
     })
   } catch (error) {
     res.status(500).json({ error: error.message })

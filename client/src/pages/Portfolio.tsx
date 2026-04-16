@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { portfolioAPI, siteSettingsAPI } from '../services/api'
+import { portfolioAPI, resolveAssetUrl, siteSettingsAPI } from '../services/api'
 import SEO from '../components/SEO'
 
 const fallbackHeader = {
@@ -150,7 +150,7 @@ export default function Portfolio() {
               >
                 <div className="relative overflow-hidden h-64 bg-gray-100">
                   <img
-                    src={item.image}
+                    src={resolveAssetUrl(item.image)}
                     alt={item.title}
                     className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
                   />

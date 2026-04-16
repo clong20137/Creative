@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { FiMenu, FiMoon, FiSun, FiX } from 'react-icons/fi'
-import { pluginsAPI, siteSettingsAPI } from '../services/api'
+import { pluginsAPI, resolveAssetUrl, siteSettingsAPI } from '../services/api'
 
 const defaultNavigationItems = [
   { label: 'Home', url: '/', isActive: true, sortOrder: 0 },
@@ -37,7 +37,7 @@ export default function Navigation() {
       try {
         const settings = await siteSettingsAPI.getSettings()
         setSiteName(settings.siteName || 'Creative by Caleb')
-        setLogoUrl(settings.logoUrl || '')
+        setLogoUrl(resolveAssetUrl(settings.logoUrl))
         setLogoSize(Number(settings.logoSize) || 40)
         if (Array.isArray(settings.navigationItems) && settings.navigationItems.length) {
           setNavigationItems(settings.navigationItems)

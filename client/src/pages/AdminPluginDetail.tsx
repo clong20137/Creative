@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FiEdit, FiImage, FiPlus, FiTrash2, FiX } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
-import { adminAPI } from '../services/api'
+import { adminAPI, resolveAssetUrl } from '../services/api'
 
 const emptyMenuItem = {
   name: '',
@@ -391,7 +391,7 @@ export default function AdminPluginDetail() {
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadImage(e.target.files?.[0], setMenuForm)} />
                     </label>
                   </div>
-                  {menuForm.image && <img src={menuForm.image} alt={menuForm.name || 'Menu item'} className="h-32 w-48 rounded-lg object-cover border" />}
+                  {menuForm.image && <img src={resolveAssetUrl(menuForm.image)} alt={menuForm.name || 'Menu item'} className="h-32 w-48 rounded-lg object-cover border" />}
                   <label className="flex items-center gap-2 text-sm text-gray-700">
                     <input type="checkbox" checked={menuForm.isAvailable} onChange={(e) => setMenuForm({ ...menuForm, isAvailable: e.target.checked })} />
                     Available on menu
@@ -403,7 +403,7 @@ export default function AdminPluginDetail() {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {menuItems.map((item) => (
                   <div key={item.id} className="card overflow-hidden">
-                    {item.image ? <img src={item.image} alt={item.name} className="h-48 w-full object-cover" /> : <div className="h-48 bg-gray-100 flex items-center justify-center text-gray-500">No image</div>}
+                    {item.image ? <img src={resolveAssetUrl(item.image)} alt={item.name} className="h-48 w-full object-cover" /> : <div className="h-48 bg-gray-100 flex items-center justify-center text-gray-500">No image</div>}
                     <div className="p-6">
                       <div className="flex justify-between gap-4 mb-2">
                         <div>
@@ -455,7 +455,7 @@ export default function AdminPluginDetail() {
                     <FiImage /> {imageUploading ? 'Uploading...' : 'Upload Listing Image'}
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadImage(e.target.files?.[0], setListingForm)} />
                   </label>
-                  {listingForm.image && <img src={listingForm.image} alt={listingForm.title || 'Listing'} className="h-32 w-48 rounded-lg object-cover border" />}
+                  {listingForm.image && <img src={resolveAssetUrl(listingForm.image)} alt={listingForm.title || 'Listing'} className="h-32 w-48 rounded-lg object-cover border" />}
                   <label className="flex items-center gap-2 text-sm text-gray-700">
                     <input type="checkbox" checked={listingForm.isActive} onChange={(e) => setListingForm({ ...listingForm, isActive: e.target.checked })} />
                     Show listing publicly
@@ -467,7 +467,7 @@ export default function AdminPluginDetail() {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {listings.map((listing) => (
                   <div key={listing.id} className="card overflow-hidden">
-                    {listing.image ? <img src={listing.image} alt={listing.title} className="h-48 w-full object-cover" /> : <div className="h-48 bg-gray-100 flex items-center justify-center text-gray-500">No image</div>}
+                    {listing.image ? <img src={resolveAssetUrl(listing.image)} alt={listing.title} className="h-48 w-full object-cover" /> : <div className="h-48 bg-gray-100 flex items-center justify-center text-gray-500">No image</div>}
                     <div className="p-6">
                       <p className="text-xl font-bold text-blue-600 mb-2">{formatPrice(listing.price)}</p>
                       <h3 className="text-xl font-bold text-gray-900">{listing.title}</h3>

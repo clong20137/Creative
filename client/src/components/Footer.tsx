@@ -1,6 +1,6 @@
 import { FiFacebook, FiInstagram, FiTwitter, FiLinkedin } from 'react-icons/fi'
 import { useEffect, useState } from 'react'
-import { siteSettingsAPI } from '../services/api'
+import { resolveAssetUrl, siteSettingsAPI } from '../services/api'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
@@ -38,7 +38,7 @@ export default function Footer() {
           <div>
             {settings.logoUrl ? (
               <img
-                src={settings.logoUrl}
+                src={resolveAssetUrl(settings.logoUrl)}
                 alt={settings.siteName}
                 className="w-auto object-contain mb-4"
                 style={{ height: `${Math.min(Math.max(Number(settings.logoSize) || 40, 24), 96)}px` }}

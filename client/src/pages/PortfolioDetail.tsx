@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { FiArrowLeft, FiExternalLink } from 'react-icons/fi'
-import { portfolioAPI } from '../services/api'
+import { portfolioAPI, resolveAssetUrl } from '../services/api'
 import SEO from '../components/SEO'
 
 export default function PortfolioDetail() {
@@ -37,12 +37,12 @@ export default function PortfolioDetail() {
               title={`${item.title} Portfolio Project`}
               description={item.description || 'A Creative by Caleb portfolio project for web design, photography, videography, or branding.'}
               path={`/portfolio/${item.id}`}
-              image={item.image}
+              image={resolveAssetUrl(item.image)}
             />
             {item.image && (
               <div className="bg-gray-100 border-b">
                 <img
-                  src={item.image}
+                  src={resolveAssetUrl(item.image)}
                   alt={item.title}
                   className="mx-auto max-h-72 md:max-h-[28rem] w-full object-contain"
                 />

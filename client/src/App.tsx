@@ -34,7 +34,7 @@ import AdminPluginDetail from './pages/AdminPluginDetail'
 import ClientTickets from './pages/ClientTickets'
 import CustomPage from './pages/CustomPage'
 import NotFound from './pages/NotFound'
-import { siteSettingsAPI } from './services/api'
+import { resolveAssetUrl, siteSettingsAPI } from './services/api'
 
 function AppRoutes() {
   const location = useLocation()
@@ -96,7 +96,7 @@ function App() {
             favicon.rel = 'icon'
             document.head.appendChild(favicon)
           }
-          favicon.href = settings.faviconUrl
+          favicon.href = resolveAssetUrl(settings.faviconUrl)
         }
       } catch (error) {
         console.error('Error loading site settings:', error)

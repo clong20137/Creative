@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
-import { adminAPI, usersAPI } from '../services/api'
+import { adminAPI, resolveAssetUrl, usersAPI } from '../services/api'
 
 const emptySettings = {
   siteName: '',
@@ -134,7 +134,7 @@ async function getUploadDataUrl(file: File) {
     return dataUrl
   }
 
-  if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
+  if (file.type === 'image/svg+xml' || file.type === 'image/gif' || file.type.includes('icon')) {
     const dataUrl = await readFileAsDataUrl(file)
     if (dataUrl.length > MAX_DATA_URL_LENGTH) {
       throw new Error('This image is too large. Please use a smaller image or paste a hosted image URL.')
@@ -409,15 +409,29 @@ export default function AdminSettings() {
                     <input type="file" accept="image/*" onChange={(e) => handleUpload('faviconUrl', e.target.files?.[0])} className="w-full px-4 py-2 border rounded-lg" />
                   </label>
                 </div>
-                {settings.logoUrl && (
-                  <div className="rounded-lg border p-4">
-                    <p className="mb-3 text-sm font-semibold text-gray-700">Logo preview</p>
-                    <img
-                      src={settings.logoUrl}
-                      alt="Logo preview"
-                      className="w-auto object-contain"
-                      style={{ height: `${logoSize}px` }}
-                    />
+                {(settings.logoUrl || settings.faviconUrl) && (
+                  <div className="grid grid-cols-1 gap-4 rounded-lg border p-4 md:grid-cols-2">
+                    {settings.logoUrl && (
+                      <div>
+                        <p className="mb-3 text-sm font-semibold text-gray-700">Logo preview</p>
+                        <img
+                          src={resolveAssetUrl(settings.logoUrl)}
+                          alt="Logo preview"
+                          className="w-auto object-contain"
+                          style={{ height: `${logoSize}px` }}
+                        />
+                      </div>
+                    )}
+                    {settings.faviconUrl && (
+                      <div>
+                        <p className="mb-3 text-sm font-semibold text-gray-700">Favicon preview</p>
+                        <img
+                          src={resolveAssetUrl(settings.faviconUrl)}
+                          alt="Favicon preview"
+                          className="h-12 w-12 rounded border object-contain p-1"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </section>
