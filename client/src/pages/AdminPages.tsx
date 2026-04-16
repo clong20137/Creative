@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { FiArrowDown, FiArrowUp, FiMove, FiTrash2 } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import { adminAPI, resolveAssetUrl } from '../services/api'
@@ -386,19 +387,6 @@ export default function AdminPages() {
                       >
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                           <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              draggable
-                              onDragStart={(e) => {
-                                setDraggingSectionIndex(index)
-                                e.dataTransfer.effectAllowed = 'move'
-                              }}
-                              onDragEnd={() => setDraggingSectionIndex(null)}
-                              className="cursor-grab rounded-lg border bg-white px-3 py-2 text-sm font-semibold text-gray-700 active:cursor-grabbing"
-                              title="Drag to reorder"
-                            >
-                              Drag
-                            </button>
                             <select value={section.type || 'paragraph'} onChange={(e) => updatePageSection(index, 'type', e.target.value)} className="px-4 py-2 border rounded-lg">
                               <option value="header">Header</option>
                               <option value="paragraph">Paragraph</option>
@@ -409,9 +397,49 @@ export default function AdminPages() {
                             <span className="text-sm font-semibold text-gray-500">#{index + 1}</span>
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            <button type="button" onClick={() => movePageSection(index, index - 1)} disabled={index === 0} className="px-3 py-2 border rounded-lg text-gray-700 hover:bg-white disabled:opacity-40">Up</button>
-                            <button type="button" onClick={() => movePageSection(index, index + 1)} disabled={index === (pageDraft.sections || []).length - 1} className="px-3 py-2 border rounded-lg text-gray-700 hover:bg-white disabled:opacity-40">Down</button>
-                            <button type="button" onClick={() => removePageSection(index)} className="px-3 py-2 border rounded-lg text-red-600 hover:bg-red-50">Remove Section</button>
+                            <button
+                              type="button"
+                              onClick={() => movePageSection(index, index - 1)}
+                              disabled={index === 0}
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border text-gray-700 hover:bg-white disabled:opacity-40"
+                              aria-label="Move section up"
+                              title="Move up"
+                            >
+                              <FiArrowUp />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => movePageSection(index, index + 1)}
+                              disabled={index === (pageDraft.sections || []).length - 1}
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border text-gray-700 hover:bg-white disabled:opacity-40"
+                              aria-label="Move section down"
+                              title="Move down"
+                            >
+                              <FiArrowDown />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removePageSection(index)}
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border text-red-600 hover:bg-red-50"
+                              aria-label="Remove section"
+                              title="Remove section"
+                            >
+                              <FiTrash2 />
+                            </button>
+                            <button
+                              type="button"
+                              draggable
+                              onDragStart={(e) => {
+                                setDraggingSectionIndex(index)
+                                e.dataTransfer.effectAllowed = 'move'
+                              }}
+                              onDragEnd={() => setDraggingSectionIndex(null)}
+                              className="inline-flex h-10 w-10 cursor-grab items-center justify-center rounded-lg border bg-white text-gray-700 active:cursor-grabbing"
+                              aria-label="Drag section to reorder"
+                              title="Drag to reorder"
+                            >
+                              <FiMove />
+                            </button>
                           </div>
                         </div>
 
