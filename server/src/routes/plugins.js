@@ -7,6 +7,7 @@ import RealEstateListing from '../models/RealEstateListing.js'
 import ClientPluginPurchase from '../models/ClientPluginPurchase.js'
 import BookingAvailabilitySlot from '../models/BookingAvailabilitySlot.js'
 import BookingAppointment from '../models/BookingAppointment.js'
+import EventItem from '../models/EventItem.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
 
 const router = express.Router()
@@ -176,11 +177,59 @@ export async function getOrCreateBookingPlugin() {
   return plugin
 }
 
+export async function getOrCreateEventsPlugin() {
+  const [plugin] = await Plugin.findOrCreate({
+    where: { slug: 'events' },
+    defaults: {
+      slug: 'events',
+      name: 'Events',
+      description: 'Add upcoming events with titles, descriptions, dates, images, and action buttons.',
+      category: 'Events',
+      price: 299,
+      isEnabled: true,
+      isPurchased: true,
+      demoUrl: '/plugins/events'
+    }
+  })
+
+  const eventCount = await EventItem.count()
+  if (eventCount === 0) {
+    const firstDate = new Date()
+    firstDate.setDate(firstDate.getDate() + 14)
+    const secondDate = new Date()
+    secondDate.setDate(secondDate.getDate() + 35)
+
+    await EventItem.bulkCreate([
+      {
+        title: 'Community Launch Night',
+        description: 'A casual evening for guests to meet the team, preview new work, and connect with local businesses.',
+        buttonLabel: 'Reserve a Spot',
+        buttonUrl: '/contact',
+        image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1000&q=80',
+        eventDate: firstDate.toISOString().slice(0, 10),
+        sortOrder: 1
+      },
+      {
+        title: 'Creative Workshop',
+        description: 'A hands-on session covering practical ways to improve your website content, visuals, and calls to action.',
+        buttonLabel: 'Learn More',
+        buttonUrl: '/contact',
+        image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1000&q=80',
+        eventDate: secondDate.toISOString().slice(0, 10),
+        sortOrder: 2
+      }
+    ])
+  }
+
+  return plugin
+}
+
 export async function ensureDemoPlugins() {
   await Promise.all([
     getOrCreateRestaurantPlugin(),
     getOrCreateRealEstatePlugin(),
-    getOrCreateBookingPlugin()
+    getOrCreateBookingPlugin(),
+    getOrCreateEventsPlugin()
   ])
 }
 
@@ -331,6 +380,20 @@ router.get('/restaurant/menu', async (req, res) => {
     })
 
     res.json({ plugin, items })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/events', async (req, res) => {
+  try {
+    const plugin = await getOrCreateEventsPlugin()
+    const events = await EventItem.findAll({
+      where: { isActive: true },
+      order: [['eventDate', 'ASC'], ['sortOrder', 'ASC'], ['title', 'ASC']]
+    })
+
+    res.json({ plugin, events })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

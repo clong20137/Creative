@@ -50,7 +50,8 @@ const pageHeaderLabels: Record<string, string> = {
 const pluginOptions = [
   { value: 'restaurant', label: 'Restaurant Menu' },
   { value: 'real-estate', label: 'Real Estate Listings' },
-  { value: 'booking', label: 'Booking Appointments' }
+  { value: 'booking', label: 'Booking Appointments' },
+  { value: 'events', label: 'Events' }
 ]
 
 const sectionTypeOptions = [

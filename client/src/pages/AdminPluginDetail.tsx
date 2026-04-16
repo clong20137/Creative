@@ -34,6 +34,17 @@ const emptyBookingSlot = {
   isActive: true
 }
 
+const emptyEventItem = {
+  title: '',
+  description: '',
+  buttonLabel: 'Learn More',
+  buttonUrl: '',
+  image: '',
+  eventDate: '',
+  isActive: true,
+  sortOrder: '0'
+}
+
 const meetingOptions = [
   { value: 'phone', label: 'Phone Call' },
   { value: 'zoom', label: 'Zoom' },
@@ -88,15 +99,19 @@ export default function AdminPluginDetail() {
   const [listings, setListings] = useState<any[]>([])
   const [bookingSlots, setBookingSlots] = useState<any[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
+  const [eventItems, setEventItems] = useState<any[]>([])
   const [menuForm, setMenuForm] = useState(emptyMenuItem)
   const [listingForm, setListingForm] = useState(emptyListing)
   const [bookingForm, setBookingForm] = useState(emptyBookingSlot)
+  const [eventForm, setEventForm] = useState(emptyEventItem)
   const [editingMenuId, setEditingMenuId] = useState<string | null>(null)
   const [editingListingId, setEditingListingId] = useState<string | null>(null)
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null)
+  const [editingEventId, setEditingEventId] = useState<string | null>(null)
   const [showMenuForm, setShowMenuForm] = useState(false)
   const [showListingForm, setShowListingForm] = useState(false)
   const [showBookingForm, setShowBookingForm] = useState(false)
+  const [showEventForm, setShowEventForm] = useState(false)
   const [loading, setLoading] = useState(true)
   const [imageUploading, setImageUploading] = useState(false)
   const [message, setMessage] = useState('')
@@ -128,6 +143,9 @@ export default function AdminPluginDetail() {
         ])
         setBookingSlots(slots)
         setAppointments(bookingAppointments)
+      }
+      if (foundPlugin.slug === 'events') {
+        setEventItems(await adminAPI.getEventItems())
       }
     } catch (err: any) {
       setError(err.error || 'Failed to load plugin')
@@ -327,6 +345,55 @@ export default function AdminPluginDetail() {
     await adminAPI.updateBookingAppointment(id, { status })
     setMessage('Appointment updated')
     setAppointments(await adminAPI.getBookingAppointments())
+  }
+
+  const resetEventForm = () => {
+    setEventForm(emptyEventItem)
+    setEditingEventId(null)
+    setShowEventForm(false)
+  }
+
+  const saveEventItem = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const payload = {
+        ...eventForm,
+        sortOrder: Number(eventForm.sortOrder || 0)
+      }
+      if (editingEventId) {
+        await adminAPI.updateEventItem(editingEventId, payload)
+        setMessage('Event updated')
+      } else {
+        await adminAPI.createEventItem(payload)
+        setMessage('Event created')
+      }
+      resetEventForm()
+      setEventItems(await adminAPI.getEventItems())
+    } catch (err: any) {
+      setError(err.error || 'Failed to save event')
+    }
+  }
+
+  const editEventItem = (event: any) => {
+    setEditingEventId(String(event.id))
+    setEventForm({
+      title: event.title || '',
+      description: event.description || '',
+      buttonLabel: event.buttonLabel || '',
+      buttonUrl: event.buttonUrl || '',
+      image: event.image || '',
+      eventDate: event.eventDate || '',
+      isActive: event.isActive !== false,
+      sortOrder: String(event.sortOrder || 0)
+    })
+    setShowEventForm(true)
+  }
+
+  const deleteEventItem = async (id: string) => {
+    if (!confirm('Delete this event?')) return
+    await adminAPI.deleteEventItem(id)
+    setMessage('Event deleted')
+    setEventItems(await adminAPI.getEventItems())
   }
 
   return (
@@ -572,6 +639,66 @@ export default function AdminPluginDetail() {
                   ))}
                   {appointments.length === 0 && <div className="card p-8 text-center text-gray-600">No appointments booked yet.</div>}
                 </div>
+              </div>
+            </>
+          )}
+
+          {plugin.slug === 'events' && (
+            <>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Events</h2>
+                  <p className="text-gray-600">Price shown to buyers: {formatPrice(plugin.price)}</p>
+                </div>
+                <button onClick={() => { setShowEventForm(!showEventForm); setEditingEventId(null) }} className="inline-flex items-center gap-2 btn-primary">
+                  {showEventForm ? <FiX /> : <FiPlus />}
+                  {showEventForm ? 'Close Form' : 'Add Event'}
+                </button>
+              </div>
+
+              {showEventForm && (
+                <form onSubmit={saveEventItem} className="card p-6 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" placeholder="Event title" value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" required />
+                    <input type="date" value={eventForm.eventDate} onChange={(e) => setEventForm({ ...eventForm, eventDate: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" required />
+                    <input type="text" placeholder="Button label" value={eventForm.buttonLabel} onChange={(e) => setEventForm({ ...eventForm, buttonLabel: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
+                    <input type="text" placeholder="Button URL" value={eventForm.buttonUrl} onChange={(e) => setEventForm({ ...eventForm, buttonUrl: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
+                    <input type="number" placeholder="Sort order" value={eventForm.sortOrder} onChange={(e) => setEventForm({ ...eventForm, sortOrder: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
+                  </div>
+                  <textarea placeholder="Description" value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })} className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" rows={4} />
+                  <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-start">
+                    <input type="text" placeholder="Image URL" value={eventForm.image} onChange={(e) => setEventForm({ ...eventForm, image: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
+                    <label className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-blue-50 hover:text-blue-700">
+                      <FiImage /> {imageUploading ? 'Uploading...' : 'Upload Image'}
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadImage(e.target.files?.[0], setEventForm)} />
+                    </label>
+                  </div>
+                  {eventForm.image && <img src={resolveAssetUrl(eventForm.image)} alt={eventForm.title || 'Event'} className="h-32 w-48 rounded-lg object-cover border" />}
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" checked={eventForm.isActive} onChange={(e) => setEventForm({ ...eventForm, isActive: e.target.checked })} />
+                    Show event publicly
+                  </label>
+                  <button type="submit" className="btn-primary">{editingEventId ? 'Save Event' : 'Create Event'}</button>
+                </form>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {eventItems.map((event) => (
+                  <div key={event.id} className="card overflow-hidden">
+                    {event.image ? <img src={resolveAssetUrl(event.image)} alt={event.title} className="h-48 w-full object-cover" /> : <div className="h-48 bg-gray-100 flex items-center justify-center text-gray-500">No image</div>}
+                    <div className="p-6">
+                      <p className="text-sm font-bold uppercase text-blue-600 mb-2">{event.eventDate ? new Date(`${event.eventDate}T00:00:00`).toLocaleDateString() : 'No date'}</p>
+                      <h3 className="text-xl font-bold text-gray-900">{event.title}</h3>
+                      <p className="text-gray-600 my-4">{event.description || 'No description'}</p>
+                      {event.buttonLabel && <p className="text-sm font-semibold text-gray-600 mb-4">Button: {event.buttonLabel}</p>}
+                      <div className="flex gap-2">
+                        <button onClick={() => editEventItem(event)} className="inline-flex items-center gap-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"><FiEdit /> Edit</button>
+                        <button onClick={() => deleteEventItem(String(event.id))} className="inline-flex items-center gap-1 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"><FiTrash2 /> Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {eventItems.length === 0 && <div className="card p-8 text-center text-gray-600 xl:col-span-3">No events yet.</div>}
               </div>
             </>
           )}

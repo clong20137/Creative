@@ -205,6 +205,21 @@ CREATE TABLE IF NOT EXISTS BookingAppointments (
   FOREIGN KEY (availabilitySlotId) REFERENCES BookingAvailabilitySlots(id) ON DELETE CASCADE
 );
 
+-- Events Plugin Items Table
+CREATE TABLE IF NOT EXISTS EventItems (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description LONGTEXT,
+  buttonLabel VARCHAR(255),
+  buttonUrl VARCHAR(500),
+  image LONGTEXT,
+  eventDate DATE NOT NULL,
+  isActive BOOLEAN DEFAULT true,
+  sortOrder INT DEFAULT 0,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- Site Settings Table
 CREATE TABLE IF NOT EXISTS SiteSettings (
   id INT PRIMARY KEY DEFAULT 1,
@@ -332,6 +347,8 @@ CREATE INDEX idx_client_plugin_client ON ClientPluginPurchases(clientId);
 CREATE INDEX idx_client_plugin_slug ON ClientPluginPurchases(pluginSlug);
 CREATE INDEX idx_booking_slots_date ON BookingAvailabilitySlots(date);
 CREATE INDEX idx_booking_appointments_slot ON BookingAppointments(availabilitySlotId);
+CREATE INDEX idx_events_date ON EventItems(eventDate);
+CREATE INDEX idx_events_active ON EventItems(isActive);
 
 -- Sample Admin User (Password: admin123 - hashed with bcryptjs)
 INSERT INTO Users (name, email, password, role, company, isActive)
@@ -374,5 +391,18 @@ VALUES (
   true,
   true,
   '/plugins/real-estate'
+)
+ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id);
+
+INSERT INTO Plugins (slug, name, description, category, price, isEnabled, isPurchased, demoUrl)
+VALUES (
+  'events',
+  'Events',
+  'Add upcoming events with titles, descriptions, dates, images, and action buttons.',
+  'Events',
+  299.00,
+  true,
+  true,
+  '/plugins/events'
 )
 ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id);

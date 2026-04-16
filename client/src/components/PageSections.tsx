@@ -9,6 +9,7 @@ const pluginLabels: Record<string, string> = {
   restaurant: 'Restaurant Menu',
   'real-estate': 'Real Estate Listings',
   booking: 'Booking Appointments',
+  events: 'Events',
   plugins: 'Website Plugins'
 }
 
@@ -499,6 +500,8 @@ function EmbeddedPluginSection({ section }: { section: any }) {
           setData(await pluginsAPI.getRealEstateListings())
         } else if (section.pluginSlug === 'booking') {
           setData(await pluginsAPI.getBookingSlots())
+        } else if (section.pluginSlug === 'events') {
+          setData(await pluginsAPI.getEvents())
         } else {
           setData({ plugins: await pluginsAPI.getPlugins() })
         }
@@ -761,6 +764,27 @@ function PluginContent({ pluginSlug, data }: { pluginSlug: string; data: any }) 
               <p className="mt-2 text-sm text-blue-600">{slot.locationTypes.join(', ')}</p>
             )}
           </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (pluginSlug === 'events') {
+    const events = data.events || []
+    if (events.length === 0) return <div className="text-gray-600">No events have been added yet.</div>
+
+    return (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {events.slice(0, 4).map((event: any) => (
+          <article key={event.id} className="overflow-hidden rounded-lg bg-white shadow">
+            {event.image && <img src={resolveAssetUrl(event.image)} alt={event.title} className="h-44 w-full object-cover" />}
+            <div className="p-4">
+              <p className="text-sm font-bold uppercase text-blue-600">{formatDate(event.eventDate)}</p>
+              <h3 className="mt-1 font-bold text-gray-900">{event.title}</h3>
+              {event.description && <p className="mt-2 text-sm text-gray-600">{event.description}</p>}
+              {event.buttonLabel && event.buttonUrl && <a href={event.buttonUrl} className="mt-4 inline-flex font-semibold text-blue-600 hover:text-blue-800">{event.buttonLabel}</a>}
+            </div>
+          </article>
         ))}
       </div>
     )

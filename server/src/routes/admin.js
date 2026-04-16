@@ -18,9 +18,10 @@ import RestaurantMenuItem from '../models/RestaurantMenuItem.js'
 import RealEstateListing from '../models/RealEstateListing.js'
 import BookingAvailabilitySlot from '../models/BookingAvailabilitySlot.js'
 import BookingAppointment from '../models/BookingAppointment.js'
+import EventItem from '../models/EventItem.js'
 import CustomPage from '../models/CustomPage.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
-import { ensureDemoPlugins, getOrCreateBookingPlugin, getOrCreateRestaurantPlugin, getOrCreateRealEstatePlugin } from './plugins.js'
+import { ensureDemoPlugins, getOrCreateBookingPlugin, getOrCreateEventsPlugin, getOrCreateRestaurantPlugin, getOrCreateRealEstatePlugin } from './plugins.js'
 import crypto from 'crypto'
 import { base32Encode, verifyTotp } from './auth.js'
 import jwt from 'jsonwebtoken'
@@ -372,6 +373,69 @@ router.put('/plugins/booking/appointments/:id', async (req, res) => {
 
     await appointment.update({ status: req.body.status || appointment.status })
     res.json(appointment)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/plugins/events/items', async (req, res) => {
+  try {
+    await getOrCreateEventsPlugin()
+    const events = await EventItem.findAll({
+      order: [['eventDate', 'ASC'], ['sortOrder', 'ASC'], ['title', 'ASC']]
+    })
+    res.json(events)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/plugins/events/items', async (req, res) => {
+  try {
+    const event = await EventItem.create({
+      title: req.body.title,
+      description: req.body.description || '',
+      buttonLabel: req.body.buttonLabel || '',
+      buttonUrl: req.body.buttonUrl || '',
+      image: req.body.image || '',
+      eventDate: req.body.eventDate,
+      isActive: req.body.isActive !== false,
+      sortOrder: Number(req.body.sortOrder || 0)
+    })
+    res.status(201).json(event)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.put('/plugins/events/items/:id', async (req, res) => {
+  try {
+    const event = await EventItem.findByPk(req.params.id)
+    if (!event) return res.status(404).json({ error: 'Event not found' })
+
+    await event.update({
+      title: req.body.title,
+      description: req.body.description || '',
+      buttonLabel: req.body.buttonLabel || '',
+      buttonUrl: req.body.buttonUrl || '',
+      image: req.body.image || '',
+      eventDate: req.body.eventDate,
+      isActive: req.body.isActive !== false,
+      sortOrder: Number(req.body.sortOrder || 0)
+    })
+    res.json(event)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.delete('/plugins/events/items/:id', async (req, res) => {
+  try {
+    const event = await EventItem.findByPk(req.params.id)
+    if (!event) return res.status(404).json({ error: 'Event not found' })
+
+    await event.destroy()
+    res.json({ message: 'Event deleted' })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

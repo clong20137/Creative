@@ -21,6 +21,7 @@ import RealEstateListing from './models/RealEstateListing.js'
 import ClientPluginPurchase from './models/ClientPluginPurchase.js'
 import BookingAvailabilitySlot from './models/BookingAvailabilitySlot.js'
 import BookingAppointment from './models/BookingAppointment.js'
+import EventItem from './models/EventItem.js'
 
 // Import routes
 import authRoutes from './routes/auth.js'

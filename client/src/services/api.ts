@@ -151,7 +151,8 @@ export const pluginsAPI = {
   getRealEstateListings: () => unwrap<{ plugin: any; listings: any[] }>(api.get('/plugins/real-estate/listings')),
   getRealEstateListing: (id: string) => unwrap<{ plugin: any; listing: any }>(api.get(`/plugins/real-estate/listings/${id}`)),
   getBookingSlots: () => unwrap<{ plugin: any; slots: any[] }>(api.get('/plugins/booking/slots')),
-  createBookingAppointment: (data: any) => unwrap(api.post('/plugins/booking/appointments', data))
+  createBookingAppointment: (data: any) => unwrap(api.post('/plugins/booking/appointments', data)),
+  getEvents: () => unwrap<{ plugin: any; events: any[] }>(api.get('/plugins/events'))
 }
 
 // Admin API
@@ -195,6 +196,10 @@ export const adminAPI = {
   deleteBookingSlot: (id: string) => unwrap(api.delete(`/admin/plugins/booking/slots/${id}`)),
   getBookingAppointments: () => unwrap<any[]>(api.get('/admin/plugins/booking/appointments')),
   updateBookingAppointment: (id: string, data: any) => unwrap(api.put(`/admin/plugins/booking/appointments/${id}`, data)),
+  getEventItems: () => unwrap<any[]>(api.get('/admin/plugins/events/items')),
+  createEventItem: (data: any) => unwrap(api.post('/admin/plugins/events/items', data)),
+  updateEventItem: (id: string, data: any) => unwrap(api.put(`/admin/plugins/events/items/${id}`, data)),
+  deleteEventItem: (id: string) => unwrap(api.delete(`/admin/plugins/events/items/${id}`)),
   getPages: () => unwrap<any[]>(api.get('/admin/pages')),
   createPage: (data: any) => unwrap(api.post('/admin/pages', data)),
   updatePage: (id: string, data: any) => unwrap(api.put(`/admin/pages/${id}`, data)),
