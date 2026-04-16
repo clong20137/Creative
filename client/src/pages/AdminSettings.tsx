@@ -67,7 +67,7 @@ const emptySettings = {
   turnstileSecretKey: ''
 }
 
-const tabs = ['General', 'Contact', 'Homepage', 'Page Headers', 'Services', 'Pricing', 'Testimonials', 'Payments', 'Security']
+const tabs = ['General', 'Contact', 'Payments', 'Security']
 const pageHeaderLabels: Record<string, string> = {
   portfolio: 'Portfolio',
   services: 'Services',

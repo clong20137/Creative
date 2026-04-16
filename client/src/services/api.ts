@@ -100,6 +100,10 @@ export const siteSettingsAPI = {
   getSettings: () => unwrap(api.get('/site-settings'))
 }
 
+export const customPagesAPI = {
+  getPage: (slug: string) => unwrap(api.get(`/pages/${slug}`))
+}
+
 export const contactMessagesAPI = {
   createMessage: (data: any) => unwrap(api.post('/contact-messages', data))
 }
@@ -156,6 +160,10 @@ export const adminAPI = {
   deleteBookingSlot: (id: string) => unwrap(api.delete(`/admin/plugins/booking/slots/${id}`)),
   getBookingAppointments: () => unwrap<any[]>(api.get('/admin/plugins/booking/appointments')),
   updateBookingAppointment: (id: string, data: any) => unwrap(api.put(`/admin/plugins/booking/appointments/${id}`, data)),
+  getPages: () => unwrap<any[]>(api.get('/admin/pages')),
+  createPage: (data: any) => unwrap(api.post('/admin/pages', data)),
+  updatePage: (id: string, data: any) => unwrap(api.put(`/admin/pages/${id}`, data)),
+  deletePage: (id: string) => unwrap(api.delete(`/admin/pages/${id}`)),
   getSiteSettings: () => unwrap(api.get('/admin/site-settings')),
   updateSiteSettings: (data: any) => unwrap(api.put('/admin/site-settings', data)),
   uploadImage: (dataUrl: string) => unwrap<{ url: string }>(api.post('/admin/uploads', { dataUrl })),

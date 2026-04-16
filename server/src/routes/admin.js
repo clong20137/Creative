@@ -18,6 +18,7 @@ import RestaurantMenuItem from '../models/RestaurantMenuItem.js'
 import RealEstateListing from '../models/RealEstateListing.js'
 import BookingAvailabilitySlot from '../models/BookingAvailabilitySlot.js'
 import BookingAppointment from '../models/BookingAppointment.js'
+import CustomPage from '../models/CustomPage.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
 import { ensureDemoPlugins, getOrCreateBookingPlugin, getOrCreateRestaurantPlugin, getOrCreateRealEstatePlugin } from './plugins.js'
 import crypto from 'crypto'
@@ -553,6 +554,76 @@ router.put('/site-settings', async (req, res) => {
     const settings = await getOrCreateSiteSettings()
     await settings.update(req.body)
     res.json(settings)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/pages', async (req, res) => {
+  try {
+    const pages = await CustomPage.findAll({ order: [['sortOrder', 'ASC'], ['title', 'ASC']] })
+    res.json(pages)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/pages', async (req, res) => {
+  try {
+    const page = await CustomPage.create({
+      title: req.body.title,
+      slug: String(req.body.slug || req.body.title || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, ''),
+      headerTitle: req.body.headerTitle || req.body.title,
+      headerSubtitle: req.body.headerSubtitle || '',
+      content: req.body.content || '',
+      metaTitle: req.body.metaTitle || '',
+      metaDescription: req.body.metaDescription || '',
+      isPublished: Boolean(req.body.isPublished),
+      sortOrder: Number(req.body.sortOrder || 0)
+    })
+    res.status(201).json(page)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.put('/pages/:id', async (req, res) => {
+  try {
+    const page = await CustomPage.findByPk(req.params.id)
+    if (!page) return res.status(404).json({ error: 'Page not found' })
+
+    await page.update({
+      title: req.body.title,
+      slug: String(req.body.slug || req.body.title || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, ''),
+      headerTitle: req.body.headerTitle || req.body.title,
+      headerSubtitle: req.body.headerSubtitle || '',
+      content: req.body.content || '',
+      metaTitle: req.body.metaTitle || '',
+      metaDescription: req.body.metaDescription || '',
+      isPublished: Boolean(req.body.isPublished),
+      sortOrder: Number(req.body.sortOrder || 0)
+    })
+    res.json(page)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.delete('/pages/:id', async (req, res) => {
+  try {
+    const page = await CustomPage.findByPk(req.params.id)
+    if (!page) return res.status(404).json({ error: 'Page not found' })
+
+    await page.destroy()
+    res.json({ message: 'Page deleted' })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

@@ -12,6 +12,14 @@ const primaryLinks = [
 
 const adminGroups = [
   {
+    label: 'Pages',
+    icon: FiFileText,
+    links: [
+      { label: 'Web Pages', path: '/admin/pages', icon: FiFileText },
+      { label: 'Navigation', path: '/admin/navigation', icon: FiGrid }
+    ]
+  },
+  {
     label: 'Revenue',
     icon: FiBarChart,
     links: [

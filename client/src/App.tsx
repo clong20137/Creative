@@ -24,12 +24,15 @@ import AdminInvoices from './pages/AdminInvoices'
 import AdminSubscriptions from './pages/AdminSubscriptions'
 import AdminServices from './pages/AdminServices'
 import AdminPortfolio from './pages/AdminPortfolio'
+import AdminPages from './pages/AdminPages'
+import AdminNavigation from './pages/AdminNavigation'
 import AdminSettings from './pages/AdminSettings'
 import AdminTickets from './pages/AdminTickets'
 import AdminMessages from './pages/AdminMessages'
 import AdminPlugins from './pages/AdminPlugins'
 import AdminPluginDetail from './pages/AdminPluginDetail'
 import ClientTickets from './pages/ClientTickets'
+import CustomPage from './pages/CustomPage'
 import NotFound from './pages/NotFound'
 import { siteSettingsAPI } from './services/api'
 
@@ -65,11 +68,14 @@ function AppRoutes() {
           <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
           <Route path="/admin/services" element={<AdminServices />} />
           <Route path="/admin/portfolio" element={<AdminPortfolio />} />
+          <Route path="/admin/pages" element={<AdminPages />} />
+          <Route path="/admin/navigation" element={<AdminNavigation />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/admin/tickets" element={<AdminTickets />} />
           <Route path="/admin/messages" element={<AdminMessages />} />
           <Route path="/admin/plugins" element={<AdminPlugins />} />
           <Route path="/admin/plugins/:slug" element={<AdminPluginDetail />} />
+          <Route path="/:slug" element={<CustomPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

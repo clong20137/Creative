@@ -3,12 +3,22 @@ import { useEffect, useState } from 'react'
 import { FiMenu, FiMoon, FiSun, FiX } from 'react-icons/fi'
 import { pluginsAPI, siteSettingsAPI } from '../services/api'
 
+const defaultNavigationItems = [
+  { label: 'Home', url: '/', isActive: true, sortOrder: 0 },
+  { label: 'Portfolio', url: '/portfolio', isActive: true, sortOrder: 10 },
+  { label: 'Services', url: '/services', isActive: true, sortOrder: 20 },
+  { label: 'Pricing', url: '/pricing', isActive: true, sortOrder: 30 },
+  { label: 'Plugins', url: '/plugins', isActive: true, sortOrder: 40 },
+  { label: 'Contact', url: '/contact', isActive: true, sortOrder: 50 }
+]
+
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'))
   const [siteName, setSiteName] = useState('Creative by Caleb')
   const [logoUrl, setLogoUrl] = useState('')
   const [logoSize, setLogoSize] = useState(40)
+  const [navigationItems, setNavigationItems] = useState(defaultNavigationItems)
   const [hasActivePlugins, setHasActivePlugins] = useState(false)
   const [theme, setTheme] = useState(() => localStorage.getItem('siteTheme') || 'light')
   const location = useLocation()
@@ -29,6 +39,9 @@ export default function Navigation() {
         setSiteName(settings.siteName || 'Creative by Caleb')
         setLogoUrl(settings.logoUrl || '')
         setLogoSize(Number(settings.logoSize) || 40)
+        if (Array.isArray(settings.navigationItems) && settings.navigationItems.length) {
+          setNavigationItems(settings.navigationItems)
+        }
       } catch (error) {
         console.error('Error loading site settings:', error)
       }
@@ -55,6 +68,16 @@ export default function Navigation() {
     localStorage.setItem('siteTheme', theme)
   }, [theme])
 
+  const visibleNavigationItems = navigationItems
+    .filter(item => item.isActive !== false)
+    .filter(item => item.url !== '/plugins' || hasActivePlugins)
+    .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
+
+  const linkClassName = (url: string) => {
+    const active = url === '/plugins' ? isSectionActive(url) : isActive(url)
+    return `inline-flex h-10 items-center ${active ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-700 hover:text-blue-600'} transition`
+  }
+
   return (
     <nav className="bg-white shadow-lg sticky top-0 z-50">
       <div className="container">
@@ -72,44 +95,11 @@ export default function Navigation() {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8">
-            <Link
-              to="/"
-              className={`inline-flex h-10 items-center ${isActive('/') ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-700 hover:text-blue-600'} transition`}
-            >
-              Home
-            </Link>
-            <Link
-              to="/portfolio"
-              className={`inline-flex h-10 items-center ${isActive('/portfolio') ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-700 hover:text-blue-600'} transition`}
-            >
-              Portfolio
-            </Link>
-            <Link
-              to="/services"
-              className={`inline-flex h-10 items-center ${isActive('/services') ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-700 hover:text-blue-600'} transition`}
-            >
-              Services
-            </Link>
-            <Link
-              to="/pricing"
-              className={`inline-flex h-10 items-center ${isActive('/pricing') ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-700 hover:text-blue-600'} transition`}
-            >
-              Pricing
-            </Link>
-            {hasActivePlugins && (
-              <Link
-                to="/plugins"
-                className={`inline-flex h-10 items-center ${isSectionActive('/plugins') ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-700 hover:text-blue-600'} transition`}
-              >
-                Plugins
+            {visibleNavigationItems.map(item => (
+              <Link key={`${item.label}-${item.url}`} to={item.url} className={linkClassName(item.url)}>
+                {item.label}
               </Link>
-            )}
-            <Link
-              to="/contact"
-              className={`inline-flex h-10 items-center ${isActive('/contact') ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-700 hover:text-blue-600'} transition`}
-            >
-              Contact
-            </Link>
+            ))}
             <Link
               to={userRole ? dashboardPath : '/login'}
               className="btn-secondary text-sm inline-flex h-10 items-center"
@@ -138,26 +128,11 @@ export default function Navigation() {
         {/* Mobile Menu */}
         {isOpen && (
           <div className="md:hidden pb-4 space-y-2">
-            <Link to="/" className="block py-2 text-gray-700 hover:text-blue-600">
-              Home
-            </Link>
-            <Link to="/portfolio" className="block py-2 text-gray-700 hover:text-blue-600">
-              Portfolio
-            </Link>
-            <Link to="/services" className="block py-2 text-gray-700 hover:text-blue-600">
-              Services
-            </Link>
-            <Link to="/pricing" className="block py-2 text-gray-700 hover:text-blue-600">
-              Pricing
-            </Link>
-            {hasActivePlugins && (
-              <Link to="/plugins" className="block py-2 text-gray-700 hover:text-blue-600">
-                Plugins
+            {visibleNavigationItems.map(item => (
+              <Link key={`${item.label}-${item.url}`} to={item.url} className="block py-2 text-gray-700 hover:text-blue-600">
+                {item.label}
               </Link>
-            )}
-            <Link to="/contact" className="block py-2 text-gray-700 hover:text-blue-600">
-              Contact
-            </Link>
+            ))}
             <Link to={userRole ? dashboardPath : '/login'} className="block py-2 btn-secondary w-full text-left">
               {userRole ? 'Dashboard' : 'Client Login'}
             </Link>

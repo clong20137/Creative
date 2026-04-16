@@ -227,6 +227,7 @@ CREATE TABLE IF NOT EXISTS SiteSettings (
   heroMediaType ENUM('none', 'image', 'video') DEFAULT 'none',
   heroMediaUrl LONGTEXT,
   pageHeaders JSON,
+  navigationItems JSON,
   facebookUrl VARCHAR(500),
   instagramUrl VARCHAR(500),
   twitterUrl VARCHAR(500),
@@ -248,6 +249,21 @@ CREATE TABLE IF NOT EXISTS SiteSettings (
   payoutInstructions LONGTEXT,
   turnstileSiteKey VARCHAR(500),
   turnstileSecretKey VARCHAR(500),
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS CustomPages (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) NOT NULL UNIQUE,
+  headerTitle VARCHAR(255),
+  headerSubtitle TEXT,
+  content LONGTEXT,
+  metaTitle VARCHAR(255),
+  metaDescription TEXT,
+  isPublished BOOLEAN DEFAULT false,
+  sortOrder INT DEFAULT 0,
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
