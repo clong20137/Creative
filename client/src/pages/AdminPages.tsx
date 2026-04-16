@@ -76,6 +76,7 @@ const sectionTypeOptions = [
   { value: 'servicePricing', label: 'A La Carte Pricing' },
   { value: 'faq', label: 'FAQ' },
   { value: 'pluginsList', label: 'Plugins List' },
+  { value: 'siteDemos', label: 'Site Demos' },
   { value: 'contactForm', label: 'Contact Form' },
   { value: 'cta', label: 'CTA' }
 ]
@@ -692,6 +693,15 @@ export default function AdminPages() {
                           <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updatePageSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Items to show" className="mb-3 w-full px-4 py-2 border rounded-lg" />
                         )}
 
+                        {section.type === 'siteDemos' && (
+                          <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <input value={section.title || ''} onChange={(e) => updatePageSection(index, 'title', e.target.value)} placeholder="Section title" className="px-4 py-2 border rounded-lg" />
+                            <input type="number" min="1" max="6" value={section.columns || ''} onChange={(e) => updatePageSection(index, 'columns', Number(e.target.value || 0))} placeholder="Columns" className="px-4 py-2 border rounded-lg" />
+                            <textarea value={section.body || ''} onChange={(e) => updatePageSection(index, 'body', e.target.value)} placeholder="Section description" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                            <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updatePageSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Demos to show" className="px-4 py-2 border rounded-lg md:col-span-2" />
+                          </div>
+                        )}
+
                         {(section.type === 'image' || section.type === 'section') && (
                           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                             <input value={section.imageUrl || ''} onChange={(e) => updatePageSection(index, 'imageUrl', e.target.value)} placeholder="Image URL" className="px-4 py-2 border rounded-lg" />
@@ -1002,6 +1012,15 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
 
             {section.type === 'services' && (
               <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updateSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Items to show" className="mb-3 w-full px-4 py-2 border rounded-lg" />
+            )}
+
+            {section.type === 'siteDemos' && (
+              <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Section title" className="px-4 py-2 border rounded-lg" />
+                <input type="number" min="1" max="6" value={section.columns || ''} onChange={(e) => updateSection(index, 'columns', Number(e.target.value || 0))} placeholder="Columns" className="px-4 py-2 border rounded-lg" />
+                <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Section description" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updateSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Demos to show" className="px-4 py-2 border rounded-lg md:col-span-2" />
+              </div>
             )}
 
             {(section.type === 'image' || section.type === 'section') && (

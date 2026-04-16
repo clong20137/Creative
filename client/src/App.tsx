@@ -18,6 +18,7 @@ import ProtectedContentPluginDemo from './pages/ProtectedContentPluginDemo'
 import RestaurantSiteDemo from './pages/RestaurantSiteDemo'
 import TowingTransportSiteDemo from './pages/TowingTransportSiteDemo'
 import BarbershopSiteDemo from './pages/BarbershopSiteDemo'
+import RealEstateSiteDemo from './pages/RealEstateSiteDemo'
 import Login from './pages/Login'
 import ClientDashboard from './pages/ClientDashboard'
 import ClientPortalBilling from './pages/ClientPortalBilling'
@@ -66,6 +67,7 @@ function AppRoutes() {
           <Route path="/site-demos/restaurant" element={<RestaurantSiteDemo />} />
           <Route path="/site-demos/towing-transport" element={<TowingTransportSiteDemo />} />
           <Route path="/site-demos/barbershop" element={<BarbershopSiteDemo />} />
+          <Route path="/site-demos/real-estate" element={<RealEstateSiteDemo />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
           <Route path="/client-dashboard" element={<ClientDashboard />} />

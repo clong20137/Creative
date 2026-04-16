@@ -57,10 +57,29 @@ export async function getOrCreateBarbershopSiteDemo() {
   return demo
 }
 
+export async function getOrCreateRealEstateSiteDemo() {
+  const [demo] = await SiteDemo.findOrCreate({
+    where: { slug: 'real-estate' },
+    defaults: {
+      slug: 'real-estate',
+      name: 'Real Estate Demo',
+      category: 'Real Estate',
+      description: 'A real estate website demo for featured listings, neighborhood guides, agents, and lead capture.',
+      previewImage: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+      demoUrl: '/site-demos/real-estate',
+      isActive: true,
+      sortOrder: 40
+    }
+  })
+
+  return demo
+}
+
 export async function ensureSiteDemos() {
   await getOrCreateRestaurantSiteDemo()
   await getOrCreateTowingTransportSiteDemo()
   await getOrCreateBarbershopSiteDemo()
+  await getOrCreateRealEstateSiteDemo()
 }
 
 router.get('/', async (req, res) => {

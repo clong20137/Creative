@@ -512,3 +512,16 @@ VALUES (
   30
 )
 ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id);
+
+INSERT INTO SiteDemos (slug, name, category, description, previewImage, demoUrl, isActive, sortOrder)
+VALUES (
+  'real-estate',
+  'Real Estate Demo',
+  'Real Estate',
+  'A real estate website demo for featured listings, neighborhood guides, agents, and lead capture.',
+  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+  '/site-demos/real-estate',
+  true,
+  40
+)
+ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id);

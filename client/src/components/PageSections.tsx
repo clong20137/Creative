@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { FiArrowRight, FiCamera, FiCheck, FiMail, FiMapPin, FiMonitor, FiPenTool, FiPhone, FiVideo } from 'react-icons/fi'
 import Testimonials from './Testimonials'
 import TurnstileWidget from './TurnstileWidget'
-import { contactMessagesAPI, pluginsAPI, portfolioAPI, resolveAssetUrl, servicePackagesAPI, siteSettingsAPI } from '../services/api'
+import { contactMessagesAPI, pluginsAPI, portfolioAPI, resolveAssetUrl, servicePackagesAPI, siteDemosAPI, siteSettingsAPI } from '../services/api'
 
 const pluginLabels: Record<string, string> = {
   restaurant: 'Restaurant Menu',
@@ -117,6 +117,7 @@ function PageSection({ section }: { section: any }) {
   if (section.type === 'servicePricing') return <ServicePricingSection section={section} />
   if (section.type === 'faq') return <FaqSection section={section} />
   if (section.type === 'pluginsList') return <PluginsListSection section={section} />
+  if (section.type === 'siteDemos') return <SiteDemosSection section={section} />
   if (section.type === 'contactForm') return <ContactFormSection />
   if (section.type === 'cta') return <CtaSection section={section} />
 
@@ -624,6 +625,47 @@ function PluginsListSection({ section }: { section: any }) {
               </div>
             ))}
             {plugins.length === 0 && <div className="card p-8 text-center text-gray-600 md:col-span-2">No active plugin demos are available yet.</div>}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function SiteDemosSection({ section }: { section: any }) {
+  const [demos, setDemos] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const limit = Number(section.itemLimit || 6)
+
+  useEffect(() => {
+    siteDemosAPI.getDemos()
+      .then(setDemos)
+      .catch(() => setDemos([]))
+      .finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <section className="py-16 bg-gray-50">
+      <div className="container">
+        <SectionHeading section={section} fallbackTitle="Site Demos" />
+        {loading ? (
+          <div className="text-gray-600">Loading site demos...</div>
+        ) : (
+          <div className={`grid grid-cols-1 gap-6 ${columnClasses[Number(section.columns || 3)] || columnClasses[3]}`}>
+            {demos.slice(0, limit).map(demo => (
+              <article key={demo.id || demo.slug} className="group overflow-hidden rounded-lg bg-white shadow transition hover:-translate-y-1 hover:shadow-xl">
+                {demo.previewImage && <img src={resolveAssetUrl(demo.previewImage)} alt={demo.name} className="h-64 w-full object-cover transition duration-300 group-hover:scale-105" />}
+                <div className="p-6">
+                  <p className="text-xs font-bold uppercase tracking-wide text-blue-600">{demo.category}</p>
+                  <h3 className="mt-2 text-2xl font-bold text-gray-900">{demo.name}</h3>
+                  {demo.description && <p className="mt-3 text-gray-600">{demo.description}</p>}
+                  <Link to={demo.demoUrl} className="btn-primary mt-6 inline-flex items-center gap-2">
+                    View Demo <FiArrowRight />
+                  </Link>
+                </div>
+              </article>
+            ))}
+            {demos.length === 0 && <div className="rounded-lg border bg-white p-8 text-center text-gray-600 md:col-span-2 lg:col-span-3">No active site demos are available yet.</div>}
           </div>
         )}
       </div>
