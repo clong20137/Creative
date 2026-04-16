@@ -3,11 +3,20 @@ import { Link } from 'react-router-dom'
 import Testimonials from './Testimonials'
 import { pluginsAPI, portfolioAPI, resolveAssetUrl, servicePackagesAPI } from '../services/api'
 
-const pluginLinks: Record<string, { label: string; url: string }> = {
-  restaurant: { label: 'Restaurant Menu', url: '/plugins/restaurant' },
-  'real-estate': { label: 'Real Estate Listings', url: '/plugins/real-estate' },
-  booking: { label: 'Booking Appointments', url: '/plugins/booking' },
-  plugins: { label: 'Website Plugins', url: '/plugins' }
+const pluginLabels: Record<string, string> = {
+  restaurant: 'Restaurant Menu',
+  'real-estate': 'Real Estate Listings',
+  booking: 'Booking Appointments',
+  plugins: 'Website Plugins'
+}
+
+const columnClasses: Record<number, string> = {
+  1: 'md:grid-cols-1',
+  2: 'md:grid-cols-2',
+  3: 'md:grid-cols-3',
+  4: 'md:grid-cols-2 lg:grid-cols-4',
+  5: 'md:grid-cols-2 lg:grid-cols-5',
+  6: 'md:grid-cols-3 lg:grid-cols-6'
 }
 
 export default function PageSections({ sections }: { sections?: any[] }) {
@@ -24,6 +33,26 @@ export default function PageSections({ sections }: { sections?: any[] }) {
 }
 
 function PageSection({ section }: { section: any }) {
+  if (section.type === 'banner') {
+    return (
+      <section className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-800 py-20 text-white md:py-28">
+        {section.imageUrl && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+        <div className="absolute inset-0 bg-blue-950/55"></div>
+        <div className="container relative">
+          <div className="max-w-3xl">
+            <h2 className="text-4xl font-bold md:text-6xl">{section.title}</h2>
+            {section.body && <p className="mt-6 text-xl text-blue-100 whitespace-pre-line">{section.body}</p>}
+            {section.buttonLabel && section.buttonUrl && (
+              <Link to={section.buttonUrl} className="btn-primary mt-8 inline-flex">
+                {section.buttonLabel}
+              </Link>
+            )}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   if (section.type === 'header') {
     return (
       <section className="section-padding">
@@ -53,7 +82,7 @@ function PageSection({ section }: { section: any }) {
   }
 
   if (section.type === 'plugin') return <EmbeddedPluginSection section={section} />
-  if (section.type === 'testimonials') return <TestimonialsSection section={section} />
+  if (section.type === 'testimonials') return <TestimonialsSection />
   if (section.type === 'portfolio') return <PortfolioSection section={section} />
   if (section.type === 'services') return <ServicesSection section={section} />
 
@@ -93,10 +122,9 @@ function SectionHeading({ section, fallbackTitle }: { section: any; fallbackTitl
   )
 }
 
-function TestimonialsSection({ section }: { section: any }) {
+function TestimonialsSection() {
   return (
     <section>
-      <SectionHeading section={section} fallbackTitle="Testimonials" />
       <Testimonials />
     </section>
   )
@@ -120,8 +148,7 @@ function PortfolioSection({ section }: { section: any }) {
   return (
     <section className="section-padding">
       <div className="container">
-        <SectionHeading section={section} fallbackTitle="Portfolio" />
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className={`grid grid-cols-1 gap-6 ${columnClasses[Number(section.columns || 4)] || columnClasses[4]}`}>
           {items.slice(0, Number(section.itemLimit || 8)).map((item) => (
             <article key={item.id} className="card overflow-hidden">
               {item.image && <img src={resolveAssetUrl(item.image)} alt={item.title} className="h-56 w-full object-contain p-2" />}
@@ -181,7 +208,7 @@ function ServicesSection({ section }: { section: any }) {
 }
 
 function EmbeddedPluginSection({ section }: { section: any }) {
-  const plugin = pluginLinks[section.pluginSlug] || pluginLinks.plugins
+  const pluginLabel = pluginLabels[section.pluginSlug] || pluginLabels.plugins
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
@@ -211,22 +238,11 @@ function EmbeddedPluginSection({ section }: { section: any }) {
   return (
     <section className="section-padding">
       <div className="container">
-        <div className="rounded-lg border bg-gray-50 p-6">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">{section.title || plugin.label}</h2>
-            {section.body && <p className="mt-3 text-gray-600 whitespace-pre-line">{section.body}</p>}
-          </div>
-
-          {loading ? (
-            <div className="text-gray-600">Loading {plugin.label}...</div>
-          ) : (
-            <PluginContent pluginSlug={section.pluginSlug || 'plugins'} data={data} />
-          )}
-
-          <Link to={plugin.url} className="btn-primary mt-6 inline-flex">
-            {section.buttonLabel || `View ${plugin.label}`}
-          </Link>
-        </div>
+        {loading ? (
+          <div className="text-gray-600">Loading {pluginLabel}...</div>
+        ) : (
+          <PluginContent pluginSlug={section.pluginSlug || 'plugins'} data={data} />
+        )}
       </div>
     </section>
   )

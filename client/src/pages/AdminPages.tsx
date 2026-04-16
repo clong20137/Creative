@@ -47,13 +47,13 @@ const pageHeaderLabels: Record<string, string> = {
 }
 
 const pluginOptions = [
-  { value: 'restaurant', label: 'Restaurant Menu', url: '/plugins/restaurant' },
-  { value: 'real-estate', label: 'Real Estate Listings', url: '/plugins/real-estate' },
-  { value: 'booking', label: 'Booking Appointments', url: '/plugins/booking' },
-  { value: 'plugins', label: 'All Plugins', url: '/plugins' }
+  { value: 'restaurant', label: 'Restaurant Menu' },
+  { value: 'real-estate', label: 'Real Estate Listings' },
+  { value: 'booking', label: 'Booking Appointments' }
 ]
 
 const sectionTypeOptions = [
+  { value: 'banner', label: 'Banner' },
   { value: 'header', label: 'Header' },
   { value: 'paragraph', label: 'Paragraph' },
   { value: 'image', label: 'Image' },
@@ -161,9 +161,11 @@ function makePageSection(type: string) {
     body: '',
     imageUrl: '',
     alt: '',
-    pluginSlug: 'plugins',
-    buttonLabel: 'View Plugin',
-    itemLimit: type === 'portfolio' ? 8 : 6
+    pluginSlug: 'restaurant',
+    buttonLabel: 'Get Started',
+    buttonUrl: '/contact',
+    itemLimit: type === 'portfolio' ? 8 : 6,
+    columns: type === 'portfolio' ? 4 : 3
   }
 }
 
@@ -621,33 +623,51 @@ export default function AdminPages() {
                           </div>
                         </div>
 
-                        {(section.type === 'header' || section.type === 'section' || section.type === 'plugin' || section.type === 'testimonials' || section.type === 'portfolio' || section.type === 'services') && (
+                        {section.type === 'banner' && (
+                          <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <input value={section.title || ''} onChange={(e) => updatePageSection(index, 'title', e.target.value)} placeholder="Banner heading" className="px-4 py-2 border rounded-lg md:col-span-2" />
+                            <textarea value={section.body || ''} onChange={(e) => updatePageSection(index, 'body', e.target.value)} placeholder="Banner subtext" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                            <input value={section.buttonLabel || ''} onChange={(e) => updatePageSection(index, 'buttonLabel', e.target.value)} placeholder="Button label" className="px-4 py-2 border rounded-lg" />
+                            <input value={section.buttonUrl || ''} onChange={(e) => updatePageSection(index, 'buttonUrl', e.target.value)} placeholder="Button URL" className="px-4 py-2 border rounded-lg" />
+                            <input value={section.imageUrl || ''} onChange={(e) => updatePageSection(index, 'imageUrl', e.target.value)} placeholder="Optional banner image URL" className="px-4 py-2 border rounded-lg md:col-span-2" />
+                            <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url) => updatePageSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                            {section.imageUrl && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
+                          </div>
+                        )}
+
+                        {(section.type === 'header' || section.type === 'section' || section.type === 'services') && (
                           <input value={section.title || ''} onChange={(e) => updatePageSection(index, 'title', e.target.value)} placeholder="Section title" className="mb-3 w-full px-4 py-2 border rounded-lg" />
                         )}
 
-                        {(section.type === 'paragraph' || section.type === 'section' || section.type === 'plugin' || section.type === 'testimonials' || section.type === 'portfolio' || section.type === 'services') && (
+                        {(section.type === 'paragraph' || section.type === 'section' || section.type === 'services') && (
                           <textarea value={section.body || ''} onChange={(e) => updatePageSection(index, 'body', e.target.value)} placeholder="Text content" rows={4} className="mb-3 w-full px-4 py-2 border rounded-lg" />
                         )}
 
-                        {(section.type === 'portfolio' || section.type === 'services') && (
-                          <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updatePageSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Item limit" className="mb-3 w-full px-4 py-2 border rounded-lg" />
+                        {section.type === 'portfolio' && (
+                          <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <input type="number" min="1" max="6" value={section.columns || ''} onChange={(e) => updatePageSection(index, 'columns', Number(e.target.value || 0))} placeholder="Columns" className="px-4 py-2 border rounded-lg" />
+                            <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updatePageSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Items to show" className="px-4 py-2 border rounded-lg" />
+                          </div>
+                        )}
+
+                        {section.type === 'services' && (
+                          <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updatePageSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Items to show" className="mb-3 w-full px-4 py-2 border rounded-lg" />
                         )}
 
                         {(section.type === 'image' || section.type === 'section') && (
                           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                             <input value={section.imageUrl || ''} onChange={(e) => updatePageSection(index, 'imageUrl', e.target.value)} placeholder="Image URL" className="px-4 py-2 border rounded-lg" />
-                            <input value={section.alt || ''} onChange={(e) => updatePageSection(index, 'alt', e.target.value)} placeholder="Image description" className="px-4 py-2 border rounded-lg" />
+                            <input value={section.alt || ''} onChange={(e) => updatePageSection(index, 'alt', e.target.value)} placeholder="Alt text" className="px-4 py-2 border rounded-lg" />
                             <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url) => updatePageSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />
                             {section.imageUrl && <img src={resolveAssetUrl(section.imageUrl)} alt={section.alt || section.title || 'Section image'} className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
                           </div>
                         )}
 
                         {section.type === 'plugin' && (
-                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                            <select value={section.pluginSlug || 'plugins'} onChange={(e) => updatePageSection(index, 'pluginSlug', e.target.value)} className="px-4 py-2 border rounded-lg">
+                          <div className="grid grid-cols-1 gap-3">
+                            <select value={section.pluginSlug || 'restaurant'} onChange={(e) => updatePageSection(index, 'pluginSlug', e.target.value)} className="px-4 py-2 border rounded-lg">
                               {pluginOptions.map(plugin => <option key={plugin.value} value={plugin.value}>{plugin.label}</option>)}
                             </select>
-                            <input value={section.buttonLabel || ''} onChange={(e) => updatePageSection(index, 'buttonLabel', e.target.value)} placeholder="Button label" className="px-4 py-2 border rounded-lg" />
                           </div>
                         )}
                       </div>
@@ -892,33 +912,51 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
               </div>
             </div>
 
-            {(section.type === 'header' || section.type === 'section' || section.type === 'plugin' || section.type === 'testimonials' || section.type === 'portfolio' || section.type === 'services') && (
+            {section.type === 'banner' && (
+              <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Banner heading" className="px-4 py-2 border rounded-lg md:col-span-2" />
+                <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Banner subtext" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                <input value={section.buttonLabel || ''} onChange={(e) => updateSection(index, 'buttonLabel', e.target.value)} placeholder="Button label" className="px-4 py-2 border rounded-lg" />
+                <input value={section.buttonUrl || ''} onChange={(e) => updateSection(index, 'buttonUrl', e.target.value)} placeholder="Button URL" className="px-4 py-2 border rounded-lg" />
+                <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Optional banner image URL" className="px-4 py-2 border rounded-lg md:col-span-2" />
+                <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url: string) => updateSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                {section.imageUrl && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
+              </div>
+            )}
+
+            {(section.type === 'header' || section.type === 'section' || section.type === 'services') && (
               <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Section title" className="mb-3 w-full px-4 py-2 border rounded-lg" />
             )}
 
-            {(section.type === 'paragraph' || section.type === 'section' || section.type === 'plugin' || section.type === 'testimonials' || section.type === 'portfolio' || section.type === 'services') && (
+            {(section.type === 'paragraph' || section.type === 'section' || section.type === 'services') && (
               <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Text content" rows={4} className="mb-3 w-full px-4 py-2 border rounded-lg" />
             )}
 
-            {(section.type === 'portfolio' || section.type === 'services') && (
-              <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updateSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Item limit" className="mb-3 w-full px-4 py-2 border rounded-lg" />
+            {section.type === 'portfolio' && (
+              <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <input type="number" min="1" max="6" value={section.columns || ''} onChange={(e) => updateSection(index, 'columns', Number(e.target.value || 0))} placeholder="Columns" className="px-4 py-2 border rounded-lg" />
+                <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updateSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Items to show" className="px-4 py-2 border rounded-lg" />
+              </div>
+            )}
+
+            {section.type === 'services' && (
+              <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updateSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Items to show" className="mb-3 w-full px-4 py-2 border rounded-lg" />
             )}
 
             {(section.type === 'image' || section.type === 'section') && (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Image URL" className="px-4 py-2 border rounded-lg" />
-                <input value={section.alt || ''} onChange={(e) => updateSection(index, 'alt', e.target.value)} placeholder="Image description" className="px-4 py-2 border rounded-lg" />
+                <input value={section.alt || ''} onChange={(e) => updateSection(index, 'alt', e.target.value)} placeholder="Alt text" className="px-4 py-2 border rounded-lg" />
                 <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url: string) => updateSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />
                 {section.imageUrl && <img src={resolveAssetUrl(section.imageUrl)} alt={section.alt || section.title || 'Section image'} className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
               </div>
             )}
 
             {section.type === 'plugin' && (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <select value={section.pluginSlug || 'plugins'} onChange={(e) => updateSection(index, 'pluginSlug', e.target.value)} className="px-4 py-2 border rounded-lg">
+              <div className="grid grid-cols-1 gap-3">
+                <select value={section.pluginSlug || 'restaurant'} onChange={(e) => updateSection(index, 'pluginSlug', e.target.value)} className="px-4 py-2 border rounded-lg">
                   {pluginOptions.map(plugin => <option key={plugin.value} value={plugin.value}>{plugin.label}</option>)}
                 </select>
-                <input value={section.buttonLabel || ''} onChange={(e) => updateSection(index, 'buttonLabel', e.target.value)} placeholder="Button label" className="px-4 py-2 border rounded-lg" />
               </div>
             )}
           </div>
