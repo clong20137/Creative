@@ -33,6 +33,17 @@ html.dark-mode .bg-gray-200 {
   background-color: #374151 !important;
 }
 
+html.dark-mode .hover\:bg-blue-50:hover,
+html.dark-mode .hover\:bg-gray-50:hover,
+html.dark-mode .hover\:bg-white:hover {
+  background-color: #1D4ED8 !important;
+}
+
+html.dark-mode .hover\:text-blue-700:hover,
+html.dark-mode .hover\:text-blue-800:hover {
+  color: #FFFFFF !important;
+}
+
 html.dark-mode .text-gray-900,
 html.dark-mode .text-gray-800,
 html.dark-mode .text-gray-700 {
