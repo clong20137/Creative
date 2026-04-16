@@ -23,6 +23,10 @@ const CustomPage = sequelize.define('CustomPage', {
     type: DataTypes.TEXT('long'),
     allowNull: true
   },
+  sections: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  },
   metaTitle: {
     type: DataTypes.STRING,
     allowNull: true

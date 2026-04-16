@@ -260,6 +260,7 @@ CREATE TABLE IF NOT EXISTS CustomPages (
   headerTitle VARCHAR(255),
   headerSubtitle TEXT,
   content LONGTEXT,
+  sections JSON,
   metaTitle VARCHAR(255),
   metaDescription TEXT,
   isPublished BOOLEAN DEFAULT false,

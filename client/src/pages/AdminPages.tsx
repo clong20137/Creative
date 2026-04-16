@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
-import { adminAPI } from '../services/api'
+import { adminAPI, resolveAssetUrl } from '../services/api'
 
 const pageTabs = ['Homepage', 'Headers', 'Services Page', 'Pricing Page', 'Testimonials', 'Custom Pages']
 
@@ -32,6 +32,64 @@ const pageHeaderLabels: Record<string, string> = {
   pricing: 'Pricing',
   plugins: 'Plugins',
   contact: 'Contact'
+}
+
+const pluginOptions = [
+  { value: 'restaurant', label: 'Restaurant Menu', url: '/plugins/restaurant' },
+  { value: 'real-estate', label: 'Real Estate Listings', url: '/plugins/real-estate' },
+  { value: 'booking', label: 'Booking Appointments', url: '/plugins/booking' },
+  { value: 'plugins', label: 'All Plugins', url: '/plugins' }
+]
+
+const MAX_IMAGE_WIDTH = 1200
+const MAX_IMAGE_HEIGHT = 800
+const MAX_UPLOAD_DATA_URL_LENGTH = 640_000
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('Failed to load image'))
+    image.src = src
+  })
+}
+
+async function getUploadDataUrl(file: File) {
+  if (!file.type.startsWith('image/')) return readFileAsDataUrl(file)
+  if (file.type === 'image/svg+xml' || file.type === 'image/gif' || file.type.includes('icon')) return readFileAsDataUrl(file)
+
+  const objectUrl = URL.createObjectURL(file)
+  try {
+    const image = await loadImage(objectUrl)
+    let scale = Math.min(1, MAX_IMAGE_WIDTH / image.width, MAX_IMAGE_HEIGHT / image.height)
+    let quality = 0.76
+
+    for (let attempt = 0; attempt < 7; attempt += 1) {
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.round(image.width * scale))
+      canvas.height = Math.max(1, Math.round(image.height * scale))
+      const context = canvas.getContext('2d')
+      if (!context) throw new Error('Image compression is not available in this browser.')
+      context.drawImage(image, 0, 0, canvas.width, canvas.height)
+      const dataUrl = canvas.toDataURL('image/jpeg', quality)
+      if (dataUrl.length <= MAX_UPLOAD_DATA_URL_LENGTH) return dataUrl
+      scale *= 0.82
+      quality = Math.max(0.52, quality - 0.06)
+    }
+
+    throw new Error('This image is still too large after compression. Please use a smaller image.')
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
 }
 
 function getActivePayload(settings: typeof emptySettings, activeTab: string) {
@@ -79,6 +137,7 @@ export default function AdminPages() {
     headerTitle: '',
     headerSubtitle: '',
     content: '',
+    sections: [],
     metaTitle: '',
     metaDescription: '',
     isPublished: false,
@@ -147,7 +206,7 @@ export default function AdminPages() {
 
   const selectPage = (page: any) => {
     setSelectedPageId(String(page.id))
-    setPageDraft(page)
+    setPageDraft({ ...page, sections: Array.isArray(page.sections) ? page.sections : [] })
   }
 
   const startNewPage = () => {
@@ -158,6 +217,7 @@ export default function AdminPages() {
       headerTitle: '',
       headerSubtitle: '',
       content: '',
+      sections: [],
       metaTitle: '',
       metaDescription: '',
       isPublished: false,
@@ -171,6 +231,47 @@ export default function AdminPages() {
       [field]: value,
       ...(field === 'title' && !current.slug ? { slug: makeSlug(value) } : {})
     }))
+  }
+
+  const uploadImageToField = async (setter: (url: string) => void, file: File | undefined) => {
+    if (!file) return
+    try {
+      setError('')
+      setMessage('Uploading image...')
+      const dataUrl = await getUploadDataUrl(file)
+      const upload = await adminAPI.uploadImage(dataUrl)
+      setter(upload.url)
+      setMessage('Image uploaded. Save to publish it.')
+    } catch (err: any) {
+      setMessage('')
+      setError(err.error || err.message || 'Failed to upload image')
+    }
+  }
+
+  const addPageSection = (type: string) => {
+    const baseSection: any = {
+      id: crypto.randomUUID(),
+      type,
+      title: '',
+      body: '',
+      imageUrl: '',
+      alt: '',
+      pluginSlug: 'plugins',
+      buttonLabel: 'View Plugin'
+    }
+    setPageDraft((current: any) => ({ ...current, sections: [...(current.sections || []), baseSection] }))
+  }
+
+  const updatePageSection = (index: number, field: string, value: any) => {
+    setPageDraft((current: any) => {
+      const sections = [...(current.sections || [])]
+      sections[index] = { ...sections[index], [field]: value }
+      return { ...current, sections }
+    })
+  }
+
+  const removePageSection = (index: number) => {
+    setPageDraft((current: any) => ({ ...current, sections: (current.sections || []).filter((_: any, i: number) => i !== index) }))
   }
 
   const saveCustomPage = async (e: React.FormEvent) => {
@@ -245,7 +346,62 @@ export default function AdminPages() {
                   <textarea value={pageDraft.headerSubtitle || ''} onChange={(e) => updatePageDraft('headerSubtitle', e.target.value)} placeholder="Header subtitle" rows={2} className="px-4 py-2 border rounded-lg md:col-span-2" />
                   <input value={pageDraft.metaTitle || ''} onChange={(e) => updatePageDraft('metaTitle', e.target.value)} placeholder="SEO title" className="px-4 py-2 border rounded-lg" />
                   <input value={pageDraft.metaDescription || ''} onChange={(e) => updatePageDraft('metaDescription', e.target.value)} placeholder="SEO description" className="px-4 py-2 border rounded-lg" />
-                  <textarea value={pageDraft.content || ''} onChange={(e) => updatePageDraft('content', e.target.value)} placeholder="Page content" rows={12} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                  <textarea value={pageDraft.content || ''} onChange={(e) => updatePageDraft('content', e.target.value)} placeholder="Fallback page content" rows={5} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                </div>
+                <div className="space-y-4 rounded-lg border p-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Page Sections</h3>
+                    <p className="text-gray-600">Build this page with headers, paragraphs, images, plugin callouts, and content sections.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => addPageSection('header')} className="btn-secondary">Add Header</button>
+                    <button type="button" onClick={() => addPageSection('paragraph')} className="btn-secondary">Add Paragraph</button>
+                    <button type="button" onClick={() => addPageSection('image')} className="btn-secondary">Add Image</button>
+                    <button type="button" onClick={() => addPageSection('plugin')} className="btn-secondary">Add Plugin</button>
+                    <button type="button" onClick={() => addPageSection('section')} className="btn-secondary">Add Section</button>
+                  </div>
+                  <div className="space-y-3">
+                    {(pageDraft.sections || []).map((section: any, index: number) => (
+                      <div key={section.id || index} className="rounded-lg border bg-gray-50 p-4">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                          <select value={section.type || 'paragraph'} onChange={(e) => updatePageSection(index, 'type', e.target.value)} className="px-4 py-2 border rounded-lg">
+                            <option value="header">Header</option>
+                            <option value="paragraph">Paragraph</option>
+                            <option value="image">Image</option>
+                            <option value="plugin">Plugin</option>
+                            <option value="section">Section</option>
+                          </select>
+                          <button type="button" onClick={() => removePageSection(index)} className="px-3 py-2 border rounded-lg text-red-600 hover:bg-red-50">Remove Section</button>
+                        </div>
+
+                        {(section.type === 'header' || section.type === 'section' || section.type === 'plugin') && (
+                          <input value={section.title || ''} onChange={(e) => updatePageSection(index, 'title', e.target.value)} placeholder="Section title" className="mb-3 w-full px-4 py-2 border rounded-lg" />
+                        )}
+
+                        {(section.type === 'paragraph' || section.type === 'section' || section.type === 'plugin') && (
+                          <textarea value={section.body || ''} onChange={(e) => updatePageSection(index, 'body', e.target.value)} placeholder="Text content" rows={4} className="mb-3 w-full px-4 py-2 border rounded-lg" />
+                        )}
+
+                        {(section.type === 'image' || section.type === 'section') && (
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <input value={section.imageUrl || ''} onChange={(e) => updatePageSection(index, 'imageUrl', e.target.value)} placeholder="Image URL" className="px-4 py-2 border rounded-lg" />
+                            <input value={section.alt || ''} onChange={(e) => updatePageSection(index, 'alt', e.target.value)} placeholder="Image description" className="px-4 py-2 border rounded-lg" />
+                            <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url) => updatePageSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                            {section.imageUrl && <img src={resolveAssetUrl(section.imageUrl)} alt={section.alt || section.title || 'Section image'} className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
+                          </div>
+                        )}
+
+                        {section.type === 'plugin' && (
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <select value={section.pluginSlug || 'plugins'} onChange={(e) => updatePageSection(index, 'pluginSlug', e.target.value)} className="px-4 py-2 border rounded-lg">
+                              {pluginOptions.map(plugin => <option key={plugin.value} value={plugin.value}>{plugin.label}</option>)}
+                            </select>
+                            <input value={section.buttonLabel || ''} onChange={(e) => updatePageSection(index, 'buttonLabel', e.target.value)} placeholder="Button label" className="px-4 py-2 border rounded-lg" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <label className="inline-flex items-center gap-2 font-semibold text-gray-700">
                   <input type="checkbox" checked={Boolean(pageDraft.isPublished)} onChange={(e) => updatePageDraft('isPublished', e.target.checked)} />
@@ -275,9 +431,28 @@ export default function AdminPages() {
                         <option value="video">Video banner</option>
                       </select>
                       <input value={settings.heroMediaUrl || ''} onChange={(e) => handleChange('heroMediaUrl', e.target.value)} placeholder="Image or video URL" className="px-4 py-2 border rounded-lg" />
+                      <label className="block md:col-span-2">
+                        <span className="block text-sm font-semibold text-gray-700 mb-2">Upload banner image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => uploadImageToField((url) => {
+                            handleChange('heroMediaUrl', url)
+                            handleChange('heroMediaType', 'image')
+                          }, e.target.files?.[0])}
+                          className="w-full px-4 py-2 border rounded-lg"
+                        />
+                      </label>
+                      {settings.heroMediaUrl && (
+                        <img
+                          src={resolveAssetUrl(settings.heroMediaUrl)}
+                          alt="Homepage banner preview"
+                          className="h-48 w-full rounded-lg border object-cover md:col-span-2"
+                        />
+                      )}
                     </div>
-                    <ListEditor title="What We Do" listKey="whatWeDo" items={settings.whatWeDo} fields={['title', 'desc']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} />
-                    <ListEditor title="Featured Work" listKey="featuredWork" items={settings.featuredWork} fields={['title', 'category', 'image', 'description']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} />
+                    <ListEditor title="What We Do" listKey="whatWeDo" items={settings.whatWeDo} fields={['title', 'desc']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />
+                    <ListEditor title="Featured Work" listKey="featuredWork" items={settings.featuredWork} fields={['title', 'category', 'image', 'description']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />
                   </section>
                 )}
 
@@ -298,11 +473,11 @@ export default function AdminPages() {
                   </section>
                 )}
 
-                {activeTab === 'Services Page' && <ListEditor title="Services Page" listKey="services" items={settings.services} fields={['title', 'description', 'features', 'url', 'image']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} />}
+                {activeTab === 'Services Page' && <ListEditor title="Services Page" listKey="services" items={settings.services} fields={['title', 'description', 'features', 'url', 'image']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />}
                 {activeTab === 'Pricing Page' && (
                   <section className="space-y-6">
-                    <ListEditor title="Web Design Packages" listKey="webDesignPackages" items={settings.webDesignPackages} fields={['name', 'description', 'price', 'billingPeriod', 'features']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} />
-                    <ListEditor title="FAQ" listKey="faqs" items={settings.faqs} fields={['q', 'a']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} />
+                    <ListEditor title="Web Design Packages" listKey="webDesignPackages" items={settings.webDesignPackages} fields={['name', 'description', 'price', 'billingPeriod', 'features']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />
+                    <ListEditor title="FAQ" listKey="faqs" items={settings.faqs} fields={['q', 'a']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />
                   </section>
                 )}
                 {activeTab === 'Testimonials' && (
@@ -315,7 +490,7 @@ export default function AdminPages() {
                       <input value={settings.googlePlaceId || ''} onChange={(e) => handleChange('googlePlaceId', e.target.value)} placeholder="Google Place ID" className="px-4 py-2 border rounded-lg" />
                       <input value={settings.googleApiKey || ''} onChange={(e) => handleChange('googleApiKey', e.target.value)} placeholder="Google API Key" className="px-4 py-2 border rounded-lg" />
                     </div>
-                    <ListEditor title="Manual Testimonials" listKey="testimonials" items={settings.testimonials} fields={['name', 'company', 'role', 'image', 'text']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} />
+                    <ListEditor title="Manual Testimonials" listKey="testimonials" items={settings.testimonials} fields={['name', 'company', 'role', 'image', 'text']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} uploadImageToField={uploadImageToField} />
                   </section>
                 )}
               </div>
@@ -328,7 +503,7 @@ export default function AdminPages() {
   )
 }
 
-function ListEditor({ title, listKey, items, fields, updateListItem, addListItem, removeListItem }: any) {
+function ListEditor({ title, listKey, items, fields, updateListItem, addListItem, removeListItem, uploadImageToField }: any) {
   const getFeatures = (item: any) => Array.isArray(item.features)
     ? item.features
     : String(item.features || '').split('\n').filter(Boolean)
@@ -370,13 +545,28 @@ function ListEditor({ title, listKey, items, fields, updateListItem, addListItem
                     <button type="button" onClick={() => addFeature(index)} className="btn-secondary">Add Feature</button>
                   </div>
                 ) : (
-                  <textarea
-                    value={Array.isArray(item[field]) ? item[field].join('\n') : item[field] || ''}
-                    onChange={(e) => updateListItem(listKey, index, field, e.target.value)}
-                    placeholder={field}
-                    className="w-full px-4 py-2 border rounded-lg"
-                    rows={field === 'description' || field === 'text' ? 3 : 1}
-                  />
+                  <div className="space-y-2">
+                    <textarea
+                      value={Array.isArray(item[field]) ? item[field].join('\n') : item[field] || ''}
+                      onChange={(e) => updateListItem(listKey, index, field, e.target.value)}
+                      placeholder={field}
+                      className="w-full px-4 py-2 border rounded-lg"
+                      rows={field === 'description' || field === 'text' ? 3 : 1}
+                    />
+                    {field === 'image' && (
+                      <>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => uploadImageToField((url: string) => updateListItem(listKey, index, 'image', url), e.target.files?.[0])}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                        {item.image && (
+                          <img src={resolveAssetUrl(item.image)} alt={item.title || title} className="h-32 w-full rounded-lg object-cover" />
+                        )}
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
