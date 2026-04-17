@@ -27,12 +27,21 @@ function MediaIcon({ type }: { type: string }) {
   return <FiFileText />
 }
 
+function normalizeTags(value: any) {
+  if (Array.isArray(value)) return value.map(tag => String(tag).trim()).filter(Boolean)
+  return String(value || '').split(',').map(tag => tag.trim()).filter(Boolean)
+}
+
 export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image' }: { isOpen: boolean; onClose: () => void; onSelect: (url: string, asset?: any) => void; type?: string }) {
   const [assets, setAssets] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState(type || 'all')
+  const [folderFilter, setFolderFilter] = useState('all')
+  const [tagFilter, setTagFilter] = useState('all')
+  const [uploadFolder, setUploadFolder] = useState('Uncategorized')
+  const [uploadTags, setUploadTags] = useState('')
   const [error, setError] = useState('')
 
   const fetchAssets = async () => {
@@ -58,9 +67,22 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image' 
 
   const filteredAssets = useMemo(() => {
     const term = query.trim().toLowerCase()
-    if (!term) return assets
-    return assets.filter(asset => [asset.title, asset.originalName, asset.filename, asset.altText, asset.mimeType].some(value => String(value || '').toLowerCase().includes(term)))
-  }, [assets, query])
+    return assets.filter(asset => {
+      const tags = normalizeTags(asset.tags)
+      const matchesFolder = folderFilter === 'all' || String(asset.folder || 'Uncategorized') === folderFilter
+      const matchesTag = tagFilter === 'all' || tags.includes(tagFilter)
+      const matchesQuery = !term || [asset.title, asset.originalName, asset.filename, asset.altText, asset.mimeType, asset.folder, tags.join(' ')].some(value => String(value || '').toLowerCase().includes(term))
+      return matchesFolder && matchesTag && matchesQuery
+    })
+  }, [assets, folderFilter, query, tagFilter])
+
+  const folders = useMemo(() => {
+    return Array.from(new Set(assets.map(asset => String(asset.folder || 'Uncategorized')))).sort((a, b) => a.localeCompare(b))
+  }, [assets])
+
+  const tags = useMemo(() => {
+    return Array.from(new Set(assets.flatMap(asset => normalizeTags(asset.tags)))).sort((a, b) => a.localeCompare(b))
+  }, [assets])
 
   const uploadFiles = async (files: FileList | null) => {
     if (!files?.length) return
@@ -70,7 +92,13 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image' 
       for (const file of Array.from(files)) {
         if (file.size > MAX_UPLOAD_SIZE) throw new Error(`${file.name} is larger than 25 MB.`)
         const dataUrl = await readFileAsDataUrl(file)
-        await adminAPI.uploadMedia({ dataUrl, originalName: file.name, title: file.name })
+        await adminAPI.uploadMedia({
+          dataUrl,
+          originalName: file.name,
+          title: file.name,
+          folder: uploadFolder || 'Uncategorized',
+          tags: normalizeTags(uploadTags)
+        })
       }
       await fetchAssets()
     } catch (err: any) {
@@ -100,13 +128,21 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image' 
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 border-b bg-gray-50 p-4 lg:grid-cols-[12rem_1fr_auto]">
+        <div className="grid grid-cols-1 gap-3 border-b bg-gray-50 p-4 lg:grid-cols-[10rem_10rem_10rem_1fr_auto]">
           <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-lg border bg-white px-4 py-2">
             <option value="all">All media</option>
             <option value="image">Images</option>
             <option value="video">Videos</option>
             <option value="document">Documents</option>
             <option value="other">Other</option>
+          </select>
+          <select value={folderFilter} onChange={(e) => setFolderFilter(e.target.value)} className="rounded-lg border bg-white px-4 py-2">
+            <option value="all">All folders</option>
+            {folders.map(folder => <option key={folder} value={folder}>{folder}</option>)}
+          </select>
+          <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} className="rounded-lg border bg-white px-4 py-2">
+            <option value="all">All tags</option>
+            {tags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
           </select>
           <label className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-gray-600">
             <FiSearch />
@@ -127,6 +163,10 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image' 
               }}
             />
           </label>
+          <div className="grid grid-cols-1 gap-3 lg:col-span-5 lg:grid-cols-2">
+            <input value={uploadFolder} onChange={(e) => setUploadFolder(e.target.value)} placeholder="Upload folder" className="rounded-lg border bg-white px-4 py-2" />
+            <input value={uploadTags} onChange={(e) => setUploadTags(e.target.value)} placeholder="Upload tags, comma separated" className="rounded-lg border bg-white px-4 py-2" />
+          </div>
         </div>
 
         {error && <div className="border-b border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</div>}
@@ -157,6 +197,7 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image' 
                   <div className="space-y-1 p-3">
                     <p className="truncate text-sm font-bold text-gray-900">{asset.title || asset.originalName || asset.filename}</p>
                     <p className="text-xs font-semibold uppercase text-blue-600">{asset.mediaType} / {formatBytes(Number(asset.size || 0))}</p>
+                    <p className="truncate text-xs font-semibold text-gray-600">{asset.folder || 'Uncategorized'}</p>
                     <p className="truncate text-xs text-gray-500">{asset.url}</p>
                   </div>
                 </button>

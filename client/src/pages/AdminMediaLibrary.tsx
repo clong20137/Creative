@@ -29,11 +29,20 @@ function MediaIcon({ type }: { type: string }) {
   return <FiFileText />
 }
 
+function normalizeTags(value: any) {
+  if (Array.isArray(value)) return value.map(tag => String(tag).trim()).filter(Boolean)
+  return String(value || '').split(',').map(tag => tag.trim()).filter(Boolean)
+}
+
 export default function AdminMediaLibrary() {
   const [assets, setAssets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [typeFilter, setTypeFilter] = useState('all')
+  const [folderFilter, setFolderFilter] = useState('all')
+  const [tagFilter, setTagFilter] = useState('all')
+  const [uploadFolder, setUploadFolder] = useState('Uncategorized')
+  const [uploadTags, setUploadTags] = useState('')
   const [query, setQuery] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -55,9 +64,22 @@ export default function AdminMediaLibrary() {
 
   const filteredAssets = useMemo(() => {
     const term = query.trim().toLowerCase()
-    if (!term) return assets
-    return assets.filter(asset => [asset.title, asset.originalName, asset.filename, asset.altText, asset.mimeType].some(value => String(value || '').toLowerCase().includes(term)))
-  }, [assets, query])
+    return assets.filter(asset => {
+      const tags = normalizeTags(asset.tags)
+      const matchesFolder = folderFilter === 'all' || String(asset.folder || 'Uncategorized') === folderFilter
+      const matchesTag = tagFilter === 'all' || tags.includes(tagFilter)
+      const matchesQuery = !term || [asset.title, asset.originalName, asset.filename, asset.altText, asset.mimeType, asset.folder, tags.join(' ')].some(value => String(value || '').toLowerCase().includes(term))
+      return matchesFolder && matchesTag && matchesQuery
+    })
+  }, [assets, folderFilter, query, tagFilter])
+
+  const folders = useMemo(() => {
+    return Array.from(new Set(assets.map(asset => String(asset.folder || 'Uncategorized')))).sort((a, b) => a.localeCompare(b))
+  }, [assets])
+
+  const tags = useMemo(() => {
+    return Array.from(new Set(assets.flatMap(asset => normalizeTags(asset.tags)))).sort((a, b) => a.localeCompare(b))
+  }, [assets])
 
   const uploadFiles = async (files: FileList | null) => {
     if (!files?.length) return
@@ -72,7 +94,9 @@ export default function AdminMediaLibrary() {
         await adminAPI.uploadMedia({
           dataUrl,
           originalName: file.name,
-          title: file.name
+          title: file.name,
+          folder: uploadFolder || 'Uncategorized',
+          tags: normalizeTags(uploadTags)
         })
       }
       setMessage(`${files.length} media file${files.length === 1 ? '' : 's'} uploaded`)
@@ -138,7 +162,7 @@ export default function AdminMediaLibrary() {
             />
           </label>
         </div>
-        <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-[12rem_1fr]">
+        <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[12rem_12rem_12rem_1fr]">
           <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-lg border px-4 py-2">
             <option value="all">All media</option>
             <option value="image">Images</option>
@@ -146,10 +170,22 @@ export default function AdminMediaLibrary() {
             <option value="document">Documents</option>
             <option value="other">Other</option>
           </select>
+          <select value={folderFilter} onChange={(e) => setFolderFilter(e.target.value)} className="rounded-lg border px-4 py-2">
+            <option value="all">All folders</option>
+            {folders.map(folder => <option key={folder} value={folder}>{folder}</option>)}
+          </select>
+          <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} className="rounded-lg border px-4 py-2">
+            <option value="all">All tags</option>
+            {tags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
+          </select>
           <label className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-gray-600">
             <FiSearch />
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search media" className="w-full border-0 bg-transparent p-0 outline-none" />
           </label>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <input value={uploadFolder} onChange={(e) => setUploadFolder(e.target.value)} placeholder="Upload folder" className="rounded-lg border px-4 py-2" />
+          <input value={uploadTags} onChange={(e) => setUploadTags(e.target.value)} placeholder="Upload tags, comma separated" className="rounded-lg border px-4 py-2" />
         </div>
       </section>
 
@@ -179,6 +215,14 @@ export default function AdminMediaLibrary() {
                 </div>
                 <input defaultValue={asset.title || ''} onBlur={(e) => updateAsset(asset, { title: e.target.value })} placeholder="Title" className="w-full rounded-lg border px-3 py-2" />
                 <input defaultValue={asset.altText || ''} onBlur={(e) => updateAsset(asset, { altText: e.target.value })} placeholder="Alt text / description" className="w-full rounded-lg border px-3 py-2" />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input defaultValue={asset.folder || 'Uncategorized'} onBlur={(e) => updateAsset(asset, { folder: e.target.value || 'Uncategorized' })} placeholder="Folder" className="w-full rounded-lg border px-3 py-2" />
+                  <input defaultValue={normalizeTags(asset.tags).join(', ')} onBlur={(e) => updateAsset(asset, { tags: normalizeTags(e.target.value) })} placeholder="Tags" className="w-full rounded-lg border px-3 py-2" />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded bg-gray-100 px-2 py-1 text-xs font-bold text-gray-700">{asset.folder || 'Uncategorized'}</span>
+                  {normalizeTags(asset.tags).map(tag => <span key={tag} className="rounded bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">{tag}</span>)}
+                </div>
                 <p className="break-all rounded-lg bg-gray-50 p-3 text-xs text-gray-600">{asset.url}</p>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => copyUrl(asset.url)} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold hover:bg-gray-50"><FiCopy /> Copy URL</button>

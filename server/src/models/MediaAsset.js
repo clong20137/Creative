@@ -38,6 +38,15 @@ const MediaAsset = sequelize.define('MediaAsset', {
   title: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  folder: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: 'Uncategorized'
+  },
+  tags: {
+    type: DataTypes.JSON,
+    allowNull: true
   }
 }, {
   timestamps: true

@@ -1,5 +1,6 @@
 import express from 'express'
 import sequelize from '../database.js'
+import { DataTypes } from 'sequelize'
 import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -110,6 +111,24 @@ async function ensureMediaAssetsSchema() {
   const table = await queryInterface.describeTable('MediaAssets').catch(() => null)
   if (!table) {
     await MediaAsset.sync()
+  } else {
+    if (!table.folder) {
+      await queryInterface.addColumn('MediaAssets', 'folder', {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: 'Uncategorized'
+      }).catch(error => {
+        if (!String(error?.message || '').includes('Duplicate column')) throw error
+      })
+    }
+    if (!table.tags) {
+      await queryInterface.addColumn('MediaAssets', 'tags', {
+        type: DataTypes.JSON,
+        allowNull: true
+      }).catch(error => {
+        if (!String(error?.message || '').includes('Duplicate column')) throw error
+      })
+    }
   }
 
   mediaAssetsSchemaReady = true
@@ -627,7 +646,9 @@ router.post('/uploads', async (req, res) => {
     await MediaAsset.create({
       ...stored,
       title: req.body.title || req.body.originalName || stored.filename,
-      altText: req.body.altText || ''
+      altText: req.body.altText || '',
+      folder: req.body.folder || 'Uncategorized',
+      tags: Array.isArray(req.body.tags) ? req.body.tags : []
     })
     res.status(201).json({ url: stored.url })
   } catch (error) {
@@ -654,7 +675,9 @@ router.post('/media', async (req, res) => {
     const asset = await MediaAsset.create({
       ...stored,
       title: req.body.title || req.body.originalName || stored.filename,
-      altText: req.body.altText || ''
+      altText: req.body.altText || '',
+      folder: req.body.folder || 'Uncategorized',
+      tags: Array.isArray(req.body.tags) ? req.body.tags : []
     })
     res.status(201).json(asset)
   } catch (error) {
@@ -669,7 +692,9 @@ router.put('/media/:id', async (req, res) => {
     if (!asset) return res.status(404).json({ error: 'Media asset not found' })
     await asset.update({
       title: req.body.title ?? asset.title,
-      altText: req.body.altText ?? asset.altText
+      altText: req.body.altText ?? asset.altText,
+      folder: req.body.folder ?? asset.folder,
+      tags: Array.isArray(req.body.tags) ? req.body.tags : asset.tags
     })
     res.json(asset)
   } catch (error) {
