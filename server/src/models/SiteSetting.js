@@ -174,6 +174,22 @@ const SiteSetting = sequelize.define('SiteSetting', {
     type: DataTypes.STRING,
     allowNull: true
   },
+  googleSearchConsoleProperty: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  googleSearchConsoleServiceAccountJson: {
+    type: DataTypes.TEXT('long'),
+    allowNull: true
+  },
+  pageSpeedUrl: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  pageSpeedApiKey: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   stripePublishableKey: {
     type: DataTypes.STRING,
     allowNull: true

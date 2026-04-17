@@ -24,6 +24,24 @@ async function ensureSiteSettingsSchema() {
     }
   }
 
+  const columns = [
+    ['googleSearchConsoleProperty', { type: DataTypes.STRING, allowNull: true }],
+    ['googleSearchConsoleServiceAccountJson', { type: DataTypes.TEXT('long'), allowNull: true }],
+    ['pageSpeedUrl', { type: DataTypes.STRING, allowNull: true }],
+    ['pageSpeedApiKey', { type: DataTypes.STRING, allowNull: true }]
+  ]
+
+  for (const [name, definition] of columns) {
+    if (!table[name]) {
+      try {
+        await queryInterface.addColumn('SiteSettings', name, definition)
+      } catch (error) {
+        const message = String(error?.message || '')
+        if (!message.includes('Duplicate column')) throw error
+      }
+    }
+  }
+
   siteSettingsSchemaReady = true
 }
 

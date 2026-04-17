@@ -57,6 +57,10 @@ const emptySettings = {
   googleReviewsEnabled: false,
   googlePlaceId: '',
   googleApiKey: '',
+  googleSearchConsoleProperty: '',
+  googleSearchConsoleServiceAccountJson: '',
+  pageSpeedUrl: '',
+  pageSpeedApiKey: '',
   stripePublishableKey: '',
   stripeSecretKey: '',
   stripeWebhookSecret: '',
@@ -67,7 +71,7 @@ const emptySettings = {
   turnstileSecretKey: ''
 }
 
-const tabs = ['General', 'Contact', 'Payments', 'Security']
+const tabs = ['General', 'Contact', 'SEO', 'Payments', 'Security']
 const pageHeaderLabels: Record<string, string> = {
   portfolio: 'Portfolio',
   services: 'Services',
@@ -222,6 +226,7 @@ function getActiveTabPayload(settings: typeof emptySettings, activeTab: string) 
     Services: ['services'],
     Pricing: ['webDesignPackages', 'faqs'],
     Testimonials: ['googleReviewsEnabled', 'googlePlaceId', 'googleApiKey', 'testimonials'],
+    SEO: ['googleSearchConsoleProperty', 'googleSearchConsoleServiceAccountJson', 'pageSpeedUrl', 'pageSpeedApiKey'],
     Payments: ['stripePublishableKey', 'stripeSecretKey', 'stripeWebhookSecret', 'bankName', 'bankAccountLast4', 'payoutInstructions'],
     Security: ['turnstileSiteKey', 'turnstileSecretKey']
   }
@@ -550,6 +555,48 @@ export default function AdminSettings() {
                   <input value={settings.googleApiKey || ''} onChange={(e) => handleChange('googleApiKey', e.target.value)} placeholder="Google API Key" className="px-4 py-2 border rounded-lg" />
                 </div>
                 <ListEditor title="Manual Testimonials" listKey="testimonials" items={settings.testimonials} fields={['name', 'company', 'role', 'image', 'text']} updateListItem={updateListItem} addListItem={addListItem} removeListItem={removeListItem} setError={setError} />
+              </section>
+            )}
+
+            {activeTab === 'SEO' && (
+              <section className="space-y-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Google Search Console and PageSpeed</h2>
+                  <p className="text-gray-600">Connect Search Console with a Google service account. Add that service account email as a user on your Search Console property.</p>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <input
+                    value={settings.googleSearchConsoleProperty || ''}
+                    onChange={(e) => handleChange('googleSearchConsoleProperty', e.target.value)}
+                    placeholder="Search Console property, e.g. https://example.com/ or sc-domain:example.com"
+                    className="px-4 py-2 border rounded-lg md:col-span-2"
+                  />
+                  <input
+                    value={settings.pageSpeedUrl || ''}
+                    onChange={(e) => handleChange('pageSpeedUrl', e.target.value)}
+                    placeholder="PageSpeed URL, e.g. https://example.com/"
+                    className="px-4 py-2 border rounded-lg"
+                  />
+                  <input
+                    value={settings.pageSpeedApiKey || ''}
+                    onChange={(e) => handleChange('pageSpeedApiKey', e.target.value)}
+                    placeholder="PageSpeed API key, optional"
+                    className="px-4 py-2 border rounded-lg"
+                  />
+                </div>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-gray-700">Google service account JSON</span>
+                  <textarea
+                    value={settings.googleSearchConsoleServiceAccountJson || ''}
+                    onChange={(e) => handleChange('googleSearchConsoleServiceAccountJson', e.target.value)}
+                    placeholder='Paste the full service account JSON. Keep this private.'
+                    rows={9}
+                    className="w-full px-4 py-2 border rounded-lg font-mono text-sm"
+                  />
+                </label>
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                  Search Console ranking data uses the last 28 days, ending 2 days ago, because Google Search Console data is delayed.
+                </div>
               </section>
             )}
 

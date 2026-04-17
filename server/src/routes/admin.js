@@ -40,6 +40,7 @@ const uploadsDir = path.resolve(__dirname, '../../uploads')
 const privateUploadsDir = path.resolve(__dirname, '../../private-uploads')
 let mediaAssetsSchemaReady = false
 let protectedContentSchemaReady = false
+let googleAccessTokenCache = { token: '', expiresAt: 0 }
 const mediaMimeExtensions = {
   'image/jpeg': 'jpg',
   'image/jpg': 'jpg',
@@ -66,6 +67,137 @@ function getMediaType(mimeType) {
   if (mimeType.startsWith('video/')) return 'video'
   if (mimeType === 'application/pdf' || mimeType.startsWith('text/') || mimeType.includes('word') || mimeType.includes('excel') || mimeType.includes('zip')) return 'document'
   return 'other'
+}
+
+function getIsoDate(daysAgo = 0) {
+  const date = new Date()
+  date.setDate(date.getDate() - daysAgo)
+  return date.toISOString().slice(0, 10)
+}
+
+function safeNumber(value, fallback = 0) {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : fallback
+}
+
+function parseGoogleServiceAccount(rawValue) {
+  const value = rawValue || process.env.GOOGLE_SEARCH_CONSOLE_SERVICE_ACCOUNT_JSON || ''
+  if (!value) return null
+  try {
+    return JSON.parse(value)
+  } catch (error) {
+    const decoded = Buffer.from(value, 'base64').toString('utf8')
+    return JSON.parse(decoded)
+  }
+}
+
+async function getGoogleAccessToken(settings) {
+  if (googleAccessTokenCache.token && googleAccessTokenCache.expiresAt > Date.now() + 60_000) {
+    return googleAccessTokenCache.token
+  }
+
+  const serviceAccount = parseGoogleServiceAccount(settings.googleSearchConsoleServiceAccountJson)
+  if (!serviceAccount?.client_email || !serviceAccount?.private_key) {
+    const error = new Error('Google Search Console service account JSON is missing or invalid')
+    error.statusCode = 400
+    throw error
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  const assertion = jwt.sign({
+    iss: serviceAccount.client_email,
+    scope: 'https://www.googleapis.com/auth/webmasters.readonly',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600
+  }, serviceAccount.private_key, {
+    algorithm: 'RS256',
+    keyid: serviceAccount.private_key_id
+  })
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion
+    })
+  })
+  const data = await response.json()
+  if (!response.ok) {
+    const error = new Error(data.error_description || data.error || 'Google authentication failed')
+    error.statusCode = response.status
+    throw error
+  }
+
+  googleAccessTokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + safeNumber(data.expires_in, 3600) * 1000
+  }
+  return googleAccessTokenCache.token
+}
+
+async function fetchSearchConsoleRows(settings, dimensions) {
+  const siteUrl = settings.googleSearchConsoleProperty || process.env.GOOGLE_SEARCH_CONSOLE_PROPERTY || ''
+  if (!siteUrl) {
+    const error = new Error('Google Search Console property is not configured')
+    error.statusCode = 400
+    throw error
+  }
+
+  const accessToken = await getGoogleAccessToken(settings)
+  const response = await fetch(`https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      startDate: getIsoDate(28),
+      endDate: getIsoDate(2),
+      dimensions,
+      rowLimit: 10,
+      startRow: 0
+    })
+  })
+  const data = await response.json()
+  if (!response.ok) {
+    const error = new Error(data.error?.message || 'Search Console request failed')
+    error.statusCode = response.status
+    throw error
+  }
+  return data.rows || []
+}
+
+async function fetchPageSpeed(url, apiKey, strategy) {
+  const params = new URLSearchParams({
+    url,
+    strategy,
+    category: 'performance'
+  })
+  params.append('category', 'seo')
+  if (apiKey) params.set('key', apiKey)
+
+  const response = await fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?${params.toString()}`)
+  const data = await response.json()
+  if (!response.ok) {
+    const error = new Error(data.error?.message || 'PageSpeed Insights request failed')
+    error.statusCode = response.status
+    throw error
+  }
+
+  const categories = data.lighthouseResult?.categories || {}
+  const audits = data.lighthouseResult?.audits || {}
+  return {
+    strategy,
+    performance: Math.round(safeNumber(categories.performance?.score) * 100),
+    seo: Math.round(safeNumber(categories.seo?.score) * 100),
+    firstContentfulPaint: audits['first-contentful-paint']?.displayValue || '',
+    largestContentfulPaint: audits['largest-contentful-paint']?.displayValue || '',
+    cumulativeLayoutShift: audits['cumulative-layout-shift']?.displayValue || '',
+    speedIndex: audits['speed-index']?.displayValue || '',
+    checkedAt: new Date().toISOString()
+  }
 }
 
 async function storeUpload(dataUrl, originalName = '', visibility = 'public') {
@@ -298,6 +430,77 @@ router.get('/notifications', async (req, res) => {
     })
   } catch (error) {
     res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/seo-dashboard', async (req, res) => {
+  try {
+    const settings = await getOrCreateSiteSettings()
+    const configured = Boolean(settings.googleSearchConsoleProperty && (settings.googleSearchConsoleServiceAccountJson || process.env.GOOGLE_SEARCH_CONSOLE_SERVICE_ACCOUNT_JSON))
+    const pageSpeedUrl = settings.pageSpeedUrl || process.env.PAGESPEED_URL || (!String(settings.googleSearchConsoleProperty || '').startsWith('sc-domain:') ? settings.googleSearchConsoleProperty : '')
+    const pageSpeedApiKey = settings.pageSpeedApiKey || process.env.PAGESPEED_API_KEY || settings.googleApiKey || ''
+
+    const result = {
+      configured,
+      property: settings.googleSearchConsoleProperty || '',
+      dateRange: { startDate: getIsoDate(28), endDate: getIsoDate(2) },
+      searchConsole: null,
+      pageSpeed: null,
+      errors: []
+    }
+
+    if (configured) {
+      try {
+        const [queryRows, pageRows] = await Promise.all([
+          fetchSearchConsoleRows(settings, ['query']),
+          fetchSearchConsoleRows(settings, ['page'])
+        ])
+        const totals = queryRows.reduce((sum, row) => ({
+          clicks: sum.clicks + safeNumber(row.clicks),
+          impressions: sum.impressions + safeNumber(row.impressions),
+          weightedPosition: sum.weightedPosition + safeNumber(row.position) * safeNumber(row.impressions)
+        }), { clicks: 0, impressions: 0, weightedPosition: 0 })
+
+        result.searchConsole = {
+          clicks: totals.clicks,
+          impressions: totals.impressions,
+          ctr: totals.impressions ? totals.clicks / totals.impressions : 0,
+          averagePosition: totals.impressions ? totals.weightedPosition / totals.impressions : 0,
+          topQueries: queryRows.map(row => ({
+            query: row.keys?.[0] || '',
+            clicks: safeNumber(row.clicks),
+            impressions: safeNumber(row.impressions),
+            ctr: safeNumber(row.ctr),
+            position: safeNumber(row.position)
+          })),
+          topPages: pageRows.map(row => ({
+            page: row.keys?.[0] || '',
+            clicks: safeNumber(row.clicks),
+            impressions: safeNumber(row.impressions),
+            ctr: safeNumber(row.ctr),
+            position: safeNumber(row.position)
+          }))
+        }
+      } catch (error) {
+        result.errors.push(`Search Console: ${error.message}`)
+      }
+    }
+
+    if (pageSpeedUrl) {
+      try {
+        const [mobile, desktop] = await Promise.all([
+          fetchPageSpeed(pageSpeedUrl, pageSpeedApiKey, 'mobile'),
+          fetchPageSpeed(pageSpeedUrl, pageSpeedApiKey, 'desktop')
+        ])
+        result.pageSpeed = { url: pageSpeedUrl, mobile, desktop }
+      } catch (error) {
+        result.errors.push(`PageSpeed: ${error.message}`)
+      }
+    }
+
+    res.json(result)
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 

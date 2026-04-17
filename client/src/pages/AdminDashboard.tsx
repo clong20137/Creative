@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { FiUsers, FiFileText, FiTrendingUp, FiBarChart } from 'react-icons/fi'
+import { FiUsers, FiFileText, FiTrendingUp, FiBarChart, FiSearch, FiZap } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import { adminAPI } from '../services/api'
 import { DashboardStatsSkeleton } from '../components/SkeletonLoaders'
@@ -12,6 +12,7 @@ export default function AdminDashboard() {
   const [subscriptions, setSubscriptions] = useState<any[]>([])
   const [invoices, setInvoices] = useState<any[]>([])
   const [monthlyRevenue, setMonthlyRevenue] = useState<any[]>([])
+  const [seoDashboard, setSeoDashboard] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -25,18 +26,20 @@ export default function AdminDashboard() {
   const fetchStats = useCallback(async () => {
     try {
       setLoading(true)
-      const [data, clientsData, subscriptionsData, invoicesData, revenueData] = await Promise.all([
+      const [data, clientsData, subscriptionsData, invoicesData, revenueData, seoData] = await Promise.all([
         adminAPI.getStats(),
         adminAPI.getClients(),
         adminAPI.getSubscriptions(),
         adminAPI.getInvoices(),
-        adminAPI.getMonthlyRevenue()
+        adminAPI.getMonthlyRevenue(),
+        adminAPI.getSeoDashboard().catch((seoError: any) => ({ errors: [seoError.error || 'Failed to load SEO dashboard'] }))
       ])
       setStats(data)
       setClients(clientsData)
       setSubscriptions(subscriptionsData)
       setInvoices(invoicesData)
       setMonthlyRevenue(revenueData)
+      setSeoDashboard(seoData)
     } catch (err: any) {
       setError(err.error || 'Failed to load stats')
     } finally {
@@ -116,6 +119,8 @@ export default function AdminDashboard() {
           })}
         </div>
 
+        <SeoDashboardPanel data={seoDashboard} />
+
         {stats && (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-12">
             <LineGraph
@@ -176,6 +181,112 @@ function StatCard({ icon: Icon, label, value, color }: any) {
       <p className="text-3xl font-bold text-gray-900">{value}</p>
     </div>
   )
+}
+
+function SeoDashboardPanel({ data }: any) {
+  const search = data?.searchConsole
+  const pageSpeed = data?.pageSpeed
+  const mobile = pageSpeed?.mobile
+  const desktop = pageSpeed?.desktop
+
+  return (
+    <section className="mt-12 space-y-6">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Google Search and Site Health</h2>
+          <p className="text-gray-600">Search Console rankings and PageSpeed Insights for your configured site.</p>
+        </div>
+        {data?.dateRange && (
+          <p className="text-sm font-semibold text-gray-600">
+            {data.dateRange.startDate} to {data.dateRange.endDate}
+          </p>
+        )}
+      </div>
+
+      {data?.errors?.length > 0 && (
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-900">
+          {data.errors.map((message: string) => <p key={message}>{message}</p>)}
+        </div>
+      )}
+
+      {!data?.configured && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-800">
+          Connect Google Search Console in Admin Settings, SEO to show ranking data here.
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <MiniMetric icon={FiSearch} label="Google Clicks" value={search ? Number(search.clicks || 0).toLocaleString() : 'Not connected'} />
+        <MiniMetric icon={FiBarChart} label="Impressions" value={search ? Number(search.impressions || 0).toLocaleString() : 'Not connected'} />
+        <MiniMetric icon={FiTrendingUp} label="Avg Position" value={search?.averagePosition ? search.averagePosition.toFixed(1) : 'Not connected'} />
+        <MiniMetric icon={FiZap} label="Mobile Speed" value={mobile ? `${mobile.performance}/100` : 'No URL'} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <RankingTable title="Top Search Queries" rows={search?.topQueries || []} labelKey="query" />
+        <RankingTable title="Top Ranking Pages" rows={search?.topPages || []} labelKey="page" />
+        <div className="card p-6">
+          <h3 className="mb-4 text-xl font-bold text-gray-900">PageSpeed Insights</h3>
+          {pageSpeed ? (
+            <div className="space-y-4">
+              {[mobile, desktop].filter(Boolean).map((item: any) => (
+                <div key={item.strategy} className="rounded-lg bg-gray-100 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold capitalize text-gray-900">{item.strategy}</p>
+                    <p className="text-sm font-semibold text-gray-600">{new Date(item.checkedAt).toLocaleString()}</p>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                    <Score label="Performance" value={item.performance} />
+                    <Score label="SEO" value={item.seo} />
+                    <p className="text-gray-600">FCP: <strong>{item.firstContentfulPaint || 'n/a'}</strong></p>
+                    <p className="text-gray-600">LCP: <strong>{item.largestContentfulPaint || 'n/a'}</strong></p>
+                    <p className="text-gray-600">CLS: <strong>{item.cumulativeLayoutShift || 'n/a'}</strong></p>
+                    <p className="text-gray-600">Speed: <strong>{item.speedIndex || 'n/a'}</strong></p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-600">Add a PageSpeed URL in Admin Settings, SEO.</p>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function MiniMetric({ icon: Icon, label, value }: any) {
+  return (
+    <div className="card p-5">
+      <Icon className="mb-3 text-blue-600" size={24} />
+      <p className="text-sm text-gray-600">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-gray-900">{value}</p>
+    </div>
+  )
+}
+
+function RankingTable({ title, rows, labelKey }: any) {
+  return (
+    <div className="card p-6">
+      <h3 className="mb-4 text-xl font-bold text-gray-900">{title}</h3>
+      <div className="space-y-3">
+        {rows.slice(0, 8).map((row: any) => (
+          <div key={row[labelKey]} className="rounded-lg bg-gray-100 p-3">
+            <p className="truncate font-semibold text-gray-900" title={row[labelKey]}>{row[labelKey]}</p>
+            <p className="mt-1 text-sm text-gray-600">
+              {Number(row.clicks || 0).toLocaleString()} clicks | {Number(row.impressions || 0).toLocaleString()} impressions | Pos {Number(row.position || 0).toFixed(1)}
+            </p>
+          </div>
+        ))}
+        {rows.length === 0 && <p className="text-gray-600">No Search Console rows available yet.</p>}
+      </div>
+    </div>
+  )
+}
+
+function Score({ label, value }: any) {
+  const color = Number(value) >= 90 ? 'text-green-700' : Number(value) >= 50 ? 'text-yellow-700' : 'text-red-700'
+  return <p className="text-gray-600">{label}: <strong className={color}>{value}/100</strong></p>
 }
 
 function formatChartValue(value: number, currency = false) {
