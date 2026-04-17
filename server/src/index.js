@@ -26,6 +26,7 @@ import ProtectedContentItem from './models/ProtectedContentItem.js'
 import ProtectedContentPurchase from './models/ProtectedContentPurchase.js'
 import SiteDemo from './models/SiteDemo.js'
 import MediaAsset from './models/MediaAsset.js'
+import CRMLead from './models/CRMLead.js'
 
 // Import routes
 import authRoutes from './routes/auth.js'

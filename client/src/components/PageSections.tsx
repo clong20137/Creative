@@ -12,6 +12,7 @@ const pluginLabels: Record<string, string> = {
   booking: 'Booking Appointments',
   events: 'Events',
   'protected-content': 'Protected Content',
+  crm: 'CRM Quote System',
   plugins: 'Website Plugins'
 }
 
@@ -736,6 +737,8 @@ function EmbeddedPluginSection({ section }: { section: any }) {
           setData(await pluginsAPI.getEvents())
         } else if (section.pluginSlug === 'protected-content') {
           setData(await pluginsAPI.getProtectedContentItems())
+        } else if (section.pluginSlug === 'crm') {
+          setData(await pluginsAPI.getCrmPlugin())
         } else {
           setData({ plugins: await pluginsAPI.getPlugins() })
         }
@@ -749,13 +752,22 @@ function EmbeddedPluginSection({ section }: { section: any }) {
     fetchPluginData()
   }, [section.pluginSlug])
 
+  const hasBackground = Boolean(section.imageUrl)
+  const overlayColor = section.overlayColor || '#000000'
+  const overlayOpacity = Math.min(95, Math.max(0, Number(section.overlayOpacity ?? 55)))
+
   return (
-    <section className="section-padding">
-      <div className="container">
+    <section className={`section-padding relative overflow-hidden ${hasBackground ? 'text-white' : ''}`}>
+      {hasBackground && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+      {hasBackground && <div className="absolute inset-0" style={{ backgroundColor: overlayColor, opacity: overlayOpacity / 100 }} />}
+      <div className="container relative">
         {loading ? (
           <div className="text-gray-600">Loading {pluginLabel}...</div>
         ) : (
-          <PluginContent pluginSlug={section.pluginSlug || 'plugins'} data={data} />
+          <>
+            <SectionHeading section={section} fallbackTitle="" />
+            <PluginContent pluginSlug={section.pluginSlug || 'plugins'} data={data} section={section} />
+          </>
         )}
       </div>
     </section>
@@ -980,7 +992,7 @@ function Field({ id, label, type = 'text', value, onChange, required = false }: 
   )
 }
 
-function PluginContent({ pluginSlug, data }: { pluginSlug: string; data: any }) {
+function PluginContent({ pluginSlug, data, section = {} }: { pluginSlug: string; data: any; section?: any }) {
   if (!data) return <div className="text-gray-600">This plugin content is not available right now.</div>
 
   if (pluginSlug === 'restaurant') {
@@ -1088,6 +1100,10 @@ function PluginContent({ pluginSlug, data }: { pluginSlug: string; data: any }) 
     )
   }
 
+  if (pluginSlug === 'crm') {
+    return <CrmQuoteForm section={section} />
+  }
+
   const plugins = data.plugins || []
   if (plugins.length === 0) return <div className="text-gray-600">No plugins are active right now.</div>
 
@@ -1099,6 +1115,119 @@ function PluginContent({ pluginSlug, data }: { pluginSlug: string; data: any }) 
           <p className="mt-2 text-sm text-gray-600">{plugin.description}</p>
         </div>
       ))}
+    </div>
+  )
+}
+
+function CrmQuoteForm({ section }: { section: any }) {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    company: '',
+    serviceTitle: '',
+    budget: '',
+    timeline: '',
+    preferredContact: 'phone',
+    description: ''
+  })
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  const services = String(section.crmServices || 'Heavy-duty towing\nFlatbed towing\nAccident recovery\nEquipment transport')
+    .split('\n')
+    .map((item: string) => item.trim())
+    .filter(Boolean)
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = event.target
+    setFormData(current => ({ ...current, [name]: value }))
+    if (isSubmitted) setIsSubmitted(false)
+    if (error) setError('')
+  }
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setIsSubmitting(true)
+    setError('')
+    try {
+      await pluginsAPI.createCrmLead({
+        ...formData,
+        inquiryType: section.crmInquiryType || 'quote',
+        sourcePage: window.location.pathname,
+        metadata: {
+          sectionTitle: section.title || '',
+          urgency: new FormData(event.currentTarget as HTMLFormElement).get('urgency') || ''
+        }
+      })
+      setIsSubmitted(true)
+      setFormData({ name: '', email: '', phone: '', company: '', serviceTitle: '', budget: '', timeline: '', preferredContact: 'phone', description: '' })
+    } catch (err: any) {
+      setError(err.error || 'We could not send this quote request. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-5">
+      <div className="lg:col-span-2">
+        <div className="rounded-lg bg-gray-950 p-6 text-white shadow-xl">
+          <p className="text-sm font-bold uppercase tracking-wide text-blue-300">{section.crmEyebrow || 'CRM Lead Capture'}</p>
+          <h3 className="mt-3 text-3xl font-bold">{section.crmPanelTitle || 'Capture the details before dispatch.'}</h3>
+          <p className="mt-4 text-gray-200 whitespace-pre-line">{section.crmPanelText || 'Use this form for towing quotes, service calls, inspections, consultations, or any custom intake workflow.'}</p>
+          <div className="mt-6 grid gap-3 text-sm font-semibold">
+            {services.slice(0, 5).map(service => (
+              <div key={service} className="rounded-lg border border-white/15 bg-white/10 p-3">{service}</div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <form onSubmit={handleSubmit} className="rounded-lg bg-white p-6 text-gray-900 shadow-xl lg:col-span-3">
+        <h3 className="text-2xl font-bold">{section.crmFormTitle || 'Request a Quote'}</h3>
+        {isSubmitted && <div className="mt-4 rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">Quote request received. We will follow up soon.</div>}
+        {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Field id="name" label="Name *" value={formData.name} onChange={handleChange} required />
+          <Field id="email" label="Email *" type="email" value={formData.email} onChange={handleChange} required />
+          <Field id="phone" label="Phone" type="tel" value={formData.phone} onChange={handleChange} />
+          <Field id="company" label="Company" value={formData.company} onChange={handleChange} />
+          <div>
+            <label htmlFor="serviceTitle" className="mb-2 block font-semibold text-gray-700">Service Needed</label>
+            <select id="serviceTitle" name="serviceTitle" value={formData.serviceTitle} onChange={handleChange} className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600">
+              <option value="">Select a service...</option>
+              {services.map(service => <option key={service} value={service}>{service}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="urgency" className="mb-2 block font-semibold text-gray-700">Urgency</label>
+            <select id="urgency" name="urgency" className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600">
+              <option value="">Select urgency...</option>
+              <option value="emergency">Emergency</option>
+              <option value="this-week">This week</option>
+              <option value="planning">Planning ahead</option>
+            </select>
+          </div>
+          <Field id="budget" label="Budget / estimated value" value={formData.budget} onChange={handleChange} />
+          <Field id="timeline" label="Timeline" value={formData.timeline} onChange={handleChange} />
+          <div className="md:col-span-2">
+            <label htmlFor="preferredContact" className="mb-2 block font-semibold text-gray-700">Preferred Contact</label>
+            <select id="preferredContact" name="preferredContact" value={formData.preferredContact} onChange={handleChange} className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600">
+              <option value="phone">Phone</option>
+              <option value="email">Email</option>
+              <option value="text">Text</option>
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label htmlFor="description" className="mb-2 block font-semibold text-gray-700">Details *</label>
+            <textarea id="description" name="description" value={formData.description} onChange={handleChange} required rows={5} className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600" placeholder={section.crmDetailsPlaceholder || 'Tell us what happened, what needs moved, pickup/dropoff details, or what you need quoted.'}></textarea>
+          </div>
+        </div>
+        <button type="submit" disabled={isSubmitting} className="btn-primary mt-5 w-full disabled:cursor-not-allowed disabled:opacity-60">
+          {isSubmitting ? 'Sending...' : section.buttonLabel || 'Submit Quote Request'}
+        </button>
+      </form>
     </div>
   )
 }

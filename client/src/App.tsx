@@ -15,6 +15,7 @@ import RealEstateListingDetail from './pages/RealEstateListingDetail'
 import BookingPluginDemo from './pages/BookingPluginDemo'
 import EventsPluginDemo from './pages/EventsPluginDemo'
 import ProtectedContentPluginDemo from './pages/ProtectedContentPluginDemo'
+import CRMPluginDemo from './pages/CRMPluginDemo'
 import RestaurantSiteDemo from './pages/RestaurantSiteDemo'
 import TowingTransportSiteDemo from './pages/TowingTransportSiteDemo'
 import BarbershopSiteDemo from './pages/BarbershopSiteDemo'
@@ -68,6 +69,7 @@ function AppRoutes() {
           <Route path="/plugins/booking" element={<BookingPluginDemo />} />
           <Route path="/plugins/events" element={<EventsPluginDemo />} />
           <Route path="/plugins/protected-content" element={<ProtectedContentPluginDemo />} />
+          <Route path="/plugins/crm" element={<CRMPluginDemo />} />
           <Route path="/site-demos/restaurant" element={<RestaurantSiteDemo />} />
           <Route path="/site-demos/towing-transport" element={<TowingTransportSiteDemo />} />
           <Route path="/site-demos/barbershop" element={<BarbershopSiteDemo />} />

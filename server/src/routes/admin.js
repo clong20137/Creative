@@ -24,8 +24,9 @@ import ProtectedContentItem from '../models/ProtectedContentItem.js'
 import CustomPage from '../models/CustomPage.js'
 import SiteDemo from '../models/SiteDemo.js'
 import MediaAsset from '../models/MediaAsset.js'
+import CRMLead from '../models/CRMLead.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
-import { ensureDemoPlugins, getOrCreateBookingPlugin, getOrCreateEventsPlugin, getOrCreateProtectedContentPlugin, getOrCreateRestaurantPlugin, getOrCreateRealEstatePlugin } from './plugins.js'
+import { ensureDemoPlugins, getOrCreateBookingPlugin, getOrCreateCrmPlugin, getOrCreateEventsPlugin, getOrCreateProtectedContentPlugin, getOrCreateRestaurantPlugin, getOrCreateRealEstatePlugin } from './plugins.js'
 import { ensureSiteDemos } from './site-demos.js'
 import crypto from 'crypto'
 import { base32Encode, verifyTotp } from './auth.js'
@@ -691,6 +692,43 @@ router.delete('/plugins/protected-content/items/:id', async (req, res) => {
 
     await item.destroy()
     res.json({ message: 'Protected content deleted' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/plugins/crm/leads', async (req, res) => {
+  try {
+    await getOrCreateCrmPlugin()
+    const leads = await CRMLead.findAll({ order: [['createdAt', 'DESC']] })
+    res.json(leads)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.put('/plugins/crm/leads/:id', async (req, res) => {
+  try {
+    const lead = await CRMLead.findByPk(req.params.id)
+    if (!lead) return res.status(404).json({ error: 'CRM lead not found' })
+
+    await lead.update({
+      status: req.body.status || lead.status,
+      notes: req.body.notes ?? lead.notes
+    })
+    res.json(lead)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.delete('/plugins/crm/leads/:id', async (req, res) => {
+  try {
+    const lead = await CRMLead.findByPk(req.params.id)
+    if (!lead) return res.status(404).json({ error: 'CRM lead not found' })
+
+    await lead.destroy()
+    res.json({ message: 'CRM lead deleted' })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

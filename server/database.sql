@@ -254,6 +254,26 @@ CREATE TABLE IF NOT EXISTS ProtectedContentPurchases (
   FOREIGN KEY (contentItemId) REFERENCES ProtectedContentItems(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS CRMLeads (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  inquiryType VARCHAR(255) NOT NULL DEFAULT 'quote',
+  status ENUM('new', 'contacted', 'quoted', 'won', 'lost', 'archived') NOT NULL DEFAULT 'new',
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(255),
+  company VARCHAR(255),
+  serviceTitle VARCHAR(255),
+  description TEXT,
+  budget VARCHAR(255),
+  timeline VARCHAR(255),
+  preferredContact VARCHAR(255),
+  sourcePage VARCHAR(255),
+  notes TEXT,
+  metadata JSON,
+  createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- Site Demos Table
 CREATE TABLE IF NOT EXISTS SiteDemos (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -420,6 +440,8 @@ CREATE INDEX idx_protected_content_active ON ProtectedContentItems(isActive);
 CREATE INDEX idx_protected_content_type ON ProtectedContentItems(contentType);
 CREATE INDEX idx_protected_content_purchase_client ON ProtectedContentPurchases(clientId);
 CREATE INDEX idx_protected_content_purchase_item ON ProtectedContentPurchases(contentItemId);
+CREATE INDEX idx_crm_leads_status ON CRMLeads(status);
+CREATE INDEX idx_crm_leads_created ON CRMLeads(createdAt);
 CREATE INDEX idx_site_demos_active ON SiteDemos(isActive);
 CREATE INDEX idx_site_demos_slug ON SiteDemos(slug);
 
@@ -490,6 +512,19 @@ VALUES (
   true,
   true,
   '/plugins/protected-content'
+)
+ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id);
+
+INSERT INTO Plugins (slug, name, description, category, price, isEnabled, isPurchased, demoUrl)
+VALUES (
+  'crm-quote-system',
+  'CRM Quote System',
+  'Capture quote requests and customer leads from custom forms, then manage their status in the admin CRM.',
+  'CRM',
+  599.00,
+  true,
+  true,
+  '/plugins/crm'
 )
 ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id);
 

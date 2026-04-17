@@ -55,7 +55,8 @@ const pluginOptions = [
   { value: 'real-estate', label: 'Real Estate Listings' },
   { value: 'booking', label: 'Booking Appointments' },
   { value: 'events', label: 'Events' },
-  { value: 'protected-content', label: 'Protected Content' }
+  { value: 'protected-content', label: 'Protected Content' },
+  { value: 'crm', label: 'CRM Quote System' }
 ]
 
 const sectionTypeOptions = [
@@ -1704,9 +1705,36 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
         )}
 
         {section.type === 'plugin' && (
-          <select value={section.pluginSlug || 'restaurant'} onChange={(e) => updateSection(index, 'pluginSlug', e.target.value)} className="w-full px-4 py-2 border rounded-lg">
-            {pluginOptions.map(plugin => <option key={plugin.value} value={plugin.value}>{plugin.label}</option>)}
-          </select>
+          <div className="space-y-3">
+            <select value={section.pluginSlug || 'restaurant'} onChange={(e) => updateSection(index, 'pluginSlug', e.target.value)} className="w-full px-4 py-2 border rounded-lg">
+              {pluginOptions.map(plugin => <option key={plugin.value} value={plugin.value}>{plugin.label}</option>)}
+            </select>
+            <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Optional background image URL" className="w-full px-4 py-2 border rounded-lg" />
+            <button type="button" onClick={() => openMediaPicker((url: string) => updateSection(index, 'imageUrl', url), 'image')} className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50"><FiImage /> Choose background</button>
+            <div className="grid grid-cols-[1fr_3rem_6rem] items-center gap-2 text-sm text-gray-700">
+              <span className="font-semibold">Overlay color</span>
+              <input type="color" value={section.overlayColor || '#000000'} onChange={(e) => updateSection(index, 'overlayColor', e.target.value)} className="h-10 w-12 rounded border p-1" />
+              <input value={section.overlayColor || ''} onChange={(e) => updateSection(index, 'overlayColor', e.target.value)} placeholder="#000000" className="w-full rounded-lg border px-2 py-1" />
+            </div>
+            <label className="grid grid-cols-[5rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
+              <span className="font-semibold">Overlay</span>
+              <input type="range" min="0" max="95" step="5" value={Number(section.overlayOpacity ?? 55)} onChange={(e) => updateSection(index, 'overlayOpacity', e.target.value)} className="w-full accent-blue-600" />
+              <div className="flex items-center gap-1">
+                <input type="number" min="0" max="95" value={section.overlayOpacity ?? ''} onChange={(e) => updateSection(index, 'overlayOpacity', e.target.value)} className="w-full rounded-lg border px-2 py-1 text-right" />
+                <span className="text-xs text-gray-500">%</span>
+              </div>
+            </label>
+            {section.pluginSlug === 'crm' && (
+              <>
+                <input value={section.crmEyebrow || ''} onChange={(e) => updateSection(index, 'crmEyebrow', e.target.value)} placeholder="CRM eyebrow" className="w-full px-4 py-2 border rounded-lg" />
+                <input value={section.crmPanelTitle || ''} onChange={(e) => updateSection(index, 'crmPanelTitle', e.target.value)} placeholder="Left panel title" className="w-full px-4 py-2 border rounded-lg" />
+                <textarea value={section.crmPanelText || ''} onChange={(e) => updateSection(index, 'crmPanelText', e.target.value)} placeholder="Left panel text" rows={3} className="w-full px-4 py-2 border rounded-lg" />
+                <input value={section.crmFormTitle || ''} onChange={(e) => updateSection(index, 'crmFormTitle', e.target.value)} placeholder="Form title" className="w-full px-4 py-2 border rounded-lg" />
+                <textarea value={section.crmServices || ''} onChange={(e) => updateSection(index, 'crmServices', e.target.value)} placeholder="Services, one per line" rows={5} className="w-full px-4 py-2 border rounded-lg" />
+                <textarea value={section.crmDetailsPlaceholder || ''} onChange={(e) => updateSection(index, 'crmDetailsPlaceholder', e.target.value)} placeholder="Details field placeholder" rows={3} className="w-full px-4 py-2 border rounded-lg" />
+              </>
+            )}
+          </div>
         )}
       </div>
 
@@ -1937,6 +1965,7 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
                 <select value={section.pluginSlug || 'restaurant'} onChange={(e) => updateSection(index, 'pluginSlug', e.target.value)} className="px-4 py-2 border rounded-lg">
                   {pluginOptions.map(plugin => <option key={plugin.value} value={plugin.value}>{plugin.label}</option>)}
                 </select>
+                <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Optional background image URL" className="px-4 py-2 border rounded-lg" />
               </div>
             )}
           </div>

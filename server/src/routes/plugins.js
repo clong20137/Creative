@@ -11,6 +11,7 @@ import BookingAppointment from '../models/BookingAppointment.js'
 import EventItem from '../models/EventItem.js'
 import ProtectedContentItem from '../models/ProtectedContentItem.js'
 import ProtectedContentPurchase from '../models/ProtectedContentPurchase.js'
+import CRMLead from '../models/CRMLead.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
 
 const router = express.Router()
@@ -302,13 +303,32 @@ export async function getOrCreateProtectedContentPlugin() {
   return plugin
 }
 
+export async function getOrCreateCrmPlugin() {
+  const [plugin] = await Plugin.findOrCreate({
+    where: { slug: 'crm-quote-system' },
+    defaults: {
+      slug: 'crm-quote-system',
+      name: 'CRM Quote System',
+      description: 'Capture quote requests and customer leads from custom forms, then manage their status in the admin CRM.',
+      category: 'CRM',
+      price: 599,
+      isEnabled: true,
+      isPurchased: true,
+      demoUrl: '/plugins/crm'
+    }
+  })
+
+  return plugin
+}
+
 export async function ensureDemoPlugins() {
   await Promise.all([
     getOrCreateRestaurantPlugin(),
     getOrCreateRealEstatePlugin(),
     getOrCreateBookingPlugin(),
     getOrCreateEventsPlugin(),
-    getOrCreateProtectedContentPlugin()
+    getOrCreateProtectedContentPlugin(),
+    getOrCreateCrmPlugin()
   ])
 }
 
@@ -596,6 +616,43 @@ router.get('/protected-content/items/:id', verifyClient, async (req, res) => {
       data.contentUrl = `/api/protected-media/${item.mediaAssetId}`
     }
     res.json(data)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/crm', async (req, res) => {
+  try {
+    const plugin = await getOrCreateCrmPlugin()
+    if (!plugin.isEnabled) return res.status(404).json({ error: 'CRM plugin is not active' })
+    res.json({ plugin })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/crm/leads', async (req, res) => {
+  try {
+    const plugin = await getOrCreateCrmPlugin()
+    if (!plugin.isEnabled) return res.status(404).json({ error: 'CRM plugin is not active' })
+    if (!req.body.name || !req.body.email) return res.status(400).json({ error: 'Name and email are required' })
+
+    const lead = await CRMLead.create({
+      inquiryType: req.body.inquiryType || 'quote',
+      name: req.body.name,
+      email: req.body.email,
+      phone: req.body.phone || '',
+      company: req.body.company || '',
+      serviceTitle: req.body.serviceTitle || '',
+      description: req.body.description || '',
+      budget: req.body.budget || '',
+      timeline: req.body.timeline || '',
+      preferredContact: req.body.preferredContact || '',
+      sourcePage: req.body.sourcePage || '',
+      metadata: req.body.metadata || null
+    })
+
+    res.status(201).json({ message: 'Quote request received', leadId: lead.id })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

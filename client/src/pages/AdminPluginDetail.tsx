@@ -115,6 +115,7 @@ export default function AdminPluginDetail() {
   const [appointments, setAppointments] = useState<any[]>([])
   const [eventItems, setEventItems] = useState<any[]>([])
   const [protectedContentItems, setProtectedContentItems] = useState<any[]>([])
+  const [crmLeads, setCrmLeads] = useState<any[]>([])
   const [menuForm, setMenuForm] = useState(emptyMenuItem)
   const [listingForm, setListingForm] = useState(emptyListing)
   const [bookingForm, setBookingForm] = useState(emptyBookingSlot)
@@ -168,6 +169,9 @@ export default function AdminPluginDetail() {
       }
       if (foundPlugin.slug === 'protected-content') {
         setProtectedContentItems(await adminAPI.getProtectedContentAdminItems())
+      }
+      if (foundPlugin.slug === 'crm-quote-system') {
+        setCrmLeads(await adminAPI.getCrmLeads())
       }
     } catch (err: any) {
       setError(err.error || 'Failed to load plugin')
@@ -493,6 +497,19 @@ export default function AdminPluginDetail() {
     await adminAPI.deleteProtectedContentAdminItem(id)
     setMessage('Protected content deleted')
     setProtectedContentItems(await adminAPI.getProtectedContentAdminItems())
+  }
+
+  const updateCrmLead = async (id: string, updates: any) => {
+    await adminAPI.updateCrmLead(id, updates)
+    setMessage('CRM lead updated')
+    setCrmLeads(await adminAPI.getCrmLeads())
+  }
+
+  const deleteCrmLead = async (id: string) => {
+    if (!confirm('Delete this CRM lead?')) return
+    await adminAPI.deleteCrmLead(id)
+    setMessage('CRM lead deleted')
+    setCrmLeads(await adminAPI.getCrmLeads())
   }
 
   return (
@@ -889,6 +906,49 @@ export default function AdminPluginDetail() {
                   </div>
                 ))}
                 {protectedContentItems.length === 0 && <div className="card p-8 text-center text-gray-600 xl:col-span-3">No protected content yet.</div>}
+              </div>
+            </>
+          )}
+
+          {plugin.slug === 'crm-quote-system' && (
+            <>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">CRM Leads</h2>
+                <p className="text-gray-600">Quote requests submitted through CRM sections appear here.</p>
+              </div>
+
+              <div className="space-y-4">
+                {crmLeads.map((lead) => (
+                  <div key={lead.id} className="card p-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <h3 className="text-xl font-bold text-gray-900">{lead.name}</h3>
+                          <span className="rounded bg-blue-100 px-2 py-1 text-xs font-semibold capitalize text-blue-800">{lead.status}</span>
+                          <span className="rounded bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">{lead.inquiryType || 'quote'}</span>
+                        </div>
+                        <p className="text-gray-600">{lead.email}{lead.phone ? ` | ${lead.phone}` : ''}</p>
+                        {lead.company && <p className="text-gray-600">{lead.company}</p>}
+                        {lead.serviceTitle && <p className="mt-3 font-semibold text-blue-700">Service: {lead.serviceTitle}</p>}
+                        {(lead.budget || lead.timeline || lead.preferredContact) && (
+                          <p className="mt-2 text-sm text-gray-600">
+                            {[lead.budget && `Budget: ${lead.budget}`, lead.timeline && `Timeline: ${lead.timeline}`, lead.preferredContact && `Contact: ${lead.preferredContact}`].filter(Boolean).join(' | ')}
+                          </p>
+                        )}
+                        {lead.description && <p className="mt-3 whitespace-pre-line text-gray-700">{lead.description}</p>}
+                        {lead.sourcePage && <p className="mt-3 text-sm text-gray-500">Source: {lead.sourcePage}</p>}
+                        <p className="mt-2 text-xs text-gray-500">{new Date(lead.createdAt).toLocaleString()}</p>
+                      </div>
+                      <div className="flex shrink-0 flex-col gap-2 sm:min-w-48">
+                        <select value={lead.status || 'new'} onChange={(e) => updateCrmLead(String(lead.id), { status: e.target.value })} className="rounded-lg border px-3 py-2">
+                          {['new', 'contacted', 'quoted', 'won', 'lost', 'archived'].map(status => <option key={status} value={status}>{status}</option>)}
+                        </select>
+                        <button onClick={() => deleteCrmLead(String(lead.id))} className="inline-flex items-center justify-center gap-1 rounded-lg bg-red-100 px-3 py-2 text-red-700 hover:bg-red-200"><FiTrash2 /> Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {crmLeads.length === 0 && <div className="card p-8 text-center text-gray-600">No CRM leads yet.</div>}
               </div>
             </>
           )}

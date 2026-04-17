@@ -155,7 +155,9 @@ export const pluginsAPI = {
   getEvents: () => unwrap<{ plugin: any; events: any[] }>(api.get('/plugins/events')),
   getProtectedContentItems: () => unwrap<{ plugin: any; items: any[] }>(api.get('/plugins/protected-content/items')),
   getProtectedContentItem: (id: string) => unwrap(api.get(`/plugins/protected-content/items/${id}`)),
-  createProtectedContentCheckoutSession: (id: string) => unwrap<{ url: string }>(api.post(`/plugins/protected-content/items/${id}/checkout-session`))
+  createProtectedContentCheckoutSession: (id: string) => unwrap<{ url: string }>(api.post(`/plugins/protected-content/items/${id}/checkout-session`)),
+  getCrmPlugin: () => unwrap<{ plugin: any }>(api.get('/plugins/crm')),
+  createCrmLead: (data: any) => unwrap(api.post('/plugins/crm/leads', data))
 }
 
 export const siteDemosAPI = {
@@ -220,6 +222,9 @@ export const adminAPI = {
   createProtectedContentAdminItem: (data: any) => unwrap(api.post('/admin/plugins/protected-content/items', data)),
   updateProtectedContentAdminItem: (id: string, data: any) => unwrap(api.put(`/admin/plugins/protected-content/items/${id}`, data)),
   deleteProtectedContentAdminItem: (id: string) => unwrap(api.delete(`/admin/plugins/protected-content/items/${id}`)),
+  getCrmLeads: () => unwrap<any[]>(api.get('/admin/plugins/crm/leads')),
+  updateCrmLead: (id: string, data: any) => unwrap(api.put(`/admin/plugins/crm/leads/${id}`, data)),
+  deleteCrmLead: (id: string) => unwrap(api.delete(`/admin/plugins/crm/leads/${id}`)),
   getPages: () => unwrap<any[]>(api.get('/admin/pages')),
   createPage: (data: any) => unwrap(api.post('/admin/pages', data)),
   updatePage: (id: string, data: any) => unwrap(api.put(`/admin/pages/${id}`, data)),
