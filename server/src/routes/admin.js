@@ -22,6 +22,7 @@ import EventItem from '../models/EventItem.js'
 import ProtectedContentItem from '../models/ProtectedContentItem.js'
 import CustomPage from '../models/CustomPage.js'
 import SiteDemo from '../models/SiteDemo.js'
+import MediaAsset from '../models/MediaAsset.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
 import { ensureDemoPlugins, getOrCreateBookingPlugin, getOrCreateEventsPlugin, getOrCreateProtectedContentPlugin, getOrCreateRestaurantPlugin, getOrCreateRealEstatePlugin } from './plugins.js'
 import { ensureSiteDemos } from './site-demos.js'
@@ -34,6 +35,72 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const uploadsDir = path.resolve(__dirname, '../../uploads')
+const mediaMimeExtensions = {
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'image/svg+xml': 'svg',
+  'image/x-icon': 'ico',
+  'image/vnd.microsoft.icon': 'ico',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'video/quicktime': 'mov',
+  'application/pdf': 'pdf',
+  'text/plain': 'txt',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/vnd.ms-excel': 'xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'application/zip': 'zip'
+}
+
+function getMediaType(mimeType) {
+  if (mimeType.startsWith('image/')) return 'image'
+  if (mimeType.startsWith('video/')) return 'video'
+  if (mimeType === 'application/pdf' || mimeType.startsWith('text/') || mimeType.includes('word') || mimeType.includes('excel') || mimeType.includes('zip')) return 'document'
+  return 'other'
+}
+
+async function storeUpload(dataUrl, originalName = '') {
+  const match = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/)
+  if (!match) {
+    const error = new Error('Unsupported upload format')
+    error.statusCode = 400
+    throw error
+  }
+
+  const mimeType = match[1]
+  const extension = mediaMimeExtensions[mimeType]
+  if (!extension) {
+    const error = new Error('This file type is not supported')
+    error.statusCode = 400
+    throw error
+  }
+
+  const buffer = Buffer.from(match[2], 'base64')
+  if (buffer.length > 25 * 1024 * 1024) {
+    const error = new Error('Upload is too large')
+    error.statusCode = 413
+    throw error
+  }
+
+  await fs.mkdir(uploadsDir, { recursive: true })
+  const filename = `${randomUUID()}.${extension}`
+  const filePath = path.join(uploadsDir, filename)
+  await fs.writeFile(filePath, buffer)
+  await fs.access(filePath)
+
+  return {
+    filename,
+    originalName,
+    url: `/api/uploads/${filename}`,
+    mimeType,
+    mediaType: getMediaType(mimeType),
+    size: buffer.length
+  }
+}
 
 router.use((req, res, next) => {
   try {
@@ -542,28 +609,65 @@ router.delete('/plugins/protected-content/items/:id', async (req, res) => {
 
 router.post('/uploads', async (req, res) => {
   try {
-    const match = String(req.body.dataUrl || '').match(/^data:image\/(jpeg|jpg|png|webp|gif|svg\+xml|x-icon|vnd\.microsoft\.icon);base64,(.+)$/)
-    if (!match) return res.status(400).json({ error: 'Only JPG, PNG, WebP, GIF, SVG, and ICO image uploads are supported' })
-
-    const extensionMap = {
-      jpeg: 'jpg',
-      'svg+xml': 'svg',
-      'x-icon': 'ico',
-      'vnd.microsoft.icon': 'ico'
-    }
-    const extension = extensionMap[match[1]] || match[1]
-    const buffer = Buffer.from(match[2], 'base64')
-    if (buffer.length > 500 * 1024) return res.status(413).json({ error: 'Image upload is too large' })
-
-    await fs.mkdir(uploadsDir, { recursive: true })
-    const filename = `${randomUUID()}.${extension}`
-    const filePath = path.join(uploadsDir, filename)
-    await fs.writeFile(filePath, buffer)
-    await fs.access(filePath)
-
-    res.status(201).json({
-      url: `/api/uploads/${filename}`
+    const stored = await storeUpload(req.body.dataUrl, req.body.originalName || '')
+    await MediaAsset.create({
+      ...stored,
+      title: req.body.title || req.body.originalName || stored.filename,
+      altText: req.body.altText || ''
     })
+    res.status(201).json({ url: stored.url })
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message })
+  }
+})
+
+router.get('/media', async (req, res) => {
+  try {
+    const where = {}
+    if (req.query.type && req.query.type !== 'all') where.mediaType = req.query.type
+    const assets = await MediaAsset.findAll({ where, order: [['createdAt', 'DESC']] })
+    res.json(assets)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/media', async (req, res) => {
+  try {
+    const stored = await storeUpload(req.body.dataUrl, req.body.originalName || '')
+    const asset = await MediaAsset.create({
+      ...stored,
+      title: req.body.title || req.body.originalName || stored.filename,
+      altText: req.body.altText || ''
+    })
+    res.status(201).json(asset)
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message })
+  }
+})
+
+router.put('/media/:id', async (req, res) => {
+  try {
+    const asset = await MediaAsset.findByPk(req.params.id)
+    if (!asset) return res.status(404).json({ error: 'Media asset not found' })
+    await asset.update({
+      title: req.body.title ?? asset.title,
+      altText: req.body.altText ?? asset.altText
+    })
+    res.json(asset)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.delete('/media/:id', async (req, res) => {
+  try {
+    const asset = await MediaAsset.findByPk(req.params.id)
+    if (!asset) return res.status(404).json({ error: 'Media asset not found' })
+    const filePath = path.join(uploadsDir, asset.filename)
+    await fs.unlink(filePath).catch(() => {})
+    await asset.destroy()
+    res.json({ message: 'Media asset deleted' })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

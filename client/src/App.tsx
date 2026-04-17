@@ -38,6 +38,7 @@ import AdminMessages from './pages/AdminMessages'
 import AdminPlugins from './pages/AdminPlugins'
 import AdminPluginDetail from './pages/AdminPluginDetail'
 import AdminSiteDemos from './pages/AdminSiteDemos'
+import AdminMediaLibrary from './pages/AdminMediaLibrary'
 import ClientTickets from './pages/ClientTickets'
 import CustomPage from './pages/CustomPage'
 import NotFound from './pages/NotFound'
@@ -89,6 +90,7 @@ function AppRoutes() {
           <Route path="/admin/plugins" element={<AdminPlugins />} />
           <Route path="/admin/plugins/:slug" element={<AdminPluginDetail />} />
           <Route path="/admin/site-demos" element={<AdminSiteDemos />} />
+          <Route path="/admin/media" element={<AdminMediaLibrary />} />
           <Route path="/:slug" element={<CustomPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

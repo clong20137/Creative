@@ -25,6 +25,7 @@ import EventItem from './models/EventItem.js'
 import ProtectedContentItem from './models/ProtectedContentItem.js'
 import ProtectedContentPurchase from './models/ProtectedContentPurchase.js'
 import SiteDemo from './models/SiteDemo.js'
+import MediaAsset from './models/MediaAsset.js'
 
 // Import routes
 import authRoutes from './routes/auth.js'
@@ -107,8 +108,8 @@ app.use(cors({
 }))
 
 app.use('/api/stripe', stripeWebhookRoutes)
-app.use(express.json({ limit: '10mb' }))
-app.use(express.urlencoded({ extended: true }))
+app.use(express.json({ limit: '35mb' }))
+app.use(express.urlencoded({ extended: true, limit: '35mb' }))
 const uploadsPath = path.resolve(__dirname, '../uploads')
 app.use('/uploads', express.static(uploadsPath))
 app.use('/api/uploads', express.static(uploadsPath))
