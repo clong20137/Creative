@@ -136,6 +136,7 @@ export default function RestaurantSiteDemo() {
               <div className="mt-8 flex flex-wrap gap-3">
                 <a href="#menu" className="rounded-lg bg-emerald-500 px-6 py-3 font-bold text-white hover:bg-emerald-400">View Menu</a>
                 <Link to="/contact" className="rounded-lg bg-white px-6 py-3 font-bold text-gray-950 hover:bg-gray-100">Book a Table</Link>
+                <Link to="/contact" className="rounded-lg border border-white/60 px-6 py-3 font-bold text-white hover:bg-white hover:text-gray-950">Use this demo as a starting point</Link>
               </div>
             </div>
           </div>
@@ -278,6 +279,7 @@ export default function RestaurantSiteDemo() {
               ))}
             </div>
             <Link to="/contact" className="mt-6 inline-flex rounded-lg bg-emerald-500 px-6 py-3 font-bold text-white hover:bg-emerald-400">Reserve Now</Link>
+            <Link to="/contact" className="ml-3 mt-6 inline-flex rounded-lg border border-emerald-500 px-6 py-3 font-bold text-emerald-700 hover:bg-emerald-50">Use this demo as a starting point</Link>
           </div>
           <div className="overflow-hidden rounded-lg">
             <img src={resolveAssetUrl(demoImages.patio)} alt="" className="h-full min-h-[28rem] w-full object-cover" />

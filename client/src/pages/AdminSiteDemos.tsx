@@ -172,7 +172,7 @@ export default function AdminSiteDemos() {
                     </Link>
                   )}
                   <button onClick={() => createStarterPage(demo)} className="inline-flex items-center gap-2 btn-secondary">
-                    <FiCopy /> Use as Starter
+                    <FiCopy /> Use this demo as a starting point
                   </button>
                 </div>
               </div>

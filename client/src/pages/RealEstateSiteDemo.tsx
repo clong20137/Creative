@@ -73,6 +73,10 @@ export default function RealEstateSiteDemo() {
               <p className="mt-6 max-w-2xl text-xl text-gray-100">
                 A polished real estate demo for featured listings, search funnels, agent credibility, neighborhood guides, and seller leads.
               </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <a href="#listings" className="rounded-lg bg-cyan-400 px-6 py-3 font-black text-gray-950 hover:bg-cyan-300">View Listings</a>
+                <Link to="/contact" className="rounded-lg border border-white/60 px-6 py-3 font-black text-white hover:bg-white hover:text-gray-950">Use this demo as a starting point</Link>
+              </div>
             </div>
           </div>
         </div>
@@ -194,6 +198,7 @@ export default function RealEstateSiteDemo() {
             <h3 className="text-2xl font-black">Get a Home Value</h3>
             <p className="mt-3 text-gray-300">Demo form route: consultation and seller lead capture.</p>
             <Link to="/contact" className="mt-6 inline-flex rounded-lg bg-cyan-400 px-6 py-3 font-black text-gray-950 hover:bg-cyan-300">Start Valuation</Link>
+            <Link to="/contact" className="ml-3 mt-6 inline-flex rounded-lg border border-cyan-400 px-6 py-3 font-black text-cyan-200 hover:bg-white hover:text-gray-950">Use this demo as a starting point</Link>
           </div>
         </div>
       </section>

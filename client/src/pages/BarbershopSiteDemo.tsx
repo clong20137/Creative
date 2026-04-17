@@ -83,6 +83,7 @@ export default function BarbershopSiteDemo() {
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link to="/contact" className="rounded-lg bg-teal-400 px-6 py-3 font-black text-gray-950 hover:bg-teal-300">Book an Appointment</Link>
                 <a href="#services" className="rounded-lg bg-white px-6 py-3 font-black text-gray-950 hover:bg-gray-100">View Services</a>
+                <Link to="/contact" className="rounded-lg border border-white/60 px-6 py-3 font-black text-white hover:bg-white hover:text-gray-950">Use this demo as a starting point</Link>
               </div>
             </div>
           </div>
@@ -210,7 +211,10 @@ export default function BarbershopSiteDemo() {
             <h2 className="text-4xl font-black md:text-5xl">Book Online, Walk In, or Save a Favorite Barber</h2>
             <p className="mt-4 text-gray-300">Demo address: 1100 Market Row. Demo hours: Tue-Sat, 10am-8pm.</p>
           </div>
-          <Link to="/contact" className="rounded-lg bg-teal-400 px-6 py-4 text-center font-black text-gray-950 hover:bg-teal-300">Book Appointment</Link>
+          <div className="grid gap-3">
+            <Link to="/contact" className="rounded-lg bg-teal-400 px-6 py-4 text-center font-black text-gray-950 hover:bg-teal-300">Book Appointment</Link>
+            <Link to="/contact" className="rounded-lg border border-teal-400 px-6 py-4 text-center font-black text-teal-200 hover:bg-white hover:text-gray-950">Use this demo as a starting point</Link>
+          </div>
         </div>
       </section>
     </div>

@@ -87,6 +87,7 @@ export default function TowingTransportSiteDemo() {
               <div className="mt-8 flex flex-wrap gap-3">
                 <a href="#quote" className="rounded-lg bg-yellow-400 px-6 py-3 font-black text-gray-950 hover:bg-yellow-300">Request a Quote</a>
                 <a href="tel:+15550199411" className="rounded-lg bg-white px-6 py-3 font-black text-gray-950 hover:bg-gray-100">Call Now</a>
+                <Link to="/contact" className="rounded-lg border border-white/60 px-6 py-3 font-black text-white hover:bg-white hover:text-gray-950">Use this demo as a starting point</Link>
               </div>
             </div>
           </div>
@@ -226,6 +227,7 @@ export default function TowingTransportSiteDemo() {
             <p className="mt-3 text-gray-300">Demo phone: (555) 019-9411</p>
             <p className="mt-1 text-gray-300">Demo HQ: Central Midwest</p>
             <Link to="/contact" className="mt-6 inline-flex rounded-lg bg-yellow-400 px-6 py-3 font-black text-gray-950 hover:bg-yellow-300">Contact Dispatch</Link>
+            <Link to="/contact" className="ml-3 mt-6 inline-flex rounded-lg border border-yellow-400 px-6 py-3 font-black text-yellow-700 hover:bg-yellow-50">Use this demo as a starting point</Link>
           </div>
         </div>
       </section>
