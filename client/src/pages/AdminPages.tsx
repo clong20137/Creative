@@ -243,6 +243,11 @@ function makePageSection(type: string) {
     headingLineHeight: '',
     bodyLineHeight: '',
     letterSpacing: '',
+    animationType: '',
+    animationDuration: 650,
+    animationDelay: 0,
+    animationEasing: 'ease-out',
+    animationTrigger: 'viewport',
     itemLimit: type === 'portfolio' ? 8 : 6,
     columns: type === 'portfolio' ? 4 : type === 'columns' ? 2 : 3
   }
@@ -1623,6 +1628,7 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
         <SectionSpacingControls section={section} index={index} updateSection={updateSection} />
         <SectionColorControls section={section} index={index} updateSection={updateSection} />
         <SectionTypographyControls section={section} index={index} updateSection={updateSection} />
+        <SectionAnimationControls section={section} index={index} updateSection={updateSection} />
 
         {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta' || section.type === 'imageOverlay') && (
           <div className="space-y-3">
@@ -2311,6 +2317,76 @@ function SectionTypographyControls({ section, index, updateSection }: any) {
             <div className="flex items-center gap-1">
               <input type="number" min="0" max="12" step="0.1" value={section.letterSpacing ?? ''} onChange={(e) => updateSection(index, 'letterSpacing', e.target.value)} className="w-full rounded-lg border px-2 py-1 text-right" />
               <span className="text-xs text-gray-500">px</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </details>
+  )
+}
+
+function SectionAnimationControls({ section, index, updateSection }: any) {
+  const getNumericValue = (key: string, fallback = 0) => {
+    const value = Number(section[key] ?? fallback)
+    return Number.isFinite(value) ? value : fallback
+  }
+  const animationOptions = [
+    { label: 'None', value: '' },
+    { label: 'Fade in', value: 'fade-in' },
+    { label: 'Slide up', value: 'slide-up' },
+    { label: 'Slide left', value: 'slide-left' },
+    { label: 'Slide right', value: 'slide-right' },
+    { label: 'Zoom in', value: 'zoom-in' }
+  ]
+  const easingOptions = [
+    { label: 'Ease out', value: 'ease-out' },
+    { label: 'Ease in out', value: 'ease-in-out' },
+    { label: 'Smooth', value: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+    { label: 'Snappy', value: 'cubic-bezier(0.16, 1, 0.3, 1)' },
+    { label: 'Linear', value: 'linear' }
+  ]
+
+  return (
+    <details className="mb-3 rounded-lg border bg-white p-3">
+      <summary className="cursor-pointer text-sm font-bold text-gray-800">Animation</summary>
+      <div className="mt-3 space-y-5">
+        <label className="block text-sm font-semibold text-gray-700">
+          Entrance animation
+          <select value={section.animationType || ''} onChange={(e) => updateSection(index, 'animationType', e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
+            {animationOptions.map(option => <option key={option.label} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+
+        <label className="block text-sm font-semibold text-gray-700">
+          Trigger
+          <select value={section.animationTrigger || 'viewport'} onChange={(e) => updateSection(index, 'animationTrigger', e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
+            <option value="viewport">When section enters viewport</option>
+            <option value="load">On page load</option>
+          </select>
+        </label>
+
+        <label className="block text-sm font-semibold text-gray-700">
+          Easing
+          <select value={section.animationEasing || 'ease-out'} onChange={(e) => updateSection(index, 'animationEasing', e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
+            {easingOptions.map(option => <option key={option.label} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+
+        <div className="space-y-3 border-t pt-4">
+          <label className="grid grid-cols-[5rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
+            <span className="font-semibold">Duration</span>
+            <input type="range" min="150" max="2000" step="50" value={getNumericValue('animationDuration', 650)} onChange={(e) => updateSection(index, 'animationDuration', Number(e.target.value))} className="w-full accent-blue-600" />
+            <div className="flex items-center gap-1">
+              <input type="number" min="0" max="5000" step="50" value={section.animationDuration ?? 650} onChange={(e) => updateSection(index, 'animationDuration', Number(e.target.value || 0))} className="w-full rounded-lg border px-2 py-1 text-right" />
+              <span className="text-xs text-gray-500">ms</span>
+            </div>
+          </label>
+          <label className="grid grid-cols-[5rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
+            <span className="font-semibold">Delay</span>
+            <input type="range" min="0" max="1500" step="50" value={getNumericValue('animationDelay', 0)} onChange={(e) => updateSection(index, 'animationDelay', Number(e.target.value))} className="w-full accent-blue-600" />
+            <div className="flex items-center gap-1">
+              <input type="number" min="0" max="5000" step="50" value={section.animationDelay ?? 0} onChange={(e) => updateSection(index, 'animationDelay', Number(e.target.value || 0))} className="w-full rounded-lg border px-2 py-1 text-right" />
+              <span className="text-xs text-gray-500">ms</span>
             </div>
           </label>
         </div>

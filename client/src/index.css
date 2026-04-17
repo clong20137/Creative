@@ -183,6 +183,92 @@ main {
   letter-spacing: var(--section-letter-spacing, 0) !important;
 }
 
+.page-section-animated {
+  opacity: 0;
+  animation-duration: var(--section-animation-duration, 650ms);
+  animation-delay: var(--section-animation-delay, 0ms);
+  animation-timing-function: var(--section-animation-easing, ease-out);
+  animation-fill-mode: both;
+  will-change: opacity, transform;
+}
+
+.page-section-animated.is-visible[data-animation="fade-in"] {
+  animation-name: sectionFadeIn;
+}
+
+.page-section-animated.is-visible[data-animation="slide-up"] {
+  animation-name: sectionSlideUp;
+}
+
+.page-section-animated.is-visible[data-animation="slide-left"] {
+  animation-name: sectionSlideLeft;
+}
+
+.page-section-animated.is-visible[data-animation="slide-right"] {
+  animation-name: sectionSlideRight;
+}
+
+.page-section-animated.is-visible[data-animation="zoom-in"] {
+  animation-name: sectionZoomIn;
+}
+
+@keyframes sectionFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sectionSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sectionSlideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes sectionSlideRight {
+  from {
+    opacity: 0;
+    transform: translateX(-36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes sectionZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-section-animated {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 .container {
   @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
 }

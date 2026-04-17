@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import type { CSSProperties } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { FiArrowRight, FiCamera, FiCheck, FiMail, FiMapPin, FiMonitor, FiPenTool, FiPhone, FiVideo } from 'react-icons/fi'
 import Testimonials from './Testimonials'
@@ -31,10 +31,46 @@ export default function PageSections({ sections }: { sections?: any[] }) {
   return (
     <div>
       {visibleSections.map((section, index) => (
-        <div key={section.id || index} className="page-section-render" style={getSectionSpacingStyle(section)}>
+        <AnimatedSection key={section.id || index} section={section}>
           <PageSection section={section} />
-        </div>
+        </AnimatedSection>
       ))}
+    </div>
+  )
+}
+
+function AnimatedSection({ section, children }: { section: any; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const hasAnimation = Boolean(section.animationType && section.animationType !== 'none')
+  const [isVisible, setIsVisible] = useState(!hasAnimation || section.animationTrigger !== 'viewport')
+
+  useEffect(() => {
+    if (!hasAnimation || section.animationTrigger !== 'viewport') {
+      setIsVisible(true)
+      return
+    }
+
+    const target = ref.current
+    if (!target) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsVisible(true)
+        observer.disconnect()
+      }
+    }, { threshold: 0.18 })
+
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [hasAnimation, section.animationTrigger, section.animationType])
+
+  return (
+    <div
+      ref={ref}
+      className={`page-section-render ${hasAnimation ? 'page-section-animated' : ''} ${isVisible ? 'is-visible' : ''}`}
+      data-animation={section.animationType || 'none'}
+      style={getSectionSpacingStyle(section)}
+    >
+      {children}
     </div>
   )
 }
@@ -84,7 +120,10 @@ function getSectionSpacingStyle(section: any) {
     '--section-button-weight': section.buttonFontWeight || undefined,
     '--section-heading-line-height': toUnitless(section.headingLineHeight),
     '--section-body-line-height': toUnitless(section.bodyLineHeight),
-    '--section-letter-spacing': toPixels(section.letterSpacing)
+    '--section-letter-spacing': toPixels(section.letterSpacing),
+    '--section-animation-duration': `${Number(section.animationDuration || 650)}ms`,
+    '--section-animation-delay': `${Number(section.animationDelay || 0)}ms`,
+    '--section-animation-easing': section.animationEasing || 'ease-out'
   } as CSSProperties
 }
 
