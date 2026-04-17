@@ -233,6 +233,16 @@ function makePageSection(type: string) {
     borderTopRightRadius: '',
     borderBottomRightRadius: '',
     borderBottomLeftRadius: '',
+    textAlign: '',
+    headingFontSize: '',
+    bodyFontSize: '',
+    buttonFontSize: '',
+    headingFontWeight: '',
+    bodyFontWeight: '',
+    buttonFontWeight: '',
+    headingLineHeight: '',
+    bodyLineHeight: '',
+    letterSpacing: '',
     itemLimit: type === 'portfolio' ? 8 : 6,
     columns: type === 'portfolio' ? 4 : type === 'columns' ? 2 : 3
   }
@@ -1612,6 +1622,7 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
 
         <SectionSpacingControls section={section} index={index} updateSection={updateSection} />
         <SectionColorControls section={section} index={index} updateSection={updateSection} />
+        <SectionTypographyControls section={section} index={index} updateSection={updateSection} />
 
         {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta' || section.type === 'imageOverlay') && (
           <div className="space-y-3">
@@ -2210,6 +2221,98 @@ function SectionColorControls({ section, index, updateSection }: any) {
               </div>
             </label>
           ))}
+        </div>
+      </div>
+    </details>
+  )
+}
+
+function SectionTypographyControls({ section, index, updateSection }: any) {
+  const getNumericValue = (key: string, fallback = 0) => {
+    const value = Number(section[key] || fallback)
+    return Number.isFinite(value) ? value : fallback
+  }
+  const fontWeights = [
+    { label: 'Default', value: '' },
+    { label: 'Regular', value: '400' },
+    { label: 'Medium', value: '500' },
+    { label: 'Semibold', value: '600' },
+    { label: 'Bold', value: '700' },
+    { label: 'Black', value: '900' }
+  ]
+
+  const sizeControl = (key: string, label: string, min: number, max: number) => (
+    <label className="grid grid-cols-[5rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
+      <span className="font-semibold">{label}</span>
+      <input type="range" min={min} max={max} step="1" value={getNumericValue(key)} onChange={(e) => updateSection(index, key, e.target.value)} className="w-full accent-blue-600" />
+      <div className="flex items-center gap-1">
+        <input type="number" min={min} max={max * 2} value={section[key] ?? ''} onChange={(e) => updateSection(index, key, e.target.value)} className="w-full rounded-lg border px-2 py-1 text-right" />
+        <span className="text-xs text-gray-500">px</span>
+      </div>
+    </label>
+  )
+
+  return (
+    <details className="mb-3 rounded-lg border bg-white p-3">
+      <summary className="cursor-pointer text-sm font-bold text-gray-800">Typography</summary>
+      <div className="mt-3 space-y-5">
+        <label className="block text-sm font-semibold text-gray-700">
+          Text alignment
+          <select value={section.textAlign || ''} onChange={(e) => updateSection(index, 'textAlign', e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
+            <option value="">Default</option>
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+          </select>
+        </label>
+
+        <div className="space-y-3 border-t pt-4">
+          <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500">Font Size</h4>
+          {sizeControl('headingFontSize', 'Heading', 16, 96)}
+          {sizeControl('bodyFontSize', 'Body', 12, 36)}
+          {sizeControl('buttonFontSize', 'Button', 12, 28)}
+        </div>
+
+        <div className="space-y-3 border-t pt-4">
+          <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500">Weight</h4>
+          {[
+            ['headingFontWeight', 'Heading'],
+            ['bodyFontWeight', 'Body'],
+            ['buttonFontWeight', 'Button']
+          ].map(([key, label]) => (
+            <label key={key} className="grid grid-cols-[5rem_1fr] items-center gap-3 text-sm text-gray-700">
+              <span className="font-semibold">{label}</span>
+              <select value={section[key] || ''} onChange={(e) => updateSection(index, key, e.target.value)} className="rounded-lg border px-3 py-2">
+                {fontWeights.map(weight => <option key={weight.label} value={weight.value}>{weight.label}</option>)}
+              </select>
+            </label>
+          ))}
+        </div>
+
+        <div className="space-y-3 border-t pt-4">
+          <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500">Line Height</h4>
+          <label className="grid grid-cols-[5rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
+            <span className="font-semibold">Heading</span>
+            <input type="range" min="0.8" max="2" step="0.05" value={getNumericValue('headingLineHeight', 0)} onChange={(e) => updateSection(index, 'headingLineHeight', e.target.value)} className="w-full accent-blue-600" />
+            <input type="number" min="0.8" max="3" step="0.05" value={section.headingLineHeight ?? ''} onChange={(e) => updateSection(index, 'headingLineHeight', e.target.value)} className="w-full rounded-lg border px-2 py-1 text-right" />
+          </label>
+          <label className="grid grid-cols-[5rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
+            <span className="font-semibold">Body</span>
+            <input type="range" min="1" max="2.4" step="0.05" value={getNumericValue('bodyLineHeight', 0)} onChange={(e) => updateSection(index, 'bodyLineHeight', e.target.value)} className="w-full accent-blue-600" />
+            <input type="number" min="1" max="3" step="0.05" value={section.bodyLineHeight ?? ''} onChange={(e) => updateSection(index, 'bodyLineHeight', e.target.value)} className="w-full rounded-lg border px-2 py-1 text-right" />
+          </label>
+        </div>
+
+        <div className="space-y-3 border-t pt-4">
+          <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500">Letter Spacing</h4>
+          <label className="grid grid-cols-[5rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
+            <span className="font-semibold">Text</span>
+            <input type="range" min="0" max="6" step="0.1" value={getNumericValue('letterSpacing')} onChange={(e) => updateSection(index, 'letterSpacing', e.target.value)} className="w-full accent-blue-600" />
+            <div className="flex items-center gap-1">
+              <input type="number" min="0" max="12" step="0.1" value={section.letterSpacing ?? ''} onChange={(e) => updateSection(index, 'letterSpacing', e.target.value)} className="w-full rounded-lg border px-2 py-1 text-right" />
+              <span className="text-xs text-gray-500">px</span>
+            </div>
+          </label>
         </div>
       </div>
     </details>

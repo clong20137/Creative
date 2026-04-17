@@ -153,6 +153,36 @@ main {
   color: var(--section-button-text, #ffffff) !important;
 }
 
+.page-section-render {
+  text-align: var(--section-text-align, inherit);
+}
+
+.page-section-render h1,
+.page-section-render h2,
+.page-section-render h3,
+.page-section-render h4 {
+  font-size: var(--section-heading-size, inherit) !important;
+  font-weight: var(--section-heading-weight, inherit) !important;
+  line-height: var(--section-heading-line-height, inherit) !important;
+  letter-spacing: var(--section-letter-spacing, 0) !important;
+}
+
+.page-section-render p,
+.page-section-render li,
+.page-section-render figcaption {
+  font-size: var(--section-body-size, inherit) !important;
+  font-weight: var(--section-body-weight, inherit) !important;
+  line-height: var(--section-body-line-height, inherit) !important;
+  letter-spacing: var(--section-letter-spacing, 0) !important;
+}
+
+.page-section-render a,
+.page-section-render button {
+  font-size: var(--section-button-size, inherit) !important;
+  font-weight: var(--section-button-weight, inherit) !important;
+  letter-spacing: var(--section-letter-spacing, 0) !important;
+}
+
 .container {
   @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
 }

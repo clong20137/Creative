@@ -45,6 +45,11 @@ function getSectionSpacingStyle(section: any) {
     const number = Number(value)
     return Number.isFinite(number) ? `${number}px` : undefined
   }
+  const toUnitless = (value: any) => {
+    if (value === '' || value === null || value === undefined) return undefined
+    const number = Number(value)
+    return Number.isFinite(number) ? String(number) : undefined
+  }
 
   return {
     marginTop: toPixels(section.marginTop),
@@ -69,7 +74,17 @@ function getSectionSpacingStyle(section: any) {
     '--section-heading-color': section.headingColor || undefined,
     '--section-text-color': section.textColor || undefined,
     '--section-button-bg': section.buttonBackgroundColor || undefined,
-    '--section-button-text': section.buttonTextColor || undefined
+    '--section-button-text': section.buttonTextColor || undefined,
+    '--section-text-align': section.textAlign || undefined,
+    '--section-heading-size': toPixels(section.headingFontSize),
+    '--section-body-size': toPixels(section.bodyFontSize),
+    '--section-button-size': toPixels(section.buttonFontSize),
+    '--section-heading-weight': section.headingFontWeight || undefined,
+    '--section-body-weight': section.bodyFontWeight || undefined,
+    '--section-button-weight': section.buttonFontWeight || undefined,
+    '--section-heading-line-height': toUnitless(section.headingLineHeight),
+    '--section-body-line-height': toUnitless(section.bodyLineHeight),
+    '--section-letter-spacing': toPixels(section.letterSpacing)
   } as CSSProperties
 }
 
