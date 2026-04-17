@@ -24,6 +24,7 @@ import MowingBusinessSiteDemo from './pages/MowingBusinessSiteDemo'
 import Login from './pages/Login'
 import ClientDashboard from './pages/ClientDashboard'
 import ClientPortalBilling from './pages/ClientPortalBilling'
+import ClientPortalPlugins from './pages/ClientPortalPlugins'
 import ClientPortalSettings from './pages/ClientPortalSettings'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminClients from './pages/AdminClients'
@@ -77,6 +78,7 @@ function AppRoutes() {
           <Route path="/login" element={<Login />} />
           <Route path="/client-dashboard" element={<ClientDashboard />} />
           <Route path="/client-dashboard/billing" element={<ClientPortalBilling />} />
+          <Route path="/client-dashboard/plugins" element={<ClientPortalPlugins />} />
           <Route path="/client-dashboard/settings" element={<ClientPortalSettings />} />
           <Route path="/client-dashboard/tickets" element={<ClientTickets />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />

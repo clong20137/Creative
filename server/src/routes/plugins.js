@@ -377,8 +377,8 @@ router.post('/:slug/checkout-session', verifyClient, async (req, res) => {
         pluginSlug: plugin.slug,
         clientId: String(req.userId)
       },
-      success_url: `${frontendUrl}/client-dashboard/billing?plugin_payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${frontendUrl}/client-dashboard/billing?plugin_payment=cancelled`
+      success_url: `${frontendUrl}/client-dashboard/plugins?plugin_payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${frontendUrl}/client-dashboard/plugins?plugin_payment=cancelled`
     })
 
     const pendingPurchase = await ClientPluginPurchase.findOne({

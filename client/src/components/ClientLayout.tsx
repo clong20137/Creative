@@ -1,11 +1,12 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { FiFileText, FiHelpCircle, FiHome, FiLogOut, FiSettings } from 'react-icons/fi'
+import { FiFileText, FiGrid, FiHelpCircle, FiHome, FiLogOut, FiSettings } from 'react-icons/fi'
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 
 const clientLinks = [
   { label: 'Dashboard', path: '/client-dashboard', icon: FiHome },
   { label: 'Billing', path: '/client-dashboard/billing', icon: FiFileText },
+  { label: 'Plugins', path: '/client-dashboard/plugins', icon: FiGrid },
   { label: 'Tickets', path: '/client-dashboard/tickets', icon: FiHelpCircle },
   { label: 'Settings', path: '/client-dashboard/settings', icon: FiSettings }
 ]
