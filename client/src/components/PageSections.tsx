@@ -1018,11 +1018,11 @@ function ContactInfo({ icon, label, value, note }: { icon: React.ReactNode; labe
   )
 }
 
-function Field({ id, label, type = 'text', value, onChange, required = false }: any) {
+function Field({ id, label, type = 'text', value, onChange, required = false, labelStyle, inputStyle }: any) {
   return (
     <div>
-      <label htmlFor={id} className="mb-2 block font-semibold text-gray-700">{label}</label>
-      <input type={type} id={id} name={id} value={value} onChange={onChange} required={required} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600" />
+      <label htmlFor={id} className="mb-2 block font-semibold text-gray-700" style={labelStyle}>{label}</label>
+      <input type={type} id={id} name={id} value={value} onChange={onChange} required={required} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600" style={inputStyle} />
     </div>
   )
 }
@@ -1226,6 +1226,10 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
     backgroundSize: section.crmBackgroundImageUrl ? 'cover' : undefined,
     backgroundPosition: section.crmBackgroundImageUrl ? 'center' : undefined
   } : undefined
+  const crmTextColor = section.crmTextColor || '#111827'
+  const crmMutedTextColor = section.crmTextColor || '#374151'
+  const crmFieldStyle = compact ? { color: crmTextColor } : undefined
+  const crmLabelStyle = compact ? { color: crmMutedTextColor } : undefined
 
   return (
     <div className={`mx-auto grid ${compact ? 'max-w-none grid-cols-1' : 'max-w-6xl grid-cols-1 gap-8 lg:grid-cols-5'}`}>
@@ -1241,25 +1245,25 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
           </div>
         </div>
       </div>}
-      <form onSubmit={handleSubmit} className={`${section.crmFormCardClassName || 'rounded-lg bg-white p-6'} text-gray-900 shadow-xl ${compact ? 'rounded-lg p-5 md:p-6' : 'lg:col-span-3'}`} style={formBackgroundStyle}>
-        <h3 className={`font-bold ${compact ? 'text-xl md:text-2xl' : 'text-2xl'}`}>{section.crmFormTitle || (compact ? 'Send us a Message' : 'Request a Quote')}</h3>
+      <form onSubmit={handleSubmit} className={`${section.crmFormCardClassName || 'rounded-lg bg-white p-6'} text-gray-900 shadow-xl ${compact ? 'rounded-lg p-5 md:p-6' : 'lg:col-span-3'}`} style={{ ...formBackgroundStyle, color: crmTextColor }}>
+        <h3 className={`font-bold ${compact ? 'text-xl md:text-2xl' : 'text-2xl'}`} style={{ color: crmTextColor }}>{section.crmFormTitle || (compact ? 'Send us a Message' : 'Request a Quote')}</h3>
         {isSubmitted && <div className="mt-4 rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">{compact ? 'Message sent. Thank you for reaching out. We will get back to you soon.' : 'Quote request received. We will follow up soon.'}</div>}
         {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
         <div className={`mt-6 grid grid-cols-1 gap-4 ${compact ? 'md:grid-cols-2' : 'md:grid-cols-2'}`}>
-          <Field id="name" label={compact ? 'Your Name *' : 'Name *'} value={formData.name} onChange={handleChange} required />
-          <Field id="email" label={compact ? 'Email Address *' : 'Email *'} type="email" value={formData.email} onChange={handleChange} required />
-          <Field id="phone" label={compact ? 'Phone Number' : 'Phone'} type="tel" value={formData.phone} onChange={handleChange} />
-          <Field id="company" label="Company" value={formData.company} onChange={handleChange} />
+          <Field id="name" label={compact ? 'Your Name *' : 'Name *'} value={formData.name} onChange={handleChange} required labelStyle={crmLabelStyle} inputStyle={crmFieldStyle} />
+          <Field id="email" label={compact ? 'Email Address *' : 'Email *'} type="email" value={formData.email} onChange={handleChange} required labelStyle={crmLabelStyle} inputStyle={crmFieldStyle} />
+          <Field id="phone" label={compact ? 'Phone Number' : 'Phone'} type="tel" value={formData.phone} onChange={handleChange} labelStyle={crmLabelStyle} inputStyle={crmFieldStyle} />
+          <Field id="company" label="Company" value={formData.company} onChange={handleChange} labelStyle={crmLabelStyle} inputStyle={crmFieldStyle} />
           <div>
-            <label htmlFor="service" className="mb-2 block font-semibold text-gray-700">{compact ? 'Service Interested In *' : 'Service Needed'}</label>
-            <select id="service" name="service" value={formData.service} onChange={handleChange} required={compact} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <label htmlFor="service" className="mb-2 block font-semibold text-gray-700" style={crmLabelStyle}>{compact ? 'Service Interested In *' : 'Service Needed'}</label>
+            <select id="service" name="service" value={formData.service} onChange={handleChange} required={compact} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600" style={crmFieldStyle}>
               <option value="">Select a service...</option>
-              {services.map(service => <option key={service} value={service} className="text-gray-900">{service}</option>)}
+              {services.map(service => <option key={service} value={service}>{service}</option>)}
             </select>
           </div>
           <div className="md:col-span-2">
-            <label htmlFor="message" className="mb-2 block font-semibold text-gray-700">{compact ? 'Message *' : 'Details *'}</label>
-            <textarea id="message" name="message" value={formData.message} onChange={handleChange} required rows={compact ? 4 : 5} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600" placeholder={section.crmDetailsPlaceholder || (compact ? 'Tell us about your project...' : 'Tell us what you need quoted.' )}></textarea>
+            <label htmlFor="message" className="mb-2 block font-semibold text-gray-700" style={crmLabelStyle}>{compact ? 'Message *' : 'Details *'}</label>
+            <textarea id="message" name="message" value={formData.message} onChange={handleChange} required rows={compact ? 4 : 5} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600" style={crmFieldStyle} placeholder={section.crmDetailsPlaceholder || (compact ? 'Tell us about your project...' : 'Tell us what you need quoted.' )}></textarea>
           </div>
         </div>
         {compact && settings.turnstileSiteKey && <div className="mt-4"><TurnstileWidget siteKey={settings.turnstileSiteKey} onVerify={setTurnstileToken} /></div>}
