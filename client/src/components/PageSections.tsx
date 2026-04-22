@@ -168,7 +168,7 @@ function PageSection({ section }: { section: any }) {
     return (
       <section className="section-padding">
         <div className={`container ${alignment.container}`}>
-          <h2 className="section-title">{section.title}</h2>
+          <h2 className="mb-12 text-4xl font-bold text-gray-900">{section.title}</h2>
           {section.body && <RichTextContent html={section.body} className={`${alignment.body} -mt-8 max-w-3xl text-lg text-gray-600`.trim()} />}
         </div>
       </section>

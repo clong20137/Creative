@@ -19,6 +19,10 @@ const CustomPage = sequelize.define('CustomPage', {
     type: DataTypes.TEXT,
     allowNull: true
   },
+  showPageHeader: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
   content: {
     type: DataTypes.TEXT('long'),
     allowNull: true

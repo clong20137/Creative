@@ -379,7 +379,7 @@ function RichTextEditorField({ label, value, onChange, placeholder = 'Start typi
     const editor = editorRef.current
     if (!editor) return
     editor.focus()
-    document.execCommand('styleWithCSS', false, 'true')
+    document.execCommand('styleWithCSS', false, command === 'foreColor' ? 'true' : 'false')
     document.execCommand(command, false, commandValue)
     emitChange()
   }
@@ -401,7 +401,7 @@ function RichTextEditorField({ label, value, onChange, placeholder = 'Start typi
     if (!editor) return
     editor.focus()
     restoreSelection()
-    document.execCommand('styleWithCSS', false, 'true')
+    document.execCommand('styleWithCSS', false, 'false')
     if (linkUrl.trim()) {
       document.execCommand('createLink', false, linkUrl.trim())
       const activeLink = getActiveLink()
@@ -503,6 +503,7 @@ export default function AdminPages() {
     slug: '',
     headerTitle: '',
     headerSubtitle: '',
+    showPageHeader: true,
     content: '',
     sections: [],
     metaTitle: '',
@@ -628,6 +629,7 @@ export default function AdminPages() {
       slug: '',
       headerTitle: '',
       headerSubtitle: '',
+      showPageHeader: true,
       content: '',
       sections: [],
       metaTitle: '',
@@ -663,7 +665,7 @@ export default function AdminPages() {
         setEditingSectionId('')
         setActiveTab('Custom Pages')
         setSelectedPageId(String(customPage.id))
-        setPageDraft({ ...customPage, sections: Array.isArray(customPage.sections) ? customPage.sections : [] })
+        setPageDraft({ ...customPage, showPageHeader: customPage.showPageHeader !== false, sections: Array.isArray(customPage.sections) ? customPage.sections : [] })
       }
     }
   }, [location.search, loading, pages])
@@ -976,7 +978,7 @@ export default function AdminPages() {
         return [...withoutSaved, savedPage].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
       })
       setSelectedPageId(String(savedPage.id))
-      setPageDraft(savedPage)
+      setPageDraft({ ...savedPage, showPageHeader: savedPage.showPageHeader !== false })
       setSavedSnapshot(JSON.stringify(savedPage))
       setUndoStack([])
       setRedoStack([])
@@ -2726,6 +2728,10 @@ function CustomPageSettingsEditor({ pageDraft, updatePageDraft }: any) {
         <input value={pageDraft.metaTitle || ''} onChange={(e) => updatePageDraft('metaTitle', e.target.value)} placeholder="SEO title" className="px-4 py-2 border rounded-lg" />
         <input value={pageDraft.metaDescription || ''} onChange={(e) => updatePageDraft('metaDescription', e.target.value)} placeholder="SEO description" className="px-4 py-2 border rounded-lg" />
         <textarea value={pageDraft.content || ''} onChange={(e) => updatePageDraft('content', e.target.value)} placeholder="Fallback page content" rows={5} className="px-4 py-2 border rounded-lg" />
+        <label className="inline-flex items-center gap-2 rounded-lg border px-4 py-3 font-semibold text-gray-700">
+          <input type="checkbox" checked={pageDraft.showPageHeader !== false} onChange={(e) => updatePageDraft('showPageHeader', e.target.checked)} />
+          Show top page header banner
+        </label>
       </div>
     </section>
   )

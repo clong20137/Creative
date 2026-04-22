@@ -54,12 +54,14 @@ export default function CustomPage() {
 
   return (
     <div>
-      <section className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-20">
-        <div className="container text-center">
-          <h1 className="text-5xl font-bold mb-6">{page.headerTitle || page.title}</h1>
-          {page.headerSubtitle && <RichTextContent html={page.headerSubtitle} className="mx-auto max-w-3xl text-xl" />}
-        </div>
-      </section>
+      {page.showPageHeader !== false && (
+        <section className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-20">
+          <div className="container text-center">
+            <h1 className="mb-6 text-5xl font-bold">{page.headerTitle || page.title}</h1>
+            {page.headerSubtitle && <RichTextContent html={page.headerSubtitle} className="mx-auto max-w-3xl text-xl" />}
+          </div>
+        </section>
+      )}
 
       {sections.length > 0 ? (
         <PageSections sections={sections} />
