@@ -227,6 +227,7 @@ function makePageSection(type: string) {
     crmBackgroundColor: '',
     crmBackgroundImageUrl: '',
     crmTextColor: '',
+    crmInputTextColor: '',
     marginTop: '',
     marginRight: '',
     marginBottom: '',
@@ -1858,6 +1859,11 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
                       <span className="font-semibold">CRM font color</span>
                       <input type="color" value={section.crmTextColor || '#111827'} onChange={(e) => updateSection(index, 'crmTextColor', e.target.value)} className="h-10 w-12 rounded border p-1" />
                       <input value={section.crmTextColor || ''} onChange={(e) => updateSection(index, 'crmTextColor', e.target.value)} placeholder="#111827" className="w-full rounded-lg border px-2 py-1" />
+                    </div>
+                    <div className="grid grid-cols-[1fr_3rem_6rem] items-center gap-2 text-sm text-gray-700">
+                      <span className="font-semibold">CRM input color</span>
+                      <input type="color" value={section.crmInputTextColor || '#111827'} onChange={(e) => updateSection(index, 'crmInputTextColor', e.target.value)} className="h-10 w-12 rounded border p-1" />
+                      <input value={section.crmInputTextColor || ''} onChange={(e) => updateSection(index, 'crmInputTextColor', e.target.value)} placeholder="#111827" className="w-full rounded-lg border px-2 py-1" />
                     </div>
                     <input value={section.crmBackgroundImageUrl || ''} onChange={(e) => updateSection(index, 'crmBackgroundImageUrl', e.target.value)} placeholder="CRM background image URL" className="w-full px-4 py-2 border rounded-lg" />
                     <button type="button" onClick={() => openMediaPicker((url: string) => updateSection(index, 'crmBackgroundImageUrl', url), 'image')} className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50"><FiImage /> Choose CRM background</button>

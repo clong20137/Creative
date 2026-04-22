@@ -1228,7 +1228,8 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
   } : undefined
   const crmTextColor = section.crmTextColor || '#111827'
   const crmMutedTextColor = section.crmTextColor || '#374151'
-  const crmFieldStyle = compact ? { color: crmTextColor } : undefined
+  const crmInputTextColor = section.crmInputTextColor || '#111827'
+  const crmFieldStyle = compact ? { color: crmInputTextColor } : undefined
   const crmLabelStyle = compact ? { color: crmMutedTextColor } : undefined
 
   return (
