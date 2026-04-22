@@ -378,7 +378,7 @@ function RichTextEditorField({ label, value, onChange, placeholder = 'Start typi
     const editor = editorRef.current
     if (!editor) return
     editor.focus()
-    document.execCommand('styleWithCSS', false, true)
+    document.execCommand('styleWithCSS', false, 'true')
     document.execCommand(command, false, commandValue)
     emitChange()
   }
@@ -400,7 +400,7 @@ function RichTextEditorField({ label, value, onChange, placeholder = 'Start typi
     if (!editor) return
     editor.focus()
     restoreSelection()
-    document.execCommand('styleWithCSS', false, true)
+    document.execCommand('styleWithCSS', false, 'true')
     if (linkUrl.trim()) {
       document.execCommand('createLink', false, linkUrl.trim())
       const activeLink = getActiveLink()
