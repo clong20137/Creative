@@ -41,6 +41,7 @@ const privateUploadsDir = path.resolve(__dirname, '../../private-uploads')
 let mediaAssetsSchemaReady = false
 let protectedContentSchemaReady = false
 let customPagesSchemaReady = false
+let subscriptionSchemaReady = false
 let googleAccessTokenCache = { token: '', expiresAt: 0 }
 const seoDashboardCache = new Map()
 const mediaMimeExtensions = {
@@ -120,6 +121,104 @@ async function ensureCustomPagesSchema() {
   }
 
   customPagesSchemaReady = true
+}
+
+async function ensureSubscriptionSchema() {
+  if (subscriptionSchemaReady) return
+
+  const queryInterface = Subscription.sequelize.getQueryInterface()
+  const subscriptionTable = await queryInterface.describeTable('Subscriptions').catch(() => null)
+  const planTable = await queryInterface.describeTable('SubscriptionPlans').catch(() => null)
+
+  if (planTable) {
+    if (!planTable.productType) {
+      await queryInterface.addColumn('SubscriptionPlans', 'productType', {
+        type: DataTypes.ENUM('service', 'cms-license'),
+        allowNull: false,
+        defaultValue: 'service'
+      }).catch((error) => {
+        if (!String(error?.message || '').includes('Duplicate column')) throw error
+      })
+    }
+    if (!planTable.updateChannel) {
+      await queryInterface.addColumn('SubscriptionPlans', 'updateChannel', {
+        type: DataTypes.ENUM('stable', 'early-access'),
+        allowNull: false,
+        defaultValue: 'stable'
+      }).catch((error) => {
+        if (!String(error?.message || '').includes('Duplicate column')) throw error
+      })
+    }
+    if (!planTable.includedUpdates) {
+      await queryInterface.addColumn('SubscriptionPlans', 'includedUpdates', {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
+      }).catch((error) => {
+        if (!String(error?.message || '').includes('Duplicate column')) throw error
+      })
+    }
+  }
+
+  if (subscriptionTable) {
+    if (!subscriptionTable.productType) {
+      await queryInterface.addColumn('Subscriptions', 'productType', {
+        type: DataTypes.ENUM('service', 'cms-license'),
+        allowNull: false,
+        defaultValue: 'service'
+      }).catch((error) => {
+        if (!String(error?.message || '').includes('Duplicate column')) throw error
+      })
+    }
+    if (!subscriptionTable.licenseKey) {
+      await queryInterface.addColumn('Subscriptions', 'licenseKey', {
+        type: DataTypes.STRING,
+        allowNull: true
+      }).catch((error) => {
+        if (!String(error?.message || '').includes('Duplicate column')) throw error
+      })
+    }
+    if (!subscriptionTable.licensedDomain) {
+      await queryInterface.addColumn('Subscriptions', 'licensedDomain', {
+        type: DataTypes.STRING,
+        allowNull: true
+      }).catch((error) => {
+        if (!String(error?.message || '').includes('Duplicate column')) throw error
+      })
+    }
+    if (!subscriptionTable.updateChannel) {
+      await queryInterface.addColumn('Subscriptions', 'updateChannel', {
+        type: DataTypes.ENUM('stable', 'early-access'),
+        allowNull: false,
+        defaultValue: 'stable'
+      }).catch((error) => {
+        if (!String(error?.message || '').includes('Duplicate column')) throw error
+      })
+    }
+    if (!subscriptionTable.includedUpdates) {
+      await queryInterface.addColumn('Subscriptions', 'includedUpdates', {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
+      }).catch((error) => {
+        if (!String(error?.message || '').includes('Duplicate column')) throw error
+      })
+    }
+    if (!subscriptionTable.lastValidatedAt) {
+      await queryInterface.addColumn('Subscriptions', 'lastValidatedAt', {
+        type: DataTypes.DATE,
+        allowNull: true
+      }).catch((error) => {
+        if (!String(error?.message || '').includes('Duplicate column')) throw error
+      })
+    }
+  }
+
+  subscriptionSchemaReady = true
+}
+
+function generateLicenseKey() {
+  return `CBCMS-${randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}-${randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}`
 }
 
 async function getGoogleAccessToken(settings) {
@@ -494,6 +593,7 @@ router.get('/invoices', async (req, res) => {
 // Get all subscriptions
 router.get('/subscriptions', async (req, res) => {
   try {
+    await ensureSubscriptionSchema()
     const subscriptions = await Subscription.findAll({
       include: [
         { model: User, attributes: ['id', 'name', 'email', 'company'] },
@@ -1205,6 +1305,7 @@ router.delete('/media/:id', async (req, res) => {
 // Get subscription plans offered by the studio
 router.get('/subscription-plans', async (req, res) => {
   try {
+    await ensureSubscriptionSchema()
     const plans = await SubscriptionPlan.findAll({ order: [['createdAt', 'DESC']] })
     res.json(plans)
   } catch (error) {
@@ -1215,6 +1316,7 @@ router.get('/subscription-plans', async (req, res) => {
 // Create subscription plan
 router.post('/subscription-plans', async (req, res) => {
   try {
+    await ensureSubscriptionSchema()
     const features = Array.isArray(req.body.features)
       ? req.body.features
       : String(req.body.features || '')
@@ -1222,7 +1324,13 @@ router.post('/subscription-plans', async (req, res) => {
         .map(feature => feature.trim())
         .filter(Boolean)
 
-    const plan = await SubscriptionPlan.create({ ...req.body, features })
+    const plan = await SubscriptionPlan.create({
+      ...req.body,
+      productType: req.body.productType === 'cms-license' ? 'cms-license' : 'service',
+      updateChannel: req.body.updateChannel === 'early-access' ? 'early-access' : 'stable',
+      includedUpdates: req.body.includedUpdates !== false,
+      features
+    })
     res.status(201).json(plan)
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -1232,6 +1340,7 @@ router.post('/subscription-plans', async (req, res) => {
 // Update subscription plan
 router.put('/subscription-plans/:id', async (req, res) => {
   try {
+    await ensureSubscriptionSchema()
     const plan = await SubscriptionPlan.findByPk(req.params.id)
     if (!plan) return res.status(404).json({ error: 'Subscription plan not found' })
 
@@ -1242,7 +1351,13 @@ router.put('/subscription-plans/:id', async (req, res) => {
         .map(feature => feature.trim())
         .filter(Boolean)
 
-    await plan.update({ ...req.body, features })
+    await plan.update({
+      ...req.body,
+      productType: req.body.productType === 'cms-license' ? 'cms-license' : 'service',
+      updateChannel: req.body.updateChannel === 'early-access' ? 'early-access' : 'stable',
+      includedUpdates: req.body.includedUpdates !== false,
+      features
+    })
     res.json(plan)
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -1252,6 +1367,7 @@ router.put('/subscription-plans/:id', async (req, res) => {
 // Delete subscription plan
 router.delete('/subscription-plans/:id', async (req, res) => {
   try {
+    await ensureSubscriptionSchema()
     const plan = await SubscriptionPlan.findByPk(req.params.id)
     if (!plan) return res.status(404).json({ error: 'Subscription plan not found' })
     await plan.destroy()
@@ -1524,7 +1640,8 @@ router.put('/contact-messages/:id', async (req, res) => {
 // Assign a plan to a client
 router.post('/subscriptions/assign', async (req, res) => {
   try {
-    const { clientId, planId, renewalDate } = req.body
+    await ensureSubscriptionSchema()
+    const { clientId, planId, renewalDate, licensedDomain } = req.body
     const client = await User.findByPk(clientId)
     if (!client || client.role !== 'client') return res.status(404).json({ error: 'Client not found' })
 
@@ -1540,6 +1657,12 @@ router.post('/subscriptions/assign', async (req, res) => {
       status: 'active',
       price: plan.price,
       billingCycle: plan.billingCycle,
+      productType: plan.productType || 'service',
+      licenseKey: plan.productType === 'cms-license' ? generateLicenseKey() : null,
+      licensedDomain: plan.productType === 'cms-license' ? String(licensedDomain || '').trim() || null : null,
+      updateChannel: plan.updateChannel || 'stable',
+      includedUpdates: plan.includedUpdates !== false,
+      lastValidatedAt: plan.productType === 'cms-license' ? new Date() : null,
       renewalDate: nextRenewalDate,
       features: plan.features
     })

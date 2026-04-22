@@ -25,6 +25,7 @@ import MowingBusinessSiteDemo from './pages/MowingBusinessSiteDemo'
 import Login from './pages/Login'
 import ClientDashboard from './pages/ClientDashboard'
 import ClientPortalBilling from './pages/ClientPortalBilling'
+import ClientPortalLicense from './pages/ClientPortalLicense'
 import ClientPortalPlugins from './pages/ClientPortalPlugins'
 import ClientPortalSettings from './pages/ClientPortalSettings'
 import AdminDashboard from './pages/AdminDashboard'
@@ -79,6 +80,7 @@ function AppRoutes() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
           <Route path="/client-dashboard" element={<ClientDashboard />} />
+          <Route path="/client-dashboard/license" element={<ClientPortalLicense />} />
           <Route path="/client-dashboard/billing" element={<ClientPortalBilling />} />
           <Route path="/client-dashboard/plugins" element={<ClientPortalPlugins />} />
           <Route path="/client-dashboard/settings" element={<ClientPortalSettings />} />

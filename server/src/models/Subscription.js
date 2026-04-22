@@ -45,6 +45,33 @@ const Subscription = sequelize.define('Subscription', {
     type: DataTypes.ENUM('monthly', 'quarterly', 'annually'),
     defaultValue: 'monthly'
   },
+  productType: {
+    type: DataTypes.ENUM('service', 'cms-license'),
+    allowNull: false,
+    defaultValue: 'service'
+  },
+  licenseKey: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  licensedDomain: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  updateChannel: {
+    type: DataTypes.ENUM('stable', 'early-access'),
+    allowNull: false,
+    defaultValue: 'stable'
+  },
+  includedUpdates: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  lastValidatedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
   startDate: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

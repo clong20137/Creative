@@ -113,6 +113,7 @@ export const invoicesAPI = {
 // Subscriptions API
 export const subscriptionsAPI = {
   getClientSubscription: (clientId: string) => unwrap(api.get(`/subscriptions/client/${clientId}`)),
+  getClientLicense: (clientId: string) => unwrap(api.get(`/subscriptions/client/${clientId}/license`)),
   getSubscription: (id: string) => unwrap(api.get(`/subscriptions/${id}`)),
   createSubscription: (data: any) => unwrap(api.post('/subscriptions', data)),
   updateSubscription: (id: string, data: any) => unwrap(api.put(`/subscriptions/${id}`, data)),

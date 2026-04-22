@@ -2125,7 +2125,7 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
           </div>
         )}
       </div>
-
+      </div>
     </section>
   )
 }

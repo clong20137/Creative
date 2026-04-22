@@ -10,6 +10,9 @@ const emptyPlanForm = {
   tier: 'starter',
   price: '',
   billingCycle: 'monthly',
+  productType: 'service',
+  updateChannel: 'stable',
+  includedUpdates: true,
   features: '',
   isActive: true
 }
@@ -24,7 +27,7 @@ export default function AdminSubscriptions() {
   const [showPlanForm, setShowPlanForm] = useState(false)
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
   const [planForm, setPlanForm] = useState(emptyPlanForm)
-  const [assignment, setAssignment] = useState({ clientId: '', planId: '', renewalDate: '' })
+  const [assignment, setAssignment] = useState({ clientId: '', planId: '', renewalDate: '', licensedDomain: '' })
 
   const fetchData = async () => {
     try {
@@ -86,6 +89,9 @@ export default function AdminSubscriptions() {
       tier: plan.tier || 'starter',
       price: String(plan.price || ''),
       billingCycle: plan.billingCycle || 'monthly',
+      productType: plan.productType || 'service',
+      updateChannel: plan.updateChannel || 'stable',
+      includedUpdates: plan.includedUpdates !== false,
       features: Array.isArray(plan.features) ? plan.features.join('\n') : '',
       isActive: plan.isActive !== false
     })
@@ -109,7 +115,7 @@ export default function AdminSubscriptions() {
     try {
       await adminAPI.assignSubscription(assignment)
       setMessage('Subscription assigned to client')
-      setAssignment({ clientId: '', planId: '', renewalDate: '' })
+      setAssignment({ clientId: '', planId: '', renewalDate: '', licensedDomain: '' })
       fetchData()
     } catch (err: any) {
       setError(err.error || 'Failed to assign subscription')
@@ -197,6 +203,32 @@ export default function AdminSubscriptions() {
                     <option value="annually">Annually</option>
                   </select>
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <select
+                    value={planForm.productType}
+                    onChange={(e) => setPlanForm({ ...planForm, productType: e.target.value })}
+                    className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  >
+                    <option value="service">Service Plan</option>
+                    <option value="cms-license">CMS License</option>
+                  </select>
+                  <select
+                    value={planForm.updateChannel}
+                    onChange={(e) => setPlanForm({ ...planForm, updateChannel: e.target.value })}
+                    className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  >
+                    <option value="stable">Stable Updates</option>
+                    <option value="early-access">Early Access</option>
+                  </select>
+                  <label className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={planForm.includedUpdates}
+                      onChange={(e) => setPlanForm({ ...planForm, includedUpdates: e.target.checked })}
+                    />
+                    Includes updates
+                  </label>
+                </div>
                 <textarea
                   placeholder="Description"
                   value={planForm.description}
@@ -237,6 +269,9 @@ export default function AdminSubscriptions() {
                     <div>
                       <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
                       <p className="text-sm text-gray-600 capitalize">{plan.tier} / {plan.billingCycle}</p>
+                      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-blue-600">
+                        {plan.productType === 'cms-license' ? 'CMS License' : 'Service Plan'} / {plan.updateChannel === 'early-access' ? 'Early Access' : 'Stable'}
+                      </p>
                     </div>
                     <span className={`px-2 py-1 rounded text-xs font-semibold ${plan.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>
                       {plan.isActive ? 'Active' : 'Inactive'}
@@ -285,9 +320,18 @@ export default function AdminSubscriptions() {
               >
                 <option value="">Select plan</option>
                 {plans.filter(plan => plan.isActive !== false).map((plan) => (
-                  <option key={plan.id} value={plan.id}>{plan.name} - ${Number(plan.price || 0).toLocaleString()}</option>
+                  <option key={plan.id} value={plan.id}>{plan.name} - ${Number(plan.price || 0).toLocaleString()} ({plan.productType === 'cms-license' ? 'CMS License' : 'Service'})</option>
                 ))}
               </select>
+              {plans.find((plan) => String(plan.id) === assignment.planId)?.productType === 'cms-license' && (
+                <input
+                  type="text"
+                  value={assignment.licensedDomain}
+                  onChange={(e) => setAssignment({ ...assignment, licensedDomain: e.target.value })}
+                  placeholder="Licensed domain, for example clientsite.com"
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+              )}
               <input
                 type="date"
                 value={assignment.renewalDate}
@@ -302,12 +346,13 @@ export default function AdminSubscriptions() {
             <div className="lg:col-span-2 overflow-x-auto bg-white rounded-lg shadow">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b">
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Client</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Plan</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Renewal</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+                    <tr className="border-b">
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Client</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Plan</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Type</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Renewal</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -317,6 +362,14 @@ export default function AdminSubscriptions() {
                       <td className="px-6 py-3">
                         <p className="font-semibold text-gray-900">{subscription.planName}</p>
                         <p className="text-sm text-gray-600">${Number(subscription.price || 0).toLocaleString()} / {subscription.billingCycle}</p>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-700">
+                        <div className="space-y-1">
+                          <p className="font-semibold text-gray-900">{subscription.productType === 'cms-license' ? 'CMS License' : 'Service'}</p>
+                          {subscription.productType === 'cms-license' && subscription.licenseKey && (
+                            <p className="font-mono text-xs text-gray-500">{subscription.licenseKey}</p>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-3 text-sm text-gray-700 capitalize">{subscription.status}</td>
                       <td className="px-6 py-3 text-sm text-gray-700">
@@ -333,7 +386,7 @@ export default function AdminSubscriptions() {
                   ))}
                   {subscriptions.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-6 py-10 text-center text-gray-600">No client subscriptions yet.</td>
+                      <td colSpan={6} className="px-6 py-10 text-center text-gray-600">No client subscriptions yet.</td>
                     </tr>
                   )}
                 </tbody>

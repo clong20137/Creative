@@ -27,6 +27,21 @@ const SubscriptionPlan = sequelize.define('SubscriptionPlan', {
     type: DataTypes.ENUM('monthly', 'quarterly', 'annually'),
     defaultValue: 'monthly'
   },
+  productType: {
+    type: DataTypes.ENUM('service', 'cms-license'),
+    allowNull: false,
+    defaultValue: 'service'
+  },
+  updateChannel: {
+    type: DataTypes.ENUM('stable', 'early-access'),
+    allowNull: false,
+    defaultValue: 'stable'
+  },
+  includedUpdates: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
   features: {
     type: DataTypes.JSON,
     defaultValue: [],

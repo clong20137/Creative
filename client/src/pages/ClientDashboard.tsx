@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FiDownload, FiMessageSquare, FiCheckCircle, FiClock } from 'react-icons/fi'
-import { projectsAPI } from '../services/api'
+import { FiDownload, FiMessageSquare, FiCheckCircle, FiClock, FiKey } from 'react-icons/fi'
+import { projectsAPI, subscriptionsAPI } from '../services/api'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import ClientLayout from '../components/ClientLayout'
 
@@ -9,6 +9,7 @@ export default function ClientDashboard() {
   const navigate = useNavigate()
   const [userEmail, setUserEmail] = useState('')
   const [projects, setProjects] = useState<any[]>([])
+  const [licenseStatus, setLicenseStatus] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -24,6 +25,7 @@ export default function ClientDashboard() {
 
     setUserEmail(email || '')
     fetchProjects(userId)
+    subscriptionsAPI.getClientLicense(userId).then(setLicenseStatus).catch(() => setLicenseStatus(null))
   }, [navigate])
 
   const fetchProjects = async (userId: string) => {
@@ -71,6 +73,31 @@ export default function ClientDashboard() {
         <div className="card p-6 mb-8">
           <p className="text-gray-600">Logged in as: <span className="font-bold text-gray-900">{userEmail}</span></p>
         </div>
+
+        {licenseStatus && (
+          <div className={`mb-8 rounded-2xl border p-6 ${
+            licenseStatus.hasActiveLicense ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'
+          }`}>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <FiKey /> CMS License
+                </p>
+                <h2 className="mt-2 text-2xl font-bold text-gray-900">
+                  {licenseStatus.hasActiveLicense ? 'Your CMS access is active' : 'Your CMS license needs attention'}
+                </h2>
+                <p className="mt-2 text-gray-600">
+                  {licenseStatus.hasActiveLicense
+                    ? 'Your monthly license is active, and new updates will roll out automatically when we deploy them.'
+                    : 'Renew or assign a CMS license to keep using the CMS and receiving updates.'}
+                </p>
+              </div>
+              <Link to="/client-dashboard/license" className="btn-primary">
+                Manage License
+              </Link>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Link to="/client-dashboard/billing" className="card p-4 font-semibold text-blue-600 hover:shadow-lg transition">
