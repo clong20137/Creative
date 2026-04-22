@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
-import PageSections from '../components/PageSections'
+import PageSections, { RichTextContent } from '../components/PageSections'
 import { customPagesAPI, siteSettingsAPI } from '../services/api'
 import EditableBuiltInPage from './EditableBuiltInPage'
 import NotFound from './NotFound'
@@ -57,7 +57,7 @@ export default function CustomPage() {
       <section className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-20">
         <div className="container text-center">
           <h1 className="text-5xl font-bold mb-6">{page.headerTitle || page.title}</h1>
-          {page.headerSubtitle && <p className="text-xl max-w-3xl mx-auto">{page.headerSubtitle}</p>}
+          {page.headerSubtitle && <RichTextContent html={page.headerSubtitle} className="mx-auto max-w-3xl text-xl" />}
         </div>
       </section>
 
@@ -66,13 +66,7 @@ export default function CustomPage() {
       ) : (
         <section className="section-padding">
           <div className="container max-w-4xl">
-            <div className="prose prose-lg max-w-none">
-              {String(page.content || '').split('\n\n').map((paragraph, index) => (
-                <p key={index} className="mb-5 text-gray-700 leading-relaxed whitespace-pre-line">
-                  {paragraph}
-                </p>
-              ))}
-            </div>
+            <RichTextContent html={page.content} className="prose prose-lg max-w-none text-gray-700" />
           </div>
         </section>
       )}

@@ -41,6 +41,12 @@ export default function PageSections({ sections }: { sections?: any[] }) {
   )
 }
 
+function getAlignmentClasses(textAlign?: string) {
+  if (textAlign === 'left') return { container: 'text-left', body: '' }
+  if (textAlign === 'right') return { container: 'text-right', body: 'ml-auto' }
+  return { container: 'text-center', body: 'mx-auto' }
+}
+
 function AnimatedSection({ section, children }: { section: any; children: ReactNode }) {
   const ref = useRef<HTMLDivElement | null>(null)
   const hasAnimation = Boolean(section.animationType && section.animationType !== 'none')
@@ -158,11 +164,12 @@ function PageSection({ section }: { section: any }) {
   }
 
   if (section.type === 'header') {
+    const alignment = getAlignmentClasses(section.textAlign)
     return (
       <section className="section-padding">
-        <div className="container text-center">
+        <div className={`container ${alignment.container}`}>
           <h2 className="section-title">{section.title}</h2>
-          {section.body && <RichTextContent html={section.body} className="mx-auto -mt-8 max-w-3xl text-lg text-gray-600" />}
+          {section.body && <RichTextContent html={section.body} className={`${alignment.body} -mt-8 max-w-3xl text-lg text-gray-600`.trim()} />}
         </div>
       </section>
     )
@@ -231,7 +238,7 @@ function PageSection({ section }: { section: any }) {
   )
 }
 
-function RichTextContent({ html, className = '' }: { html?: string; className?: string }) {
+export function RichTextContent({ html, className = '' }: { html?: string; className?: string }) {
   const normalized = normalizeRichTextHtml(html)
   if (!normalized) return null
   return <div className={`rich-text-content ${className}`.trim()} dangerouslySetInnerHTML={{ __html: normalized }} />
@@ -441,11 +448,12 @@ function FeaturedWorkSection({ section }: { section: any }) {
 
 function SectionHeading({ section, fallbackTitle }: { section: any; fallbackTitle: string }) {
   if (!section.title && !section.body) return null
+  const alignment = getAlignmentClasses(section.textAlign)
 
   return (
-    <div className="mb-10 text-center">
+    <div className={`mb-10 ${alignment.container}`}>
       <h2 className="text-3xl font-bold text-gray-900">{section.title || fallbackTitle}</h2>
-      {section.body && <RichTextContent html={section.body} className="mx-auto mt-3 max-w-3xl text-gray-600" />}
+      {section.body && <RichTextContent html={section.body} className={`${alignment.body} mt-3 max-w-3xl text-gray-600`.trim()} />}
     </div>
   )
 }
