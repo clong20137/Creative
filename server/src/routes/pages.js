@@ -7,8 +7,7 @@ router.get('/:slug', async (req, res) => {
   try {
     const page = await CustomPage.findOne({
       where: {
-        slug: req.params.slug,
-        isPublished: true
+        slug: req.params.slug
       }
     })
 

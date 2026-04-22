@@ -1003,7 +1003,7 @@ function Field({ id, label, type = 'text', value, onChange, required = false }: 
   return (
     <div>
       <label htmlFor={id} className="mb-2 block font-semibold text-gray-700">{label}</label>
-      <input type={type} id={id} name={id} value={value} onChange={onChange} required={required} className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600" />
+      <input type={type} id={id} name={id} value={value} onChange={onChange} required={required} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600" />
     </div>
   )
 }
@@ -1141,17 +1141,23 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
     email: '',
     phone: '',
     company: '',
-    serviceTitle: '',
-    description: ''
+    service: '',
+    message: ''
   })
+  const [settings, setSettings] = useState<any>({})
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
 
   const services = String(section.crmServices || 'Heavy-duty towing\nFlatbed towing\nAccident recovery\nEquipment transport')
     .split('\n')
     .map((item: string) => item.trim())
     .filter(Boolean)
+
+  useEffect(() => {
+    siteSettingsAPI.getSettings().then(setSettings).catch(() => setSettings({}))
+  }, [])
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = event.target
@@ -1165,19 +1171,31 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
     setIsSubmitting(true)
     setError('')
     try {
-      await pluginsAPI.createCrmLead({
-        ...formData,
-        inquiryType: section.crmInquiryType || 'quote',
-        sourcePage: window.location.pathname,
-        metadata: {
-          sectionTitle: section.title || '',
-          urgency: compact ? '' : (new FormData(event.currentTarget as HTMLFormElement).get('urgency') || '')
-        }
-      })
+      if (compact) {
+        await contactMessagesAPI.createMessage({
+          ...formData,
+          turnstileToken
+        })
+        setTurnstileToken('')
+      } else {
+        await pluginsAPI.createCrmLead({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          company: formData.company,
+          serviceTitle: formData.service,
+          description: formData.message,
+          inquiryType: section.crmInquiryType || 'quote',
+          sourcePage: window.location.pathname,
+          metadata: {
+            sectionTitle: section.title || ''
+          }
+        })
+      }
       setIsSubmitted(true)
-      setFormData({ name: '', email: '', phone: '', company: '', serviceTitle: '', description: '' })
+      setFormData({ name: '', email: '', phone: '', company: '', service: '', message: '' })
     } catch (err: any) {
-      setError(err.error || 'We could not send this quote request. Please try again.')
+      setError(err.error || `We could not send ${compact ? 'your message' : 'this quote request'}. Please try again.`)
     } finally {
       setIsSubmitting(false)
     }
@@ -1198,51 +1216,29 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
         </div>
       </div>}
       <form onSubmit={handleSubmit} className={`${section.crmFormCardClassName || 'rounded-lg bg-white p-6'} text-gray-900 shadow-xl ${compact ? 'rounded-lg p-5 md:p-6' : 'lg:col-span-3'}`}>
-        <h3 className={`font-bold ${compact ? 'text-xl md:text-2xl' : 'text-2xl'}`}>{section.crmFormTitle || (compact ? "Let's Get In Touch" : 'Request a Quote')}</h3>
-        {isSubmitted && <div className="mt-4 rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">Quote request received. We will follow up soon.</div>}
+        <h3 className={`font-bold ${compact ? 'text-xl md:text-2xl' : 'text-2xl'}`}>{section.crmFormTitle || (compact ? 'Send us a Message' : 'Request a Quote')}</h3>
+        {isSubmitted && <div className="mt-4 rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">{compact ? 'Message sent. Thank you for reaching out. We will get back to you soon.' : 'Quote request received. We will follow up soon.'}</div>}
         {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
         <div className={`mt-6 grid grid-cols-1 gap-4 ${compact ? 'md:grid-cols-2' : 'md:grid-cols-2'}`}>
-          <Field id="name" label="Name *" value={formData.name} onChange={handleChange} required />
-          <Field id="email" label="Email *" type="email" value={formData.email} onChange={handleChange} required />
-          <Field id="phone" label="Phone" type="tel" value={formData.phone} onChange={handleChange} />
+          <Field id="name" label={compact ? 'Your Name *' : 'Name *'} value={formData.name} onChange={handleChange} required />
+          <Field id="email" label={compact ? 'Email Address *' : 'Email *'} type="email" value={formData.email} onChange={handleChange} required />
+          <Field id="phone" label={compact ? 'Phone Number' : 'Phone'} type="tel" value={formData.phone} onChange={handleChange} />
           <Field id="company" label="Company" value={formData.company} onChange={handleChange} />
           <div>
-            <label htmlFor="serviceTitle" className="mb-2 block font-semibold text-gray-700">Service Needed</label>
-            <select id="serviceTitle" name="serviceTitle" value={formData.serviceTitle} onChange={handleChange} className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <label htmlFor="service" className="mb-2 block font-semibold text-gray-700">{compact ? 'Service Interested In *' : 'Service Needed'}</label>
+            <select id="service" name="service" value={formData.service} onChange={handleChange} required={compact} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600">
               <option value="">Select a service...</option>
-              {services.map(service => <option key={service} value={service}>{service}</option>)}
+              {services.map(service => <option key={service} value={service} className="text-gray-900">{service}</option>)}
             </select>
           </div>
-          {!compact && (
-            <>
-              <div>
-                <label htmlFor="urgency" className="mb-2 block font-semibold text-gray-700">Urgency</label>
-                <select id="urgency" name="urgency" className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600">
-                  <option value="">Select urgency...</option>
-                  <option value="emergency">Emergency</option>
-                  <option value="this-week">This week</option>
-                  <option value="planning">Planning ahead</option>
-                </select>
-              </div>
-              <Field id="budget" label="Budget / estimated value" value={(formData as any).budget || ''} onChange={handleChange} />
-              <Field id="timeline" label="Timeline" value={(formData as any).timeline || ''} onChange={handleChange} />
-              <div className="md:col-span-2">
-                <label htmlFor="preferredContact" className="mb-2 block font-semibold text-gray-700">Preferred Contact</label>
-                <select id="preferredContact" name="preferredContact" value={(formData as any).preferredContact || 'phone'} onChange={handleChange} className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600">
-                  <option value="phone">Phone</option>
-                  <option value="email">Email</option>
-                  <option value="text">Text</option>
-                </select>
-              </div>
-            </>
-          )}
           <div className="md:col-span-2">
-            <label htmlFor="description" className="mb-2 block font-semibold text-gray-700">{compact ? 'Message *' : 'Details *'}</label>
-            <textarea id="description" name="description" value={formData.description} onChange={handleChange} required rows={5} className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600" placeholder={section.crmDetailsPlaceholder || 'Tell us what happened, what needs moved, pickup/dropoff details, or what you need quoted.'}></textarea>
+            <label htmlFor="message" className="mb-2 block font-semibold text-gray-700">{compact ? 'Message *' : 'Details *'}</label>
+            <textarea id="message" name="message" value={formData.message} onChange={handleChange} required rows={compact ? 4 : 5} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600" placeholder={section.crmDetailsPlaceholder || (compact ? 'Tell us about your project...' : 'Tell us what you need quoted.' )}></textarea>
           </div>
         </div>
+        {compact && settings.turnstileSiteKey && <div className="mt-4"><TurnstileWidget siteKey={settings.turnstileSiteKey} onVerify={setTurnstileToken} /></div>}
         <button type="submit" disabled={isSubmitting} className={`${section.crmButtonClassName || 'btn-primary mt-5 w-full'} mt-5 disabled:cursor-not-allowed disabled:opacity-60`}>
-          {isSubmitting ? 'Sending...' : section.buttonLabel || 'Submit Quote Request'}
+          {isSubmitting ? 'Sending...' : section.buttonLabel || (compact ? 'Send Message' : 'Submit Quote Request')}
         </button>
       </form>
     </div>
