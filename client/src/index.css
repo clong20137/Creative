@@ -202,6 +202,12 @@ html.dark-mode .shadow-sm {
   letter-spacing: var(--section-letter-spacing, 0) !important;
 }
 
+.page-section-render .rich-text-content,
+.page-section-render .rich-text-content p,
+.page-section-render .rich-text-content li,
+.page-section-render .rich-text-content figcaption,
+.page-section-render .rich-text-content span,
+.page-section-render .rich-text-content div,
 .page-section-render p,
 .page-section-render li,
 .page-section-render figcaption {
