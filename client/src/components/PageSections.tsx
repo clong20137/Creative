@@ -1018,11 +1018,11 @@ function ContactInfo({ icon, label, value, note }: { icon: React.ReactNode; labe
   )
 }
 
-function Field({ id, label, type = 'text', value, onChange, required = false, labelStyle, inputStyle }: any) {
+function Field({ id, label, type = 'text', value, onChange, required = false, labelStyle, inputStyle, inputClassName = '' }: any) {
   return (
     <div>
       <label htmlFor={id} className="mb-2 block font-semibold text-gray-700" style={labelStyle}>{label}</label>
-      <input type={type} id={id} name={id} value={value} onChange={onChange} required={required} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600" style={inputStyle} />
+      <input type={type} id={id} name={id} value={value} onChange={onChange} required={required} className={`w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 ${inputClassName}`.trim()} style={inputStyle} />
     </div>
   )
 }
@@ -1229,7 +1229,13 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
   const crmTextColor = section.crmTextColor || '#111827'
   const crmMutedTextColor = section.crmTextColor || '#374151'
   const crmInputTextColor = section.crmInputTextColor || '#111827'
-  const crmFieldStyle = compact ? { color: crmInputTextColor } : undefined
+  const crmPlaceholderColor = section.crmPlaceholderColor || '#6b7280'
+  const crmFieldStyle = compact ? {
+    color: crmInputTextColor,
+    WebkitTextFillColor: crmInputTextColor,
+    '--crm-input-color': crmInputTextColor,
+    '--crm-placeholder-color': crmPlaceholderColor
+  } as CSSProperties : undefined
   const crmLabelStyle = compact ? { color: crmMutedTextColor } : undefined
 
   return (
@@ -1251,20 +1257,20 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
         {isSubmitted && <div className="mt-4 rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">{compact ? 'Message sent. Thank you for reaching out. We will get back to you soon.' : 'Quote request received. We will follow up soon.'}</div>}
         {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
         <div className={`mt-6 grid grid-cols-1 gap-4 ${compact ? 'md:grid-cols-2' : 'md:grid-cols-2'}`}>
-          <Field id="name" label={compact ? 'Your Name *' : 'Name *'} value={formData.name} onChange={handleChange} required labelStyle={crmLabelStyle} inputStyle={crmFieldStyle} />
-          <Field id="email" label={compact ? 'Email Address *' : 'Email *'} type="email" value={formData.email} onChange={handleChange} required labelStyle={crmLabelStyle} inputStyle={crmFieldStyle} />
-          <Field id="phone" label={compact ? 'Phone Number' : 'Phone'} type="tel" value={formData.phone} onChange={handleChange} labelStyle={crmLabelStyle} inputStyle={crmFieldStyle} />
-          <Field id="company" label="Company" value={formData.company} onChange={handleChange} labelStyle={crmLabelStyle} inputStyle={crmFieldStyle} />
+          <Field id="name" label={compact ? 'Your Name *' : 'Name *'} value={formData.name} onChange={handleChange} required labelStyle={crmLabelStyle} inputStyle={crmFieldStyle} inputClassName={compact ? 'crm-form-input' : ''} />
+          <Field id="email" label={compact ? 'Email Address *' : 'Email *'} type="email" value={formData.email} onChange={handleChange} required labelStyle={crmLabelStyle} inputStyle={crmFieldStyle} inputClassName={compact ? 'crm-form-input' : ''} />
+          <Field id="phone" label={compact ? 'Phone Number' : 'Phone'} type="tel" value={formData.phone} onChange={handleChange} labelStyle={crmLabelStyle} inputStyle={crmFieldStyle} inputClassName={compact ? 'crm-form-input' : ''} />
+          <Field id="company" label="Company" value={formData.company} onChange={handleChange} labelStyle={crmLabelStyle} inputStyle={crmFieldStyle} inputClassName={compact ? 'crm-form-input' : ''} />
           <div>
             <label htmlFor="service" className="mb-2 block font-semibold text-gray-700" style={crmLabelStyle}>{compact ? 'Service Interested In *' : 'Service Needed'}</label>
-            <select id="service" name="service" value={formData.service} onChange={handleChange} required={compact} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600" style={crmFieldStyle}>
+            <select id="service" name="service" value={formData.service} onChange={handleChange} required={compact} className={`w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 ${compact ? 'crm-form-input' : ''}`.trim()} style={crmFieldStyle}>
               <option value="">Select a service...</option>
               {services.map(service => <option key={service} value={service}>{service}</option>)}
             </select>
           </div>
           <div className="md:col-span-2">
             <label htmlFor="message" className="mb-2 block font-semibold text-gray-700" style={crmLabelStyle}>{compact ? 'Message *' : 'Details *'}</label>
-            <textarea id="message" name="message" value={formData.message} onChange={handleChange} required rows={compact ? 4 : 5} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600" style={crmFieldStyle} placeholder={section.crmDetailsPlaceholder || (compact ? 'Tell us about your project...' : 'Tell us what you need quoted.' )}></textarea>
+            <textarea id="message" name="message" value={formData.message} onChange={handleChange} required rows={compact ? 4 : 5} className={`w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 ${compact ? 'crm-form-input' : ''}`.trim()} style={crmFieldStyle} placeholder={section.crmDetailsPlaceholder || (compact ? 'Tell us about your project...' : 'Tell us what you need quoted.' )}></textarea>
           </div>
         </div>
         {compact && settings.turnstileSiteKey && <div className="mt-4"><TurnstileWidget siteKey={settings.turnstileSiteKey} onVerify={setTurnstileToken} /></div>}

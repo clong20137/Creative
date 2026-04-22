@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { FiUsers, FiFileText, FiTrendingUp, FiBarChart, FiSearch, FiZap } from 'react-icons/fi'
+import { FiUsers, FiFileText, FiTrendingUp, FiBarChart, FiSearch, FiZap, FiAlertCircle, FiTarget } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import { adminAPI } from '../services/api'
 import { DashboardStatsSkeleton } from '../components/SkeletonLoaders'
@@ -188,6 +188,10 @@ function SeoDashboardPanel({ data }: any) {
   const pageSpeed = data?.pageSpeed
   const mobile = pageSpeed?.mobile
   const desktop = pageSpeed?.desktop
+  const insights = data?.insights || {}
+  const recommendations = insights.recommendations || []
+  const opportunityQueries = insights.opportunityQueries || []
+  const lowCtrPages = insights.lowCtrPages || []
 
   return (
     <section className="mt-12 space-y-6">
@@ -219,7 +223,34 @@ function SeoDashboardPanel({ data }: any) {
         <MiniMetric icon={FiSearch} label="Google Clicks" value={search ? Number(search.clicks || 0).toLocaleString() : 'Not connected'} />
         <MiniMetric icon={FiBarChart} label="Impressions" value={search ? Number(search.impressions || 0).toLocaleString() : 'Not connected'} />
         <MiniMetric icon={FiTrendingUp} label="Avg Position" value={search?.averagePosition ? search.averagePosition.toFixed(1) : 'Not connected'} />
+        <MiniMetric icon={FiTarget} label="CTR" value={search ? `${(Number(search.ctr || 0) * 100).toFixed(1)}%` : 'Not connected'} />
         <MiniMetric icon={FiZap} label="Mobile Speed" value={mobile ? `${mobile.performance}/100` : 'No URL'} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="card p-6 xl:col-span-1">
+          <div className="mb-4 flex items-center gap-2">
+            <FiAlertCircle className="text-amber-500" size={20} />
+            <h3 className="text-xl font-bold text-gray-900">SEO Priorities</h3>
+          </div>
+          <div className="space-y-3">
+            {recommendations.map((item: any) => (
+              <div key={item.title} className="rounded-lg bg-gray-100 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-gray-900">{item.title}</p>
+                  <span className={`rounded-full px-2 py-1 text-xs font-bold uppercase ${item.priority === 'high' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    {item.priority}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-gray-600">{item.detail}</p>
+              </div>
+            ))}
+            {recommendations.length === 0 && <p className="text-gray-600">No major SEO warnings from the current Search Console and PageSpeed data.</p>}
+          </div>
+        </div>
+
+        <RankingTable title="Queries To Improve" rows={opportunityQueries} labelKey="query" />
+        <RankingTable title="Pages With Low CTR" rows={lowCtrPages} labelKey="page" />
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">

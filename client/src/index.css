@@ -70,6 +70,25 @@ html.dark-mode textarea {
   border-color: #4B5563;
 }
 
+.crm-form-input,
+.crm-form-input:focus,
+html.dark-mode .crm-form-input,
+html.dark-mode .crm-form-input:focus {
+  color: var(--crm-input-color, #111827) !important;
+  -webkit-text-fill-color: var(--crm-input-color, #111827) !important;
+}
+
+.crm-form-input::placeholder,
+html.dark-mode .crm-form-input::placeholder {
+  color: var(--crm-placeholder-color, #6b7280) !important;
+  -webkit-text-fill-color: var(--crm-placeholder-color, #6b7280) !important;
+}
+
+.crm-form-input option,
+html.dark-mode .crm-form-input option {
+  color: var(--crm-input-color, #111827) !important;
+}
+
 html.dark-mode input::placeholder,
 html.dark-mode textarea::placeholder {
   color: #9CA3AF;

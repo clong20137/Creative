@@ -168,7 +168,7 @@ async function getGoogleAccessToken(settings) {
   return googleAccessTokenCache.token
 }
 
-async function fetchSearchConsoleRows(settings, dimensions) {
+async function fetchSearchConsoleRows(settings, dimensions, rowLimit = 10) {
   const siteUrl = normalizeSearchConsoleProperty(settings.googleSearchConsoleProperty || process.env.GOOGLE_SEARCH_CONSOLE_PROPERTY || '')
   if (!siteUrl) {
     const error = new Error('Google Search Console property is not configured')
@@ -187,7 +187,7 @@ async function fetchSearchConsoleRows(settings, dimensions) {
       startDate: getIsoDate(28),
       endDate: getIsoDate(2),
       dimensions,
-      rowLimit: 10,
+      rowLimit,
       startRow: 0
     })
   })
@@ -229,6 +229,66 @@ async function fetchPageSpeed(url, apiKey, strategy) {
     speedIndex: audits['speed-index']?.displayValue || '',
     checkedAt: new Date().toISOString()
   }
+}
+
+function buildSeoRecommendations(searchConsole, pageSpeed) {
+  const recommendations = []
+  let opportunityQueries = []
+  let lowCtrPages = []
+
+  if (searchConsole) {
+    const ctrPercent = safeNumber(searchConsole.ctr) * 100
+    if (searchConsole.impressions >= 100 && ctrPercent < 3) {
+      recommendations.push({
+        title: 'Improve click-through rate from search',
+        detail: `Your average CTR is ${ctrPercent.toFixed(1)}%. Tighten page titles and meta descriptions on high-impression pages to win more clicks.`,
+        priority: 'high'
+      })
+    }
+
+    if (safeNumber(searchConsole.averagePosition) > 10) {
+      recommendations.push({
+        title: 'Push pages from page 2 onto page 1',
+        detail: `Average position is ${safeNumber(searchConsole.averagePosition).toFixed(1)}. Focus internal links, headings, and supporting copy on the queries already getting impressions.`,
+        priority: 'medium'
+      })
+    }
+
+    opportunityQueries = (searchConsole.topQueries || [])
+      .filter((row) => safeNumber(row.impressions) >= 20 && safeNumber(row.position) > 3 && safeNumber(row.position) <= 20)
+      .sort((a, b) => safeNumber(b.impressions) - safeNumber(a.impressions))
+      .slice(0, 5)
+      .map((row) => ({
+        query: row.query,
+        impressions: safeNumber(row.impressions),
+        clicks: safeNumber(row.clicks),
+        position: safeNumber(row.position),
+        ctr: safeNumber(row.ctr)
+      }))
+
+    lowCtrPages = (searchConsole.topPages || [])
+      .filter((row) => safeNumber(row.impressions) >= 20)
+      .sort((a, b) => safeNumber(a.ctr) - safeNumber(b.ctr))
+      .slice(0, 5)
+      .map((row) => ({
+        page: row.page,
+        impressions: safeNumber(row.impressions),
+        clicks: safeNumber(row.clicks),
+        position: safeNumber(row.position),
+        ctr: safeNumber(row.ctr)
+      }))
+
+  }
+
+  if (pageSpeed?.mobile && safeNumber(pageSpeed.mobile.performance) < 70) {
+    recommendations.push({
+      title: 'Speed up the mobile experience',
+      detail: `Mobile performance is ${safeNumber(pageSpeed.mobile.performance)}/100. Improving images, scripts, and layout stability should help rankings and conversions.`,
+      priority: 'high'
+    })
+  }
+
+  return { recommendations, opportunityQueries, lowCtrPages }
 }
 
 async function storeUpload(dataUrl, originalName = '', visibility = 'public') {
@@ -495,8 +555,8 @@ router.get('/seo-dashboard', async (req, res) => {
     if (configured) {
       try {
         const [queryRows, pageRows] = await Promise.all([
-          fetchSearchConsoleRows(settings, ['query']),
-          fetchSearchConsoleRows(settings, ['page'])
+          fetchSearchConsoleRows(settings, ['query'], 25),
+          fetchSearchConsoleRows(settings, ['page'], 25)
         ])
         const totals = queryRows.reduce((sum, row) => ({
           clicks: sum.clicks + safeNumber(row.clicks),
@@ -555,6 +615,8 @@ router.get('/seo-dashboard', async (req, res) => {
         disabledReason: 'Add a PageSpeed API key in Admin Settings, SEO to enable PageSpeed data.'
       }
     }
+
+    result.insights = buildSeoRecommendations(result.searchConsole, result.pageSpeed)
 
     seoDashboardCache.set(cacheKey, {
       data: result,
