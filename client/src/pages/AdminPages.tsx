@@ -224,6 +224,8 @@ function makePageSection(type: string) {
     crmFormTitle: '',
     crmServices: '',
     crmDetailsPlaceholder: '',
+    crmBackgroundColor: '',
+    crmBackgroundImageUrl: '',
     marginTop: '',
     marginRight: '',
     marginBottom: '',
@@ -1846,6 +1848,13 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
                 {section.heroFormEnabled && (
                   <>
                     <input value={section.crmFormTitle || ''} onChange={(e) => updateSection(index, 'crmFormTitle', e.target.value)} placeholder="Form title" className="w-full px-4 py-2 border rounded-lg" />
+                    <div className="grid grid-cols-[1fr_3rem_6rem] items-center gap-2 text-sm text-gray-700">
+                      <span className="font-semibold">CRM background</span>
+                      <input type="color" value={section.crmBackgroundColor || '#ffffff'} onChange={(e) => updateSection(index, 'crmBackgroundColor', e.target.value)} className="h-10 w-12 rounded border p-1" />
+                      <input value={section.crmBackgroundColor || ''} onChange={(e) => updateSection(index, 'crmBackgroundColor', e.target.value)} placeholder="#ffffff" className="w-full rounded-lg border px-2 py-1" />
+                    </div>
+                    <input value={section.crmBackgroundImageUrl || ''} onChange={(e) => updateSection(index, 'crmBackgroundImageUrl', e.target.value)} placeholder="CRM background image URL" className="w-full px-4 py-2 border rounded-lg" />
+                    <button type="button" onClick={() => openMediaPicker((url: string) => updateSection(index, 'crmBackgroundImageUrl', url), 'image')} className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50"><FiImage /> Choose CRM background</button>
                     <textarea value={section.crmServices || ''} onChange={(e) => updateSection(index, 'crmServices', e.target.value)} placeholder="Services, one per line" rows={4} className="w-full px-4 py-2 border rounded-lg" />
                     <textarea value={section.crmDetailsPlaceholder || ''} onChange={(e) => updateSection(index, 'crmDetailsPlaceholder', e.target.value)} placeholder="Details field placeholder" rows={3} className="w-full px-4 py-2 border rounded-lg" />
                   </>

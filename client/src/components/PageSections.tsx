@@ -392,7 +392,7 @@ function HeroSection({ section }: { section: any }) {
                 crmPanelTitle: '',
                 crmPanelText: '',
                 crmEyebrow: '',
-                crmFormCardClassName: 'bg-white/96 backdrop-blur',
+                crmFormCardClassName: 'backdrop-blur',
                 crmButtonClassName: 'w-full rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700'
               }}
               compact
@@ -1220,6 +1220,13 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
     }
   }
 
+  const formBackgroundStyle = compact ? {
+    backgroundColor: section.crmBackgroundColor || 'rgba(255,255,255,0.96)',
+    backgroundImage: section.crmBackgroundImageUrl ? `url(${resolveAssetUrl(section.crmBackgroundImageUrl)})` : undefined,
+    backgroundSize: section.crmBackgroundImageUrl ? 'cover' : undefined,
+    backgroundPosition: section.crmBackgroundImageUrl ? 'center' : undefined
+  } : undefined
+
   return (
     <div className={`mx-auto grid ${compact ? 'max-w-none grid-cols-1' : 'max-w-6xl grid-cols-1 gap-8 lg:grid-cols-5'}`}>
       {!compact && <div className="lg:col-span-2">
@@ -1234,7 +1241,7 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
           </div>
         </div>
       </div>}
-      <form onSubmit={handleSubmit} className={`${section.crmFormCardClassName || 'rounded-lg bg-white p-6'} text-gray-900 shadow-xl ${compact ? 'rounded-lg p-5 md:p-6' : 'lg:col-span-3'}`}>
+      <form onSubmit={handleSubmit} className={`${section.crmFormCardClassName || 'rounded-lg bg-white p-6'} text-gray-900 shadow-xl ${compact ? 'rounded-lg p-5 md:p-6' : 'lg:col-span-3'}`} style={formBackgroundStyle}>
         <h3 className={`font-bold ${compact ? 'text-xl md:text-2xl' : 'text-2xl'}`}>{section.crmFormTitle || (compact ? 'Send us a Message' : 'Request a Quote')}</h3>
         {isSubmitted && <div className="mt-4 rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">{compact ? 'Message sent. Thank you for reaching out. We will get back to you soon.' : 'Quote request received. We will follow up soon.'}</div>}
         {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
