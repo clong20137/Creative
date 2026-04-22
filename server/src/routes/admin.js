@@ -505,7 +505,7 @@ router.get('/seo-dashboard', async (req, res) => {
       }
     }
 
-    if (pageSpeedUrl) {
+    if (pageSpeedUrl && pageSpeedApiKey) {
       try {
         const [mobile, desktop] = await Promise.all([
           fetchPageSpeed(pageSpeedUrl, pageSpeedApiKey, 'mobile'),
@@ -513,7 +513,22 @@ router.get('/seo-dashboard', async (req, res) => {
         ])
         result.pageSpeed = { url: pageSpeedUrl, mobile, desktop }
       } catch (error) {
-        result.errors.push(`PageSpeed: ${error.message}`)
+        if (String(error.message || '').toLowerCase().includes('quota exceeded')) {
+          result.pageSpeed = {
+            url: pageSpeedUrl,
+            disabledReason: 'PageSpeed quota has been used up for today. Try again after Google resets quota or use a different API key/project.'
+          }
+        } else {
+          result.pageSpeed = {
+            url: pageSpeedUrl,
+            disabledReason: error.message
+          }
+        }
+      }
+    } else if (pageSpeedUrl) {
+      result.pageSpeed = {
+        url: pageSpeedUrl,
+        disabledReason: 'Add a PageSpeed API key in Admin Settings, SEO to enable PageSpeed data.'
       }
     }
 

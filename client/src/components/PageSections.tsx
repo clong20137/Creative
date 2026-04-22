@@ -353,7 +353,7 @@ function GallerySection({ section }: { section: any }) {
 function HeroSection({ section }: { section: any }) {
   const hasHeroForm = Boolean(section.heroFormEnabled)
   return (
-    <section className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-800 py-20 text-white md:py-32">
+    <section className={`relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-800 text-white ${hasHeroForm ? 'py-12 md:py-16' : 'py-20 md:py-32'}`}>
       {section.imageUrl && section.mediaType !== 'video' && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
       {section.imageUrl && section.mediaType === 'video' && <video src={resolveAssetUrl(section.imageUrl)} className="absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline />}
       <div className="absolute inset-0 bg-blue-950/55"></div>
@@ -1142,9 +1142,6 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
     phone: '',
     company: '',
     serviceTitle: '',
-    budget: '',
-    timeline: '',
-    preferredContact: 'phone',
     description: ''
   })
   const [isSubmitted, setIsSubmitted] = useState(false)
@@ -1174,11 +1171,11 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
         sourcePage: window.location.pathname,
         metadata: {
           sectionTitle: section.title || '',
-          urgency: new FormData(event.currentTarget as HTMLFormElement).get('urgency') || ''
+          urgency: compact ? '' : (new FormData(event.currentTarget as HTMLFormElement).get('urgency') || '')
         }
       })
       setIsSubmitted(true)
-      setFormData({ name: '', email: '', phone: '', company: '', serviceTitle: '', budget: '', timeline: '', preferredContact: 'phone', description: '' })
+      setFormData({ name: '', email: '', phone: '', company: '', serviceTitle: '', description: '' })
     } catch (err: any) {
       setError(err.error || 'We could not send this quote request. Please try again.')
     } finally {
@@ -1200,11 +1197,11 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
           </div>
         </div>
       </div>}
-      <form onSubmit={handleSubmit} className={`${section.crmFormCardClassName || 'rounded-lg bg-white p-6'} text-gray-900 shadow-xl ${compact ? 'rounded-lg p-6' : 'lg:col-span-3'}`}>
-        <h3 className="text-2xl font-bold">{section.crmFormTitle || 'Request a Quote'}</h3>
+      <form onSubmit={handleSubmit} className={`${section.crmFormCardClassName || 'rounded-lg bg-white p-6'} text-gray-900 shadow-xl ${compact ? 'rounded-lg p-5 md:p-6' : 'lg:col-span-3'}`}>
+        <h3 className={`font-bold ${compact ? 'text-xl md:text-2xl' : 'text-2xl'}`}>{section.crmFormTitle || (compact ? "Let's Get In Touch" : 'Request a Quote')}</h3>
         {isSubmitted && <div className="mt-4 rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">Quote request received. We will follow up soon.</div>}
         {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className={`mt-6 grid grid-cols-1 gap-4 ${compact ? 'md:grid-cols-2' : 'md:grid-cols-2'}`}>
           <Field id="name" label="Name *" value={formData.name} onChange={handleChange} required />
           <Field id="email" label="Email *" type="email" value={formData.email} onChange={handleChange} required />
           <Field id="phone" label="Phone" type="tel" value={formData.phone} onChange={handleChange} />
@@ -1216,27 +1213,31 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
               {services.map(service => <option key={service} value={service}>{service}</option>)}
             </select>
           </div>
-          <div>
-            <label htmlFor="urgency" className="mb-2 block font-semibold text-gray-700">Urgency</label>
-            <select id="urgency" name="urgency" className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600">
-              <option value="">Select urgency...</option>
-              <option value="emergency">Emergency</option>
-              <option value="this-week">This week</option>
-              <option value="planning">Planning ahead</option>
-            </select>
-          </div>
-          <Field id="budget" label="Budget / estimated value" value={formData.budget} onChange={handleChange} />
-          <Field id="timeline" label="Timeline" value={formData.timeline} onChange={handleChange} />
+          {!compact && (
+            <>
+              <div>
+                <label htmlFor="urgency" className="mb-2 block font-semibold text-gray-700">Urgency</label>
+                <select id="urgency" name="urgency" className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                  <option value="">Select urgency...</option>
+                  <option value="emergency">Emergency</option>
+                  <option value="this-week">This week</option>
+                  <option value="planning">Planning ahead</option>
+                </select>
+              </div>
+              <Field id="budget" label="Budget / estimated value" value={(formData as any).budget || ''} onChange={handleChange} />
+              <Field id="timeline" label="Timeline" value={(formData as any).timeline || ''} onChange={handleChange} />
+              <div className="md:col-span-2">
+                <label htmlFor="preferredContact" className="mb-2 block font-semibold text-gray-700">Preferred Contact</label>
+                <select id="preferredContact" name="preferredContact" value={(formData as any).preferredContact || 'phone'} onChange={handleChange} className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                  <option value="phone">Phone</option>
+                  <option value="email">Email</option>
+                  <option value="text">Text</option>
+                </select>
+              </div>
+            </>
+          )}
           <div className="md:col-span-2">
-            <label htmlFor="preferredContact" className="mb-2 block font-semibold text-gray-700">Preferred Contact</label>
-            <select id="preferredContact" name="preferredContact" value={formData.preferredContact} onChange={handleChange} className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600">
-              <option value="phone">Phone</option>
-              <option value="email">Email</option>
-              <option value="text">Text</option>
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label htmlFor="description" className="mb-2 block font-semibold text-gray-700">Details *</label>
+            <label htmlFor="description" className="mb-2 block font-semibold text-gray-700">{compact ? 'Message *' : 'Details *'}</label>
             <textarea id="description" name="description" value={formData.description} onChange={handleChange} required rows={5} className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600" placeholder={section.crmDetailsPlaceholder || 'Tell us what happened, what needs moved, pickup/dropoff details, or what you need quoted.'}></textarea>
           </div>
         </div>

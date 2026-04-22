@@ -227,7 +227,11 @@ function SeoDashboardPanel({ data }: any) {
         <RankingTable title="Top Ranking Pages" rows={search?.topPages || []} labelKey="page" />
         <div className="card p-6">
           <h3 className="mb-4 text-xl font-bold text-gray-900">PageSpeed Insights</h3>
-          {pageSpeed ? (
+          {pageSpeed?.disabledReason ? (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-800">
+              {pageSpeed.disabledReason}
+            </div>
+          ) : pageSpeed ? (
             <div className="space-y-4">
               {[mobile, desktop].filter(Boolean).map((item: any) => (
                 <div key={item.strategy} className="rounded-lg bg-gray-100 p-4">
