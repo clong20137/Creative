@@ -351,19 +351,35 @@ function GallerySection({ section }: { section: any }) {
 }
 
 function HeroSection({ section }: { section: any }) {
+  const hasHeroForm = Boolean(section.heroFormEnabled)
   return (
     <section className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-800 py-20 text-white md:py-32">
       {section.imageUrl && section.mediaType !== 'video' && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
       {section.imageUrl && section.mediaType === 'video' && <video src={resolveAssetUrl(section.imageUrl)} className="absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline />}
       <div className="absolute inset-0 bg-blue-950/55"></div>
       <div className="container relative">
-        <div className="max-w-2xl">
-          <h1 className="text-4xl font-bold md:text-6xl">{section.title}</h1>
-          {section.body && <p className="mt-6 text-xl text-blue-100 md:text-2xl whitespace-pre-line">{section.body}</p>}
-          <div className="mt-8 flex flex-wrap gap-4">
-            {section.buttonLabel && section.buttonUrl && <Link to={section.buttonUrl} className="btn-primary inline-flex items-center gap-2">{section.buttonLabel} <FiArrowRight /></Link>}
-            {section.secondaryButtonLabel && section.secondaryButtonUrl && <Link to={section.secondaryButtonUrl} className="btn-secondary inline-flex">{section.secondaryButtonLabel}</Link>}
+        <div className={`grid grid-cols-1 items-center gap-10 ${hasHeroForm ? 'lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]' : ''}`}>
+          <div className="max-w-3xl">
+            <h1 className="text-4xl font-bold md:text-6xl">{section.title}</h1>
+            {section.body && <p className="mt-6 text-xl text-blue-100 md:text-2xl whitespace-pre-line">{section.body}</p>}
+            <div className="mt-8 flex flex-wrap gap-4">
+              {section.buttonLabel && section.buttonUrl && <Link to={section.buttonUrl} className="btn-primary inline-flex items-center gap-2">{section.buttonLabel} <FiArrowRight /></Link>}
+              {section.secondaryButtonLabel && section.secondaryButtonUrl && <Link to={section.secondaryButtonUrl} className="btn-secondary inline-flex">{section.secondaryButtonLabel}</Link>}
+            </div>
           </div>
+          {hasHeroForm && (
+            <CrmQuoteForm
+              section={{
+                ...section,
+                crmPanelTitle: '',
+                crmPanelText: '',
+                crmEyebrow: '',
+                crmFormCardClassName: 'bg-white/96 backdrop-blur',
+                crmButtonClassName: 'w-full rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700'
+              }}
+              compact
+            />
+          )}
         </div>
       </div>
     </section>
@@ -1119,7 +1135,7 @@ function PluginContent({ pluginSlug, data, section = {} }: { pluginSlug: string;
   )
 }
 
-function CrmQuoteForm({ section }: { section: any }) {
+function CrmQuoteForm({ section, compact = false }: { section: any; compact?: boolean }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -1171,8 +1187,8 @@ function CrmQuoteForm({ section }: { section: any }) {
   }
 
   return (
-    <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-5">
-      <div className="lg:col-span-2">
+    <div className={`mx-auto grid ${compact ? 'max-w-none grid-cols-1' : 'max-w-6xl grid-cols-1 gap-8 lg:grid-cols-5'}`}>
+      {!compact && <div className="lg:col-span-2">
         <div className="rounded-lg bg-gray-950 p-6 text-white shadow-xl">
           <p className="text-sm font-bold uppercase tracking-wide text-blue-300">{section.crmEyebrow || 'CRM Lead Capture'}</p>
           <h3 className="mt-3 text-3xl font-bold">{section.crmPanelTitle || 'Capture the details before dispatch.'}</h3>
@@ -1183,8 +1199,8 @@ function CrmQuoteForm({ section }: { section: any }) {
             ))}
           </div>
         </div>
-      </div>
-      <form onSubmit={handleSubmit} className="rounded-lg bg-white p-6 text-gray-900 shadow-xl lg:col-span-3">
+      </div>}
+      <form onSubmit={handleSubmit} className={`${section.crmFormCardClassName || 'rounded-lg bg-white p-6'} text-gray-900 shadow-xl ${compact ? 'rounded-lg p-6' : 'lg:col-span-3'}`}>
         <h3 className="text-2xl font-bold">{section.crmFormTitle || 'Request a Quote'}</h3>
         {isSubmitted && <div className="mt-4 rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">Quote request received. We will follow up soon.</div>}
         {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
@@ -1224,7 +1240,7 @@ function CrmQuoteForm({ section }: { section: any }) {
             <textarea id="description" name="description" value={formData.description} onChange={handleChange} required rows={5} className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600" placeholder={section.crmDetailsPlaceholder || 'Tell us what happened, what needs moved, pickup/dropoff details, or what you need quoted.'}></textarea>
           </div>
         </div>
-        <button type="submit" disabled={isSubmitting} className="btn-primary mt-5 w-full disabled:cursor-not-allowed disabled:opacity-60">
+        <button type="submit" disabled={isSubmitting} className={`${section.crmButtonClassName || 'btn-primary mt-5 w-full'} mt-5 disabled:cursor-not-allowed disabled:opacity-60`}>
           {isSubmitting ? 'Sending...' : section.buttonLabel || 'Submit Quote Request'}
         </button>
       </form>

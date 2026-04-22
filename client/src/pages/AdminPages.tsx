@@ -212,7 +212,16 @@ function makePageSection(type: string) {
     buttonUrl: '/contact',
     secondaryButtonLabel: '',
     secondaryButtonUrl: '',
+    heroFormEnabled: false,
     items: defaultItems(),
+    overlayColor: '',
+    overlayOpacity: 55,
+    crmEyebrow: '',
+    crmPanelTitle: '',
+    crmPanelText: '',
+    crmFormTitle: '',
+    crmServices: '',
+    crmDetailsPlaceholder: '',
     marginTop: '',
     marginRight: '',
     marginBottom: '',
@@ -1655,6 +1664,21 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
             {section.type !== 'cta' && <button type="button" onClick={() => openMediaPicker((url: string) => updateSection(index, 'imageUrl', url), 'image')} className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50"><FiImage /> Choose from Media Library</button>}
             {section.type !== 'cta' && <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url: string) => updateSection(index, 'imageUrl', url), e.target.files?.[0])} className="w-full px-4 py-2 border rounded-lg" />}
             {section.imageUrl && section.type !== 'cta' && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-40 w-full rounded-lg object-cover" />}
+            {section.type === 'hero' && (
+              <div className="space-y-3 rounded-lg border bg-gray-50 p-4">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <input type="checkbox" checked={Boolean(section.heroFormEnabled)} onChange={(e) => updateSection(index, 'heroFormEnabled', e.target.checked)} />
+                  Show CRM form in hero
+                </label>
+                {section.heroFormEnabled && (
+                  <>
+                    <input value={section.crmFormTitle || ''} onChange={(e) => updateSection(index, 'crmFormTitle', e.target.value)} placeholder="Form title" className="w-full px-4 py-2 border rounded-lg" />
+                    <textarea value={section.crmServices || ''} onChange={(e) => updateSection(index, 'crmServices', e.target.value)} placeholder="Services, one per line" rows={4} className="w-full px-4 py-2 border rounded-lg" />
+                    <textarea value={section.crmDetailsPlaceholder || ''} onChange={(e) => updateSection(index, 'crmDetailsPlaceholder', e.target.value)} placeholder="Details field placeholder" rows={3} className="w-full px-4 py-2 border rounded-lg" />
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
 
