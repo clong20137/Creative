@@ -159,7 +159,7 @@ export default function AdminNavigation() {
       {message && <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">{message}</div>}
       {error && <div className="mb-6 p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">{error}</div>}
       {loading ? <PageSkeleton /> : (
-        <form onSubmit={saveNavigation} className="space-y-6">
+        <form onSubmit={saveNavigation} className="space-y-6 pb-24">
           <div className="card p-6 space-y-4">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Public Website Menu</h2>
@@ -171,7 +171,7 @@ export default function AdminNavigation() {
               <p className="mt-1 text-sm text-blue-800">Use the <span className="font-bold">Add Subnav</span> button on any main navigation item to create dropdown links under it.</p>
             </div>
 
-            <div className="space-y-3">
+            <div className="max-h-[calc(100vh-22rem)] space-y-3 overflow-y-auto pr-1">
               {items.map((item, index) => (
                 <div key={index} className="space-y-4 rounded-lg border p-4">
                   <div className="flex items-center justify-between gap-3">
@@ -277,7 +277,7 @@ export default function AdminNavigation() {
               <p className="text-gray-600">Choose which links appear in the footer quick links area.</p>
             </div>
 
-            <div className="space-y-3">
+            <div className="max-h-[calc(100vh-28rem)] space-y-3 overflow-y-auto pr-1">
               {footerItems.map((item, index) => (
                 <div key={`footer-${index}`} className="grid grid-cols-1 gap-3 rounded-lg border p-4 md:grid-cols-[1fr_1fr_7rem_auto_auto] md:items-center">
                   <input
@@ -319,7 +319,9 @@ export default function AdminNavigation() {
             </button>
           </div>
 
-          <button type="submit" className="btn-primary">Save Navigation</button>
+          <div className="fixed bottom-6 right-6 z-30">
+            <button type="submit" className="btn-primary shadow-xl">Save Navigation</button>
+          </div>
         </form>
       )}
     </AdminLayout>
