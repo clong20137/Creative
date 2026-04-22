@@ -364,7 +364,11 @@ function RichTextEditorField({ label, value, onChange, placeholder = 'Start typi
   return (
     <div className="space-y-2">
       {label && <label className="block text-sm font-bold text-gray-700">{label}</label>}
-      <div className="rounded-lg border">
+      <div className="overflow-hidden rounded-lg border border-blue-200 shadow-sm">
+        <div className="border-b bg-blue-50 px-3 py-2">
+          <p className="text-sm font-bold text-blue-900">Formatting Toolbar</p>
+          <p className="mt-1 text-xs text-blue-700">Highlight text, then use bold, italic, underline, links, and color.</p>
+        </div>
         <div className="flex flex-wrap items-center gap-2 border-b bg-gray-50 p-2">
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => applyCommand('bold')} className="rounded border bg-white px-3 py-1 text-sm font-bold text-gray-800 hover:bg-gray-100" title="Bold">B</button>
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => applyCommand('italic')} className="rounded border bg-white px-3 py-1 text-sm italic text-gray-800 hover:bg-gray-100" title="Italic">I</button>
@@ -382,7 +386,7 @@ function RichTextEditorField({ label, value, onChange, placeholder = 'Start typi
           suppressContentEditableWarning
           data-placeholder={placeholder}
           onInput={emitChange}
-          className="rich-text-editor min-h-[140px] px-4 py-3 text-gray-900 focus:outline-none"
+          className="rich-text-editor min-h-[140px] bg-white px-4 py-3 text-gray-900 focus:outline-none"
           style={{ minHeight }}
         />
       </div>

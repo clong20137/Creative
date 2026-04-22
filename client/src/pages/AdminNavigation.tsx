@@ -118,9 +118,18 @@ export default function AdminNavigation() {
               <p className="text-gray-600">Choose which links appear in the main navigation and where they go.</p>
             </div>
 
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <h3 className="text-sm font-bold text-blue-900">Subnavigation / Dropdowns</h3>
+              <p className="mt-1 text-sm text-blue-800">Use the <span className="font-bold">Add Subnav</span> button on any main navigation item to create dropdown links under it.</p>
+            </div>
+
             <div className="space-y-3">
               {items.map((item, index) => (
                 <div key={index} className="space-y-4 rounded-lg border p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-bold text-gray-900">Main Navigation Item</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Dropdown parent</p>
+                  </div>
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_7rem_auto_auto_auto] md:items-center">
                     <input
                       value={item.label || ''}
@@ -157,9 +166,13 @@ export default function AdminNavigation() {
                     </button>
                   </div>
 
-                  {(item.children || []).length > 0 && (
-                    <div className="space-y-3 rounded-lg bg-gray-50 p-4">
+                  <div className="space-y-3 rounded-lg bg-gray-50 p-4">
+                    <div className="flex items-center justify-between gap-3">
                       <p className="text-sm font-bold text-gray-700">Dropdown Items</p>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Subnavigation</span>
+                    </div>
+                    {(item.children || []).length > 0 ? (
+                      <>
                       {(item.children || []).map((child: any, childIndex: number) => (
                         <div key={`${index}-${childIndex}`} className="grid grid-cols-1 gap-3 rounded-lg border bg-white p-3 md:grid-cols-[1fr_1fr_7rem_auto_auto] md:items-center">
                           <input
@@ -194,8 +207,13 @@ export default function AdminNavigation() {
                           </button>
                         </div>
                       ))}
-                    </div>
-                  )}
+                      </>
+                    ) : (
+                      <div className="rounded-lg border border-dashed bg-white p-4 text-sm text-gray-600">
+                        No subnavigation yet. Click <span className="font-bold">Add Subnav</span> above to create a dropdown under this menu item.
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
