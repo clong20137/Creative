@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { FiChevronDown, FiMenu, FiMoon, FiSun, FiX } from 'react-icons/fi'
 import { pluginsAPI, resolveAssetUrl, siteSettingsAPI } from '../services/api'
+import { applyThemeSettings } from '../utils/theme'
 
 type NavigationItem = {
   label: string
@@ -72,6 +73,7 @@ export default function Navigation() {
     const fetchSettings = async () => {
       try {
         const settings = await siteSettingsAPI.getSettings()
+        applyThemeSettings(settings)
         setSiteName(settings.siteName || 'Creative by Caleb')
         setLogoUrl(resolveAssetUrl(settings.logoUrl))
         setLogoSize(Number(settings.logoSize) || 40)

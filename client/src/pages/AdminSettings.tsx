@@ -8,6 +8,21 @@ const emptySettings = {
   faviconUrl: '',
   logoUrl: '',
   logoSize: 40,
+  themeFontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  themeBackgroundColor: '#ffffff',
+  themeSurfaceColor: '#ffffff',
+  themeHeadingColor: '#111827',
+  themeBodyColor: '#374151',
+  themePrimaryColor: '#2563eb',
+  themePrimaryHoverColor: '#1d4ed8',
+  themeSecondaryColor: '#e5e7eb',
+  themeSecondaryHoverColor: '#d1d5db',
+  themeButtonTextColor: '#ffffff',
+  themeLinkColor: '#2563eb',
+  themeButtonRadius: 8,
+  themeCardRadius: 8,
+  themeShadowPreset: 'medium',
+  themeSpacingScale: 1,
   contactEmail: '',
   phone: '',
   hours: '',
@@ -71,7 +86,7 @@ const emptySettings = {
   turnstileSecretKey: ''
 }
 
-const tabs = ['General', 'Contact', 'SEO', 'Payments', 'Security']
+const tabs = ['General', 'Theme', 'Contact', 'SEO', 'Payments', 'Security']
 const pageHeaderLabels: Record<string, string> = {
   portfolio: 'Portfolio',
   services: 'Services',
@@ -198,6 +213,23 @@ async function compactSettingsPayload(settings: Record<string, any>) {
 function getActiveTabPayload(settings: typeof emptySettings, activeTab: string) {
   const payloadMap: Record<string, string[]> = {
     General: ['siteName', 'faviconUrl', 'logoUrl', 'logoSize'],
+    Theme: [
+      'themeFontFamily',
+      'themeBackgroundColor',
+      'themeSurfaceColor',
+      'themeHeadingColor',
+      'themeBodyColor',
+      'themePrimaryColor',
+      'themePrimaryHoverColor',
+      'themeSecondaryColor',
+      'themeSecondaryHoverColor',
+      'themeButtonTextColor',
+      'themeLinkColor',
+      'themeButtonRadius',
+      'themeCardRadius',
+      'themeShadowPreset',
+      'themeSpacingScale'
+    ],
     Contact: [
       'contactEmail',
       'phone',
@@ -267,6 +299,9 @@ export default function AdminSettings() {
 
   const handleChange = (key: string, value: any) => setSettings(prev => ({ ...prev, [key]: value }))
   const logoSize = Math.min(Math.max(Number(settings.logoSize) || 40, 24), 96)
+  const buttonRadius = Math.min(Math.max(Number(settings.themeButtonRadius) || 8, 0), 32)
+  const cardRadius = Math.min(Math.max(Number(settings.themeCardRadius) || 8, 0), 32)
+  const spacingScale = Math.min(Math.max(Number(settings.themeSpacingScale) || 1, 0.8), 1.4)
 
   const handleUpload = async (key: string, file: File | undefined) => {
     if (!file) return
@@ -439,6 +474,121 @@ export default function AdminSettings() {
                     )}
                   </div>
                 )}
+              </section>
+            )}
+
+            {activeTab === 'Theme' && (
+              <section className="space-y-6">
+                <div className="space-y-2">
+                  <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Global Theme</h2>
+                  <p className="text-gray-600">Set the site-wide look and feel for typography, buttons, cards, and default colors.</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="block text-sm font-semibold text-gray-700">Font stack</span>
+                    <input value={settings.themeFontFamily} onChange={(e) => handleChange('themeFontFamily', e.target.value)} placeholder='Inter, system-ui, sans-serif' className="w-full px-4 py-2 border rounded-lg" />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="block text-sm font-semibold text-gray-700">Shadow preset</span>
+                    <select value={settings.themeShadowPreset} onChange={(e) => handleChange('themeShadowPreset', e.target.value)} className="w-full px-4 py-2 border rounded-lg">
+                      <option value="none">None</option>
+                      <option value="soft">Soft</option>
+                      <option value="medium">Medium</option>
+                      <option value="strong">Strong</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <ColorField label="Background" value={settings.themeBackgroundColor} onChange={(value) => handleChange('themeBackgroundColor', value)} />
+                  <ColorField label="Surface / cards" value={settings.themeSurfaceColor} onChange={(value) => handleChange('themeSurfaceColor', value)} />
+                  <ColorField label="Heading text" value={settings.themeHeadingColor} onChange={(value) => handleChange('themeHeadingColor', value)} />
+                  <ColorField label="Body text" value={settings.themeBodyColor} onChange={(value) => handleChange('themeBodyColor', value)} />
+                  <ColorField label="Primary button" value={settings.themePrimaryColor} onChange={(value) => handleChange('themePrimaryColor', value)} />
+                  <ColorField label="Primary hover" value={settings.themePrimaryHoverColor} onChange={(value) => handleChange('themePrimaryHoverColor', value)} />
+                  <ColorField label="Secondary button" value={settings.themeSecondaryColor} onChange={(value) => handleChange('themeSecondaryColor', value)} />
+                  <ColorField label="Secondary hover" value={settings.themeSecondaryHoverColor} onChange={(value) => handleChange('themeSecondaryHoverColor', value)} />
+                  <ColorField label="Button text" value={settings.themeButtonTextColor} onChange={(value) => handleChange('themeButtonTextColor', value)} />
+                  <ColorField label="Links" value={settings.themeLinkColor} onChange={(value) => handleChange('themeLinkColor', value)} />
+                </div>
+
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <SliderField
+                    label="Button radius"
+                    min={0}
+                    max={32}
+                    step={1}
+                    value={buttonRadius}
+                    onChange={(value) => handleChange('themeButtonRadius', value)}
+                  />
+                  <SliderField
+                    label="Card radius"
+                    min={0}
+                    max={32}
+                    step={1}
+                    value={cardRadius}
+                    onChange={(value) => handleChange('themeCardRadius', value)}
+                  />
+                  <SliderField
+                    label="Spacing scale"
+                    min={0.8}
+                    max={1.4}
+                    step={0.05}
+                    value={spacingScale}
+                    onChange={(value) => handleChange('themeSpacingScale', value)}
+                  />
+                </div>
+
+                <div className="rounded-lg border p-5">
+                  <p className="mb-4 text-sm font-semibold text-gray-700">Theme preview</p>
+                  <div
+                    className="space-y-4 rounded-lg border p-5"
+                    style={{
+                      background: settings.themeBackgroundColor,
+                      color: settings.themeBodyColor,
+                      fontFamily: settings.themeFontFamily
+                    }}
+                  >
+                    <div
+                      className="rounded-lg border p-4"
+                      style={{
+                        background: settings.themeSurfaceColor,
+                        borderRadius: `${cardRadius}px`
+                      }}
+                    >
+                      <h3 style={{ color: settings.themeHeadingColor }} className="text-2xl font-bold">Creative by Caleb</h3>
+                      <p style={{ color: settings.themeBodyColor }} className="mt-2">Site-wide theme controls for buttons, cards, links, and shared page styles.</p>
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          style={{
+                            background: settings.themePrimaryColor,
+                            color: settings.themeButtonTextColor,
+                            borderRadius: `${buttonRadius}px`,
+                            padding: `${0.75 * spacingScale}rem ${1.5 * spacingScale}rem`
+                          }}
+                        >
+                          Primary Button
+                        </button>
+                        <button
+                          type="button"
+                          style={{
+                            background: settings.themeSecondaryColor,
+                            color: settings.themeHeadingColor,
+                            borderRadius: `${buttonRadius}px`,
+                            padding: `${0.75 * spacingScale}rem ${1.5 * spacingScale}rem`
+                          }}
+                        >
+                          Secondary Button
+                        </button>
+                      </div>
+                      <p className="mt-4">
+                        <span style={{ color: settings.themeLinkColor, textDecoration: 'underline' }}>Sample link color</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </section>
             )}
 
@@ -736,5 +886,29 @@ function ListEditor({ title, listKey, items, fields, updateListItem, addListItem
         <button type="button" onClick={() => addListItem(listKey, {})} className="btn-secondary w-full sm:w-auto">Add {title}</button>
       </div>
     </section>
+  )
+}
+
+function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="space-y-2">
+      <span className="block text-sm font-semibold text-gray-700">{label}</span>
+      <div className="flex items-center gap-3 rounded-lg border px-3 py-2">
+        <input type="color" value={value || '#000000'} onChange={(e) => onChange(e.target.value)} className="h-10 w-12 cursor-pointer rounded border-0 bg-transparent p-0" />
+        <input value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder="#000000" className="min-w-0 flex-1 border-0 bg-transparent px-0 py-0 focus:outline-none" />
+      </div>
+    </label>
+  )
+}
+
+function SliderField({ label, min, max, step, value, onChange }: { label: string; min: number; max: number; step: number; value: number; onChange: (value: number) => void }) {
+  return (
+    <label className="space-y-2">
+      <span className="block text-sm font-semibold text-gray-700">{label}</span>
+      <div className="grid grid-cols-[1fr_5rem] items-center gap-3">
+        <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full" />
+        <input type="number" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full rounded-lg border px-3 py-2 text-right" />
+      </div>
+    </label>
   )
 }

@@ -8,6 +8,24 @@
   box-sizing: border-box;
 }
 
+:root {
+  --theme-font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --theme-background: #ffffff;
+  --theme-surface: #ffffff;
+  --theme-heading: #111827;
+  --theme-body: #374151;
+  --theme-primary: #2563eb;
+  --theme-primary-hover: #1d4ed8;
+  --theme-secondary: #e5e7eb;
+  --theme-secondary-hover: #d1d5db;
+  --theme-button-text: #ffffff;
+  --theme-link: #2563eb;
+  --theme-button-radius: 8px;
+  --theme-card-radius: 8px;
+  --theme-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+  --theme-spacing-scale: 1;
+}
+
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #1F2937;
@@ -150,9 +168,73 @@ html.dark-mode .shadow-sm {
   display: none;
 }
 
+.site-theme {
+  background: var(--theme-background);
+  color: var(--theme-body);
+  font-family: var(--theme-font-family);
+}
+
+.site-theme main {
+  background: var(--theme-background);
+}
+
+.site-theme h1,
+.site-theme h2,
+.site-theme h3,
+.site-theme h4,
+.site-theme h5,
+.site-theme h6,
+.site-theme .text-gray-900,
+.site-theme .text-gray-800,
+.site-theme .text-gray-700 {
+  color: var(--theme-heading);
+}
+
+.site-theme p,
+.site-theme li,
+.site-theme span,
+.site-theme .text-gray-600,
+.site-theme .text-gray-500,
+.site-theme .text-gray-400 {
+  color: var(--theme-body);
+}
+
+.site-theme a:not(.btn-primary):not(.btn-secondary):not(.section-button) {
+  color: var(--theme-link);
+}
+
+.site-theme .bg-white,
+.site-theme .card {
+  background-color: var(--theme-surface);
+}
+
+.site-theme .container {
+  padding-left: calc(1rem * var(--theme-spacing-scale));
+  padding-right: calc(1rem * var(--theme-spacing-scale));
+}
+
+@media (min-width: 640px) {
+  .site-theme .container {
+    padding-left: calc(1.5rem * var(--theme-spacing-scale));
+    padding-right: calc(1.5rem * var(--theme-spacing-scale));
+  }
+}
+
+@media (min-width: 1024px) {
+  .site-theme .container {
+    padding-left: calc(2rem * var(--theme-spacing-scale));
+    padding-right: calc(2rem * var(--theme-spacing-scale));
+  }
+}
+
+.site-theme .section-padding {
+  padding-top: calc(4rem * var(--theme-spacing-scale));
+  padding-bottom: calc(4rem * var(--theme-spacing-scale));
+}
+
 .page-section-render [class*="text-gray-900"],
 .page-section-render [class*="text-blue-600"] {
-  color: var(--section-heading-color, inherit) !important;
+  color: var(--section-heading-color, var(--theme-heading, inherit)) !important;
 }
 
 .page-section-render p,
@@ -160,18 +242,18 @@ html.dark-mode .shadow-sm {
 .page-section-render [class*="text-gray-700"],
 .page-section-render [class*="text-blue-100"],
 .page-section-render [class*="text-gray-100"] {
-  color: var(--section-text-color, inherit) !important;
+  color: var(--section-text-color, var(--theme-body, inherit)) !important;
 }
 
 .page-section-render .btn-primary {
-  background-color: var(--section-button-bg, #2563eb) !important;
-  color: var(--section-button-text, #ffffff) !important;
+  background-color: var(--section-button-bg, var(--theme-primary, #2563eb)) !important;
+  color: var(--section-button-text, var(--theme-button-text, #ffffff)) !important;
 }
 
 .page-section-render .section-button {
-  background-color: var(--section-button-bg, #2563eb) !important;
-  color: var(--section-button-text, #ffffff) !important;
-  border-radius: var(--section-button-radius, 0.5rem) !important;
+  background-color: var(--section-button-bg, var(--theme-primary, #2563eb)) !important;
+  color: var(--section-button-text, var(--theme-button-text, #ffffff)) !important;
+  border-radius: var(--section-button-radius, var(--theme-button-radius, 0.5rem)) !important;
   padding: var(--section-button-py, 0.75rem) var(--section-button-px, 1.5rem) !important;
   font-weight: var(--section-button-weight, 600) !important;
   line-height: 1.2;
@@ -183,7 +265,7 @@ html.dark-mode .shadow-sm {
 }
 
 .page-section-render .section-button:hover {
-  background-color: var(--section-button-hover-bg, var(--section-button-bg, #1d4ed8)) !important;
+  background-color: var(--section-button-hover-bg, var(--section-button-bg, var(--theme-primary-hover, #1d4ed8))) !important;
   transform: var(--section-button-hover-transform, translateY(-2px));
   box-shadow: var(--section-button-hover-shadow, 0 12px 24px rgba(15, 23, 42, 0.16));
 }
@@ -264,8 +346,8 @@ html.dark-mode .shadow-sm {
   margin-top: 0.75rem;
 }
 
-.rich-text-content a {
-  color: #2563eb;
+.site-theme .rich-text-content a {
+  color: var(--theme-link, #2563eb);
   text-decoration: underline;
 }
 
@@ -300,7 +382,7 @@ html.dark-mode .shadow-sm {
 }
 
 .rich-text-editor a {
-  color: #2563eb;
+  color: var(--theme-link, #2563eb);
   text-decoration: underline;
 }
 
@@ -437,9 +519,31 @@ html.dark-mode .rich-text-editor:empty::before {
   transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
+.site-theme .btn-primary {
+  padding: calc(0.75rem * var(--theme-spacing-scale)) calc(1.5rem * var(--theme-spacing-scale));
+  background: var(--theme-primary);
+  color: var(--theme-button-text);
+  border-radius: var(--theme-button-radius);
+}
+
+.site-theme .btn-primary:hover {
+  background: var(--theme-primary-hover);
+}
+
 .btn-secondary {
   @apply px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300;
   transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.site-theme .btn-secondary {
+  padding: calc(0.75rem * var(--theme-spacing-scale)) calc(1.5rem * var(--theme-spacing-scale));
+  background: var(--theme-secondary);
+  color: var(--theme-heading);
+  border-radius: var(--theme-button-radius);
+}
+
+.site-theme .btn-secondary:hover {
+  background: var(--theme-secondary-hover);
 }
 
 .section-title {
@@ -447,9 +551,19 @@ html.dark-mode .rich-text-editor:empty::before {
   animation: fadeInUp 0.6s ease-out;
 }
 
+.site-theme .section-title {
+  color: var(--theme-heading);
+}
+
 .card {
   @apply bg-white rounded-lg shadow-lg hover:shadow-xl;
   transition: box-shadow 220ms ease, transform 220ms ease;
+}
+
+.site-theme .card {
+  background: var(--theme-surface);
+  border-radius: var(--theme-card-radius);
+  box-shadow: var(--theme-shadow);
 }
 
 /* Skeleton Loader Shimmer Effect */

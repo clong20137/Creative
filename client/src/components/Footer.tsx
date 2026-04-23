@@ -2,6 +2,7 @@ import { FiFacebook, FiInstagram, FiTwitter, FiLinkedin } from 'react-icons/fi'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { resolveAssetUrl, siteSettingsAPI } from '../services/api'
+import { applyThemeSettings } from '../utils/theme'
 
 type FooterNavigationItem = {
   label: string
@@ -52,7 +53,9 @@ export default function Footer() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        setSettings(await siteSettingsAPI.getSettings())
+        const nextSettings = await siteSettingsAPI.getSettings()
+        applyThemeSettings(nextSettings)
+        setSettings(nextSettings)
       } catch (error) {
         console.error('Error loading footer settings:', error)
       }

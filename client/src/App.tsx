@@ -3,6 +3,7 @@ import { Suspense, lazy, useEffect } from 'react'
 import Navigation from './components/Navigation'
 import Footer from './components/Footer'
 import { resolveAssetUrl, siteSettingsAPI } from './services/api'
+import { applyThemeSettings } from './utils/theme'
 
 const Home = lazy(() => import('./pages/Home'))
 const Portfolio = lazy(() => import('./pages/Portfolio'))
@@ -66,7 +67,7 @@ function AppRoutes() {
   const isAdminRoute = location.pathname.startsWith('/admin')
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className={`flex min-h-screen flex-col ${isAdminRoute ? '' : 'site-theme'}`}>
       {!isAdminRoute && <Navigation />}
       <main className="flex-grow">
         <Suspense fallback={<RouteLoadingFallback />}>
@@ -129,6 +130,7 @@ function App() {
     const applySettings = async () => {
       try {
         const settings = await siteSettingsAPI.getSettings()
+        applyThemeSettings(settings)
         if (settings.faviconUrl) {
           let favicon = document.querySelector<HTMLLinkElement>("link[rel='icon']")
           if (!favicon) {

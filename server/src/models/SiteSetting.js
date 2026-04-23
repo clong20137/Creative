@@ -23,6 +23,66 @@ const SiteSetting = sequelize.define('SiteSetting', {
     type: DataTypes.INTEGER,
     defaultValue: 40
   },
+  themeFontFamily: {
+    type: DataTypes.STRING,
+    defaultValue: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+  },
+  themeBackgroundColor: {
+    type: DataTypes.STRING,
+    defaultValue: '#ffffff'
+  },
+  themeSurfaceColor: {
+    type: DataTypes.STRING,
+    defaultValue: '#ffffff'
+  },
+  themeHeadingColor: {
+    type: DataTypes.STRING,
+    defaultValue: '#111827'
+  },
+  themeBodyColor: {
+    type: DataTypes.STRING,
+    defaultValue: '#374151'
+  },
+  themePrimaryColor: {
+    type: DataTypes.STRING,
+    defaultValue: '#2563eb'
+  },
+  themePrimaryHoverColor: {
+    type: DataTypes.STRING,
+    defaultValue: '#1d4ed8'
+  },
+  themeSecondaryColor: {
+    type: DataTypes.STRING,
+    defaultValue: '#e5e7eb'
+  },
+  themeSecondaryHoverColor: {
+    type: DataTypes.STRING,
+    defaultValue: '#d1d5db'
+  },
+  themeButtonTextColor: {
+    type: DataTypes.STRING,
+    defaultValue: '#ffffff'
+  },
+  themeLinkColor: {
+    type: DataTypes.STRING,
+    defaultValue: '#2563eb'
+  },
+  themeButtonRadius: {
+    type: DataTypes.INTEGER,
+    defaultValue: 8
+  },
+  themeCardRadius: {
+    type: DataTypes.INTEGER,
+    defaultValue: 8
+  },
+  themeShadowPreset: {
+    type: DataTypes.STRING,
+    defaultValue: 'medium'
+  },
+  themeSpacingScale: {
+    type: DataTypes.DECIMAL(4, 2),
+    defaultValue: 1
+  },
   contactEmail: {
     type: DataTypes.STRING,
     defaultValue: 'hello@creativestudio.com'
