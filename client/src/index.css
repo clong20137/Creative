@@ -191,6 +191,11 @@ html.dark-mode .site-footer {
   color: #f9fafb;
 }
 
+html.dark-mode .site-footer .text-gray-400,
+html.dark-mode .site-footer .text-gray-500 {
+  color: #cbd5e1 !important;
+}
+
 html.dark-mode .site-footer .border-gray-800 {
   border-color: #374151 !important;
 }
