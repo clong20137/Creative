@@ -359,6 +359,26 @@ html.dark-mode .site-theme .site-nav .site-nav-mobile-button:hover {
   background-color: var(--theme-secondary-hover, #d1d5db) !important;
 }
 
+.page-section-render .section-secondary-button {
+  background-color: var(--section-secondary-button-bg, var(--theme-secondary, #e5e7eb)) !important;
+  color: var(--section-secondary-button-text, var(--theme-heading, #111827)) !important;
+  border-radius: var(--section-secondary-button-radius, var(--theme-button-radius, 0.5rem)) !important;
+  padding: var(--section-secondary-button-py, calc(0.75rem * var(--theme-spacing-scale, 1))) var(--section-secondary-button-px, calc(1.5rem * var(--theme-spacing-scale, 1))) !important;
+  font-weight: var(--section-button-weight, 600) !important;
+  line-height: 1.2;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease !important;
+}
+
+.page-section-render .section-secondary-button:hover {
+  background-color: var(--section-secondary-button-hover-bg, var(--theme-secondary-hover, #d1d5db)) !important;
+  transform: var(--section-secondary-button-hover-transform, none);
+  box-shadow: var(--section-secondary-button-hover-shadow, none);
+}
+
 .page-section-render .section-button {
   background-color: var(--section-button-bg, var(--theme-primary, #2563eb)) !important;
   color: var(--section-button-text, var(--theme-button-text, #ffffff)) !important;

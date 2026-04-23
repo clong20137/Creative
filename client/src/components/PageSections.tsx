@@ -261,6 +261,21 @@ function getSectionSpacingStyle(section: any) {
       : hoverEffect === 'grow'
         ? '0 10px 20px rgba(15, 23, 42, 0.14)'
         : 'none'
+  const secondaryHoverEffect = section.secondaryButtonHoverEffect || 'none'
+  const secondaryHoverTransform = secondaryHoverEffect === 'grow'
+    ? 'scale(1.04)'
+    : secondaryHoverEffect === 'glow'
+      ? 'translateY(-1px)'
+      : secondaryHoverEffect === 'lift'
+        ? 'translateY(-2px)'
+        : 'none'
+  const secondaryHoverShadow = secondaryHoverEffect === 'glow'
+    ? '0 16px 36px rgba(37, 99, 235, 0.28)'
+    : secondaryHoverEffect === 'lift'
+      ? '0 12px 24px rgba(15, 23, 42, 0.16)'
+      : secondaryHoverEffect === 'grow'
+        ? '0 10px 20px rgba(15, 23, 42, 0.14)'
+        : 'none'
 
   return {
     marginTop: toPixels(section.marginTop),
@@ -292,6 +307,14 @@ function getSectionSpacingStyle(section: any) {
     '--section-button-py': toPixels(section.buttonPaddingY),
     '--section-button-hover-transform': hoverTransform,
     '--section-button-hover-shadow': hoverShadow,
+    '--section-secondary-button-bg': section.secondaryButtonBackgroundColor || undefined,
+    '--section-secondary-button-text': section.secondaryButtonTextColor || undefined,
+    '--section-secondary-button-hover-bg': section.secondaryButtonHoverBackgroundColor || section.secondaryButtonBackgroundColor || undefined,
+    '--section-secondary-button-radius': toPixels(section.secondaryButtonBorderRadius),
+    '--section-secondary-button-px': toPixels(section.secondaryButtonPaddingX),
+    '--section-secondary-button-py': toPixels(section.secondaryButtonPaddingY),
+    '--section-secondary-button-hover-transform': secondaryHoverTransform,
+    '--section-secondary-button-hover-shadow': secondaryHoverShadow,
     '--section-text-align': section.textAlign || undefined,
     '--section-heading-size': toPixels(section.headingFontSize),
     '--section-body-size': toPixels(section.bodyFontSize),
@@ -375,6 +398,10 @@ function PageSection({ section }: { section: any }) {
         </div>
       </section>
     )
+  }
+
+  if (section.type === 'button') {
+    return <ButtonSection section={section} />
   }
 
   if (section.type === 'divider') {
@@ -512,6 +539,12 @@ function ColumnBlock({ block }: { block: any }) {
     return block.imageUrl ? <img src={resolveAssetUrl(block.imageUrl)} alt={block.alt || block.title || ''} loading="lazy" decoding="async" className="w-full rounded-lg object-cover" /> : null
   }
 
+  if (block.type === 'button') {
+    return block.buttonLabel && block.buttonUrl
+      ? <Link to={block.buttonUrl} className="section-button inline-flex items-center justify-center gap-2">{block.buttonLabel} <FiArrowRight /></Link>
+      : null
+  }
+
   if (block.type === 'imageCard') {
     return <ImageCard item={block} />
   }
@@ -525,6 +558,26 @@ function ColumnBlock({ block }: { block: any }) {
   }
 
   return <RichTextContent html={block.body} className="text-gray-700" />
+}
+
+function ButtonSection({ section }: { section: any }) {
+  const justifyClass = section.textAlign === 'left'
+    ? 'justify-start'
+    : section.textAlign === 'right'
+      ? 'justify-end'
+      : 'justify-center'
+
+  if (!section.buttonLabel || !section.buttonUrl) return null
+
+  return (
+    <section className="section-padding">
+      <div className={`container flex ${justifyClass}`}>
+        <Link to={section.buttonUrl} className="section-button inline-flex items-center justify-center gap-2">
+          {section.buttonLabel} <FiArrowRight />
+        </Link>
+      </div>
+    </section>
+  )
 }
 
 function ColumnPluginsListBlock({ block }: { block: any }) {
@@ -696,7 +749,7 @@ function HeroSection({ section }: { section: any }) {
             {section.body && <RichTextContent html={section.body} className="mt-6 text-xl text-blue-100 md:text-2xl" />}
             <div className="mt-8 flex flex-wrap gap-4">
               {section.buttonLabel && section.buttonUrl && <Link to={section.buttonUrl} className="section-button inline-flex items-center justify-center gap-2">{section.buttonLabel} <FiArrowRight /></Link>}
-              {section.secondaryButtonLabel && section.secondaryButtonUrl && <Link to={section.secondaryButtonUrl} className="btn-secondary inline-flex items-center justify-center">{section.secondaryButtonLabel}</Link>}
+              {section.secondaryButtonLabel && section.secondaryButtonUrl && <Link to={section.secondaryButtonUrl} className="btn-secondary section-secondary-button inline-flex items-center justify-center">{section.secondaryButtonLabel}</Link>}
             </div>
           </div>
           {hasHeroForm && (

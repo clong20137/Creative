@@ -1,6 +1,6 @@
 import { Suspense, lazy, memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiCopy, FiEye, FiEyeOff, FiFileText, FiGrid, FiImage, FiLayout, FiMonitor, FiMove, FiRotateCcw, FiRotateCw, FiSave, FiSearch, FiSmartphone, FiTablet, FiTrash2, FiType } from 'react-icons/fi'
+import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiCopy, FiEye, FiEyeOff, FiFileText, FiGrid, FiImage, FiLayout, FiMonitor, FiMove, FiRotateCcw, FiRotateCw, FiSave, FiSearch, FiSmartphone, FiSquare, FiTablet, FiTrash2, FiType } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import { adminAPI, resolveAssetUrl } from '../services/api'
@@ -64,6 +64,7 @@ const pluginOptions = [
 const sectionTypeOptions = [
   { value: 'hero', label: 'Hero', icon: FiLayout },
   { value: 'banner', label: 'Banner', icon: FiLayout },
+  { value: 'button', label: 'Button', icon: FiSquare },
   { value: 'columns', label: 'Columns', icon: FiColumns },
   { value: 'header', label: 'Header', icon: FiType },
   { value: 'paragraph', label: 'Paragraph', icon: FiFileText },
@@ -93,6 +94,7 @@ const sectionTypeOptions = [
 const nestedBlockOptions = [
   { value: 'header', label: 'Header', icon: FiType },
   { value: 'paragraph', label: 'Paragraph', icon: FiFileText },
+  { value: 'button', label: 'Button', icon: FiSquare },
   { value: 'image', label: 'Image', icon: FiImage },
   { value: 'imageCard', label: 'Image Card', icon: FiGrid },
   { value: 'pluginsList', label: 'Plugins List', icon: FiGrid },
@@ -217,6 +219,13 @@ function makePageSection(type: string) {
     buttonUrl: '/contact',
     secondaryButtonLabel: '',
     secondaryButtonUrl: '',
+    secondaryButtonBackgroundColor: '',
+    secondaryButtonTextColor: '',
+    secondaryButtonHoverBackgroundColor: '',
+    secondaryButtonBorderRadius: '',
+    secondaryButtonPaddingX: '',
+    secondaryButtonPaddingY: '',
+    secondaryButtonHoverEffect: 'none',
     buttonHoverBackgroundColor: '',
     buttonBorderRadius: '',
     buttonPaddingX: '',
@@ -309,7 +318,14 @@ function makeNestedBlock(type: string) {
     category: '',
     description: '',
     buttonLabel: 'Learn More',
-    buttonUrl: '/contact'
+    buttonUrl: '/contact',
+    buttonBackgroundColor: '',
+    buttonTextColor: '',
+    buttonHoverBackgroundColor: '',
+    buttonBorderRadius: '',
+    buttonPaddingX: '',
+    buttonPaddingY: '',
+    buttonHoverEffect: 'lift'
   }
 
   if (type === 'pluginsList') {
@@ -1359,17 +1375,17 @@ export default function AdminPages() {
 
                         <SectionSpacingControls section={section} index={index} updateSection={updatePageSection} />
 
-                        {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta' || section.type === 'imageOverlay') && (
+                        {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta' || section.type === 'imageOverlay' || section.type === 'button') && (
                           <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                            <input value={section.title || ''} onChange={(e) => updatePageSection(index, 'title', e.target.value)} placeholder="Heading" className="px-4 py-2 border rounded-lg md:col-span-2" />
-                            <textarea value={section.body || ''} onChange={(e) => updatePageSection(index, 'body', e.target.value)} placeholder="Text" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                            {section.type !== 'button' && <input value={section.title || ''} onChange={(e) => updatePageSection(index, 'title', e.target.value)} placeholder="Heading" className="px-4 py-2 border rounded-lg md:col-span-2" />}
+                            {section.type !== 'button' && <textarea value={section.body || ''} onChange={(e) => updatePageSection(index, 'body', e.target.value)} placeholder="Text" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />}
                             <input value={section.buttonLabel || ''} onChange={(e) => updatePageSection(index, 'buttonLabel', e.target.value)} placeholder="Button label" className="px-4 py-2 border rounded-lg" />
                             <input value={section.buttonUrl || ''} onChange={(e) => updatePageSection(index, 'buttonUrl', e.target.value)} placeholder="Button URL" className="px-4 py-2 border rounded-lg" />
                             {section.type === 'hero' && <input value={section.secondaryButtonLabel || ''} onChange={(e) => updatePageSection(index, 'secondaryButtonLabel', e.target.value)} placeholder="Secondary button label" className="px-4 py-2 border rounded-lg" />}
                             {section.type === 'hero' && <input value={section.secondaryButtonUrl || ''} onChange={(e) => updatePageSection(index, 'secondaryButtonUrl', e.target.value)} placeholder="Secondary button URL" className="px-4 py-2 border rounded-lg" />}
-                            {section.type !== 'cta' && <input value={section.imageUrl || ''} onChange={(e) => updatePageSection(index, 'imageUrl', e.target.value)} placeholder="Optional image URL" className="px-4 py-2 border rounded-lg md:col-span-2" />}
-                            {section.type !== 'cta' && <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url) => updatePageSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />}
-                            {section.imageUrl && section.type !== 'cta' && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
+                            {section.type !== 'cta' && section.type !== 'button' && <input value={section.imageUrl || ''} onChange={(e) => updatePageSection(index, 'imageUrl', e.target.value)} placeholder="Optional image URL" className="px-4 py-2 border rounded-lg md:col-span-2" />}
+                            {section.type !== 'cta' && section.type !== 'button' && <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url) => updatePageSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />}
+                            {section.imageUrl && section.type !== 'cta' && section.type !== 'button' && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
                           </div>
                         )}
 
@@ -2171,22 +2187,22 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
         <SectionSpacingControls section={section} index={index} updateSection={updateSection} />
         <SectionResponsiveControls section={section} index={index} updateSection={updateSection} />
         <SectionColorControls section={section} index={index} updateSection={updateSection} />
-        {['banner', 'hero', 'cta', 'imageOverlay'].includes(section.type) && <SectionButtonControls section={section} index={index} updateSection={updateSection} />}
+        {['banner', 'hero', 'cta', 'imageOverlay', 'button'].includes(section.type) && <SectionButtonControls section={section} index={index} updateSection={updateSection} />}
         <SectionTypographyControls section={section} index={index} updateSection={updateSection} />
         <SectionAnimationControls section={section} index={index} updateSection={updateSection} />
 
-        {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta' || section.type === 'imageOverlay') && (
+        {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta' || section.type === 'imageOverlay' || section.type === 'button') && (
           <div className="space-y-3">
-            <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Heading" className="w-full px-4 py-2 border rounded-lg" />
-            <DeferredRichTextEditorField label="Text" value={section.body || ''} onChange={(value: string) => updateSection(index, 'body', value)} placeholder="Add text, links, and color..." minHeight={120} />
+            {section.type !== 'button' && <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Heading" className="w-full px-4 py-2 border rounded-lg" />}
+            {section.type !== 'button' && <DeferredRichTextEditorField label="Text" value={section.body || ''} onChange={(value: string) => updateSection(index, 'body', value)} placeholder="Add text, links, and color..." minHeight={120} />}
             <input value={section.buttonLabel || ''} onChange={(e) => updateSection(index, 'buttonLabel', e.target.value)} placeholder="Button label" className="w-full px-4 py-2 border rounded-lg" />
             <input value={section.buttonUrl || ''} onChange={(e) => updateSection(index, 'buttonUrl', e.target.value)} placeholder="Button URL" className="w-full px-4 py-2 border rounded-lg" />
             {section.type === 'hero' && <input value={section.secondaryButtonLabel || ''} onChange={(e) => updateSection(index, 'secondaryButtonLabel', e.target.value)} placeholder="Secondary button label" className="w-full px-4 py-2 border rounded-lg" />}
             {section.type === 'hero' && <input value={section.secondaryButtonUrl || ''} onChange={(e) => updateSection(index, 'secondaryButtonUrl', e.target.value)} placeholder="Secondary button URL" className="w-full px-4 py-2 border rounded-lg" />}
-            {section.type !== 'cta' && <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Optional image URL" className="w-full px-4 py-2 border rounded-lg" />}
-            {section.type !== 'cta' && <button type="button" onClick={() => openMediaPicker((url: string) => updateSection(index, 'imageUrl', url), 'image')} className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50"><FiImage /> Choose from Media Library</button>}
-            {section.type !== 'cta' && <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url: string) => updateSection(index, 'imageUrl', url), e.target.files?.[0])} className="w-full px-4 py-2 border rounded-lg" />}
-            {section.imageUrl && section.type !== 'cta' && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-40 w-full rounded-lg object-cover" />}
+            {section.type !== 'cta' && section.type !== 'button' && <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Optional image URL" className="w-full px-4 py-2 border rounded-lg" />}
+            {section.type !== 'cta' && section.type !== 'button' && <button type="button" onClick={() => openMediaPicker((url: string) => updateSection(index, 'imageUrl', url), 'image')} className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50"><FiImage /> Choose from Media Library</button>}
+            {section.type !== 'cta' && section.type !== 'button' && <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url: string) => updateSection(index, 'imageUrl', url), e.target.files?.[0])} className="w-full px-4 py-2 border rounded-lg" />}
+            {section.imageUrl && section.type !== 'cta' && section.type !== 'button' && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-40 w-full rounded-lg object-cover" />}
             {section.type === 'hero' && (
               <div className="space-y-3 rounded-lg border bg-gray-50 p-4">
                 <label className="grid grid-cols-[6rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
@@ -2540,17 +2556,17 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
 
             <SectionSpacingControls section={section} index={index} updateSection={updateSection} />
 
-            {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta' || section.type === 'imageOverlay') && (
+            {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta' || section.type === 'imageOverlay' || section.type === 'button') && (
               <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Heading" className="px-4 py-2 border rounded-lg md:col-span-2" />
-                <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Text" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                {section.type !== 'button' && <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Heading" className="px-4 py-2 border rounded-lg md:col-span-2" />}
+                {section.type !== 'button' && <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Text" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />}
                 <input value={section.buttonLabel || ''} onChange={(e) => updateSection(index, 'buttonLabel', e.target.value)} placeholder="Button label" className="px-4 py-2 border rounded-lg" />
                 <input value={section.buttonUrl || ''} onChange={(e) => updateSection(index, 'buttonUrl', e.target.value)} placeholder="Button URL" className="px-4 py-2 border rounded-lg" />
                 {section.type === 'hero' && <input value={section.secondaryButtonLabel || ''} onChange={(e) => updateSection(index, 'secondaryButtonLabel', e.target.value)} placeholder="Secondary button label" className="px-4 py-2 border rounded-lg" />}
                 {section.type === 'hero' && <input value={section.secondaryButtonUrl || ''} onChange={(e) => updateSection(index, 'secondaryButtonUrl', e.target.value)} placeholder="Secondary button URL" className="px-4 py-2 border rounded-lg" />}
-                {section.type !== 'cta' && <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Optional image URL" className="px-4 py-2 border rounded-lg md:col-span-2" />}
-                {section.type !== 'cta' && <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url: string) => updateSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />}
-                {section.imageUrl && section.type !== 'cta' && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
+                {section.type !== 'cta' && section.type !== 'button' && <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Optional image URL" className="px-4 py-2 border rounded-lg md:col-span-2" />}
+                {section.type !== 'cta' && section.type !== 'button' && <input type="file" accept="image/*" onChange={(e) => uploadImageToField((url: string) => updateSection(index, 'imageUrl', url), e.target.files?.[0])} className="px-4 py-2 border rounded-lg md:col-span-2" />}
+                {section.imageUrl && section.type !== 'cta' && section.type !== 'button' && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="h-48 w-full rounded-lg object-cover md:col-span-2" />}
               </div>
             )}
 
@@ -2750,6 +2766,12 @@ function NestedBlockEditor({ block, columnIndex, blockIndex, updateBlock, remove
       {(block.type === 'header' || block.type === 'imageCard') && <input value={block.title || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'title', e.target.value)} placeholder="Header" className="w-full px-4 py-2 border rounded-lg" />}
       {block.type === 'imageCard' && <input value={block.category || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'category', e.target.value)} placeholder="Category / small heading" className="w-full px-4 py-2 border rounded-lg" />}
       {(block.type === 'paragraph' || block.type === 'header') && <DeferredRichTextEditorField label="Text" value={block.body || ''} onChange={(value: string) => updateBlock(columnIndex, blockIndex, 'body', value)} placeholder="Format text..." minHeight={120} />}
+      {block.type === 'button' && (
+        <>
+          <input value={block.buttonLabel || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'buttonLabel', e.target.value)} placeholder="Button label" className="w-full px-4 py-2 border rounded-lg" />
+          <input value={block.buttonUrl || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'buttonUrl', e.target.value)} placeholder="Button URL" className="w-full px-4 py-2 border rounded-lg" />
+        </>
+      )}
       {(block.type === 'pluginsList' || block.type === 'siteDemos') && (
         <>
           <input value={block.title || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'title', e.target.value)} placeholder="Section title" className="w-full px-4 py-2 border rounded-lg" />
@@ -3218,6 +3240,66 @@ function SectionButtonControls({ section, index, updateSection }: any) {
     const value = Number(section[key] || fallback)
     return Number.isFinite(value) ? value : fallback
   }
+  const renderButtonOverrideControls = ({
+    prefix,
+    title,
+    backgroundFallback,
+    textFallback
+  }: {
+    prefix: 'button' | 'secondaryButton'
+    title: string
+    backgroundFallback: string
+    textFallback: string
+  }) => {
+    const backgroundKey = `${prefix}BackgroundColor`
+    const textKey = `${prefix}TextColor`
+    const hoverKey = `${prefix}HoverBackgroundColor`
+    const radiusKey = `${prefix}BorderRadius`
+    const paddingXKey = `${prefix}PaddingX`
+    const paddingYKey = `${prefix}PaddingY`
+    const hoverEffectKey = `${prefix}HoverEffect`
+
+    return (
+      <div className="space-y-4 rounded-lg border bg-gray-50 p-4">
+        <div>
+          <h4 className="text-sm font-bold text-gray-900">{title}</h4>
+          {prefix === 'secondaryButton' && <p className="mt-1 text-xs text-gray-600">Leave these blank to keep the global secondary button style.</p>}
+        </div>
+        <div className="space-y-3">
+          <div className="grid grid-cols-[1fr_3rem_6rem] items-center gap-2 text-sm text-gray-700">
+            <span className="font-semibold">Background</span>
+            <input type="color" value={colorValue(section[backgroundKey], backgroundFallback)} onChange={(e) => updateSection(index, backgroundKey, e.target.value)} className="h-10 w-12 rounded border p-1" />
+            <input value={section[backgroundKey] || ''} onChange={(e) => updateSection(index, backgroundKey, e.target.value)} placeholder={backgroundFallback} className="w-full rounded-lg border px-2 py-1" />
+          </div>
+          <div className="grid grid-cols-[1fr_3rem_6rem] items-center gap-2 text-sm text-gray-700">
+            <span className="font-semibold">Text</span>
+            <input type="color" value={colorValue(section[textKey], textFallback)} onChange={(e) => updateSection(index, textKey, e.target.value)} className="h-10 w-12 rounded border p-1" />
+            <input value={section[textKey] || ''} onChange={(e) => updateSection(index, textKey, e.target.value)} placeholder={textFallback} className="w-full rounded-lg border px-2 py-1" />
+          </div>
+          <div className="grid grid-cols-[1fr_3rem_6rem] items-center gap-2 text-sm text-gray-700">
+            <span className="font-semibold">Hover background</span>
+            <input type="color" value={colorValue(section[hoverKey], section[backgroundKey] || backgroundFallback)} onChange={(e) => updateSection(index, hoverKey, e.target.value)} className="h-10 w-12 rounded border p-1" />
+            <input value={section[hoverKey] || ''} onChange={(e) => updateSection(index, hoverKey, e.target.value)} placeholder={section[backgroundKey] || backgroundFallback} className="w-full rounded-lg border px-2 py-1" />
+          </div>
+          <label className="block text-sm font-semibold text-gray-700">
+            Hover effect
+            <select value={section[hoverEffectKey] || (prefix === 'secondaryButton' ? 'none' : 'lift')} onChange={(e) => updateSection(index, hoverEffectKey, e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
+              <option value="lift">Lift</option>
+              <option value="grow">Grow</option>
+              <option value="glow">Glow</option>
+              <option value="none">None</option>
+            </select>
+          </label>
+        </div>
+        <div className="space-y-3 border-t pt-4">
+          <h5 className="text-xs font-bold uppercase tracking-wide text-gray-500">Shape And Padding</h5>
+          {sliderControl(radiusKey, 'Radius', 0, 48, prefix === 'secondaryButton' ? 8 : 8)}
+          {sliderControl(paddingXKey, 'Pad X', 8, 48, prefix === 'secondaryButton' ? 24 : 24)}
+          {sliderControl(paddingYKey, 'Pad Y', 8, 28, prefix === 'secondaryButton' ? 12 : 12)}
+        </div>
+      </div>
+    )
+  }
   const sliderControl = (key: string, label: string, min: number, max: number, fallback = 0) => (
     <label className="grid grid-cols-[5rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
       <span className="font-semibold">{label}</span>
@@ -3233,28 +3315,18 @@ function SectionButtonControls({ section, index, updateSection }: any) {
     <details className="mb-3 rounded-lg border bg-white p-3">
       <summary className="cursor-pointer text-sm font-bold text-gray-800">Button</summary>
       <div className="mt-3 space-y-5">
-        <div className="space-y-3">
-          <div className="grid grid-cols-[1fr_3rem_6rem] items-center gap-2 text-sm text-gray-700">
-            <span className="font-semibold">Hover background</span>
-            <input type="color" value={colorValue(section.buttonHoverBackgroundColor, section.buttonBackgroundColor || '#1d4ed8')} onChange={(e) => updateSection(index, 'buttonHoverBackgroundColor', e.target.value)} className="h-10 w-12 rounded border p-1" />
-            <input value={section.buttonHoverBackgroundColor || ''} onChange={(e) => updateSection(index, 'buttonHoverBackgroundColor', e.target.value)} placeholder="#1d4ed8" className="w-full rounded-lg border px-2 py-1" />
-          </div>
-          <label className="block text-sm font-semibold text-gray-700">
-            Hover effect
-            <select value={section.buttonHoverEffect || 'lift'} onChange={(e) => updateSection(index, 'buttonHoverEffect', e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
-              <option value="lift">Lift</option>
-              <option value="grow">Grow</option>
-              <option value="glow">Glow</option>
-              <option value="none">None</option>
-            </select>
-          </label>
-        </div>
-        <div className="space-y-3 border-t pt-4">
-          <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500">Shape And Padding</h4>
-          {sliderControl('buttonBorderRadius', 'Radius', 0, 48, 8)}
-          {sliderControl('buttonPaddingX', 'Pad X', 8, 48, 24)}
-          {sliderControl('buttonPaddingY', 'Pad Y', 8, 28, 12)}
-        </div>
+        {renderButtonOverrideControls({
+          prefix: 'button',
+          title: section.type === 'hero' ? 'Primary Button Overrides' : 'Button Overrides',
+          backgroundFallback: '#2563eb',
+          textFallback: '#ffffff'
+        })}
+        {section.type === 'hero' && renderButtonOverrideControls({
+          prefix: 'secondaryButton',
+          title: 'Secondary Button Overrides',
+          backgroundFallback: '#e5e7eb',
+          textFallback: '#111827'
+        })}
       </div>
     </details>
   )
