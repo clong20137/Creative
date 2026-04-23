@@ -178,33 +178,32 @@ html.dark-mode .shadow-sm {
   background: var(--theme-background);
 }
 
-.site-theme h1,
-.site-theme h2,
-.site-theme h3,
-.site-theme h4,
-.site-theme h5,
-.site-theme h6,
-.site-theme .text-gray-900,
-.site-theme .text-gray-800,
-.site-theme .text-gray-700 {
+.site-theme main h1,
+.site-theme main h2,
+.site-theme main h3,
+.site-theme main h4,
+.site-theme main h5,
+.site-theme main h6,
+.site-theme main .text-gray-900,
+.site-theme main .text-gray-800,
+.site-theme main .text-gray-700 {
   color: var(--theme-heading);
 }
 
-.site-theme p,
-.site-theme li,
-.site-theme span,
-.site-theme .text-gray-600,
-.site-theme .text-gray-500,
-.site-theme .text-gray-400 {
+.site-theme main p,
+.site-theme main li,
+.site-theme main .text-gray-600,
+.site-theme main .text-gray-500,
+.site-theme main .text-gray-400 {
   color: var(--theme-body);
 }
 
-.site-theme a:not(.btn-primary):not(.btn-secondary):not(.section-button) {
+.site-theme main a:not(.btn-primary):not(.btn-secondary):not(.section-button) {
   color: var(--theme-link);
 }
 
-.site-theme .bg-white,
-.site-theme .card {
+.site-theme main .bg-white,
+.site-theme main .card {
   background-color: var(--theme-surface);
 }
 
@@ -240,8 +239,7 @@ html.dark-mode .shadow-sm {
 .page-section-render p,
 .page-section-render [class*="text-gray-600"],
 .page-section-render [class*="text-gray-700"],
-.page-section-render [class*="text-blue-100"],
-.page-section-render [class*="text-gray-100"] {
+.page-section-render [class*="text-gray-500"] {
   color: var(--section-text-color, var(--theme-body, inherit)) !important;
 }
 

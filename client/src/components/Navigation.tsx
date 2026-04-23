@@ -196,7 +196,7 @@ export default function Navigation() {
             })}
             <Link
               to={userRole ? dashboardPath : '/login'}
-              className="btn-secondary text-sm inline-flex h-10 items-center"
+              className="btn-primary text-sm inline-flex h-10 items-center"
             >
               {userRole ? 'Dashboard' : 'Client Login'}
             </Link>
