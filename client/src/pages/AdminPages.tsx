@@ -1813,22 +1813,22 @@ export default function AdminPages() {
 
 function FloatingPageActions({ isCustomPage, isSavedCustomPage, isPublished, updatePublished, savePage, deletePage }: any) {
   return (
-    <div className="fixed inset-x-3 bottom-3 z-[90] lg:inset-x-auto lg:bottom-5 lg:right-5">
-      <div className="ml-auto flex max-w-xl flex-wrap items-center gap-2 rounded-xl border bg-white/95 p-2.5 shadow-2xl backdrop-blur md:gap-3 md:p-3">
+    <div className="fixed inset-x-3 bottom-[5.25rem] z-[90] lg:inset-x-auto lg:bottom-5 lg:right-5">
+      <div className="ml-auto flex max-w-xl flex-wrap items-center gap-2 rounded-xl border bg-white/95 p-2 shadow-2xl backdrop-blur md:gap-3 md:p-3">
         {isCustomPage && (
-          <label className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold text-gray-700 md:text-sm">
+          <label className="inline-flex items-center gap-2 rounded-lg border px-2.5 py-2 text-[11px] font-semibold text-gray-700 md:px-3 md:text-sm">
             <input type="checkbox" checked={Boolean(isPublished)} onChange={(e) => updatePublished(e.target.checked)} />
             Published
           </label>
         )}
         {isSavedCustomPage && (
-          <button type="button" onClick={deletePage} className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-3 py-3 text-sm font-bold text-white transition hover:bg-red-700 lg:flex-none">
+          <button type="button" onClick={deletePage} className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-red-700 lg:flex-none lg:py-3">
             <FiTrash2 />
             <span className="hidden sm:inline">Delete Page</span>
             <span className="sm:hidden">Delete</span>
           </button>
         )}
-        <button type="button" onClick={savePage} className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-3 text-sm font-bold text-white transition hover:bg-blue-700 lg:flex-none">
+        <button type="button" onClick={savePage} className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 lg:flex-none lg:py-3">
           <FiSave />
           <span className="hidden sm:inline">Save Page</span>
           <span className="sm:hidden">Save</span>

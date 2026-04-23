@@ -110,25 +110,25 @@ export default function Footer() {
   }, [])
 
   return (
-    <footer className="site-footer py-12">
+    <footer className="site-footer py-10 md:py-12">
       <div className="container">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.2fr_2fr_1fr] mb-8">
+        <div className="mb-8 grid grid-cols-1 gap-8 md:gap-10 lg:grid-cols-[1.2fr_2fr_1fr]">
           {/* Company Info */}
-          <div>
+          <div className="max-w-xl">
             {settings.logoUrl ? (
               <img
                 src={resolveAssetUrl(settings.logoUrl)}
                 alt={settings.siteName}
-                className="w-auto object-contain mb-4"
+                className="mb-4 w-auto object-contain"
                 style={{ height: `${Math.min(Math.max(Number(settings.logoSize) || 40, 24), 96)}px` }}
               />
             ) : <h3 className="text-2xl font-bold mb-4">{settings.siteName}</h3>}
-            <p className="text-gray-400">
+            <p className="max-w-md text-sm leading-7 text-gray-400 md:text-base">
               {settings.footerDescription}
             </p>
           </div>
 
-          <div className={`grid grid-cols-1 gap-8 ${footerColumns.length > 1 ? 'sm:grid-cols-2 xl:grid-cols-3' : ''}`}>
+          <div className={`grid grid-cols-1 gap-8 sm:grid-cols-2 ${footerColumns.length > 2 ? 'xl:grid-cols-3' : ''}`}>
             {footerColumns.map((column) => {
               const links = (column.links || [])
                 .map(normalizeFooterLink)
@@ -139,8 +139,8 @@ export default function Footer() {
 
               return (
                 <div key={`${column.title}-${column.sortOrder || 0}`}>
-                  <h4 className="mb-4 text-lg font-semibold">{column.title}</h4>
-                  <ul className="space-y-2 text-gray-400">
+                  <h4 className="mb-4 text-base font-semibold md:text-lg">{column.title}</h4>
+                  <ul className="space-y-2.5 text-sm text-gray-400 md:text-base">
                     {links.map((link) => (
                       <li key={`${column.title}-${link.label}-${link.url}`}>
                         <Link to={link.url} className="transition hover:text-white">{link.label}</Link>
@@ -154,9 +154,9 @@ export default function Footer() {
 
           {/* Contact & Social */}
           <div>
-            <h4 className="text-lg font-semibold mb-4">Connect</h4>
-            <p className="text-gray-400 mb-4">{settings.contactEmail}</p>
-            <div className="flex space-x-4">
+            <h4 className="mb-4 text-base font-semibold md:text-lg">Connect</h4>
+            <p className="mb-4 break-words text-sm text-gray-400 md:text-base">{settings.contactEmail}</p>
+            <div className="flex flex-wrap gap-4">
               {socialLinks.map((link) => {
                 const Icon = link.icon
                 return (
@@ -169,10 +169,10 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 pt-8">
-          <div className="flex flex-col items-center justify-between text-gray-400 md:flex-row">
-            <p>&copy; {currentYear} {settings.siteName}. All rights reserved.</p>
-            <div className="space-x-6 mt-4 md:mt-0">
+        <div className="border-t border-gray-800 pt-6 md:pt-8">
+          <div className="flex flex-col gap-4 text-sm text-gray-400 md:flex-row md:items-center md:justify-between md:text-base">
+            <p className="text-center md:text-left">&copy; {currentYear} {settings.siteName}. All rights reserved.</p>
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 md:justify-end">
               <a href="#" className="transition hover:text-white">Privacy Policy</a>
               <a href="#" className="transition hover:text-white">Terms of Service</a>
             </div>

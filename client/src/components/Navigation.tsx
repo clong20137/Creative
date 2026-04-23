@@ -196,7 +196,7 @@ export default function Navigation() {
             })}
             <Link
               to={userRole ? dashboardPath : '/login'}
-              className="btn-primary inline-flex items-center justify-center text-sm"
+              className="btn-primary site-nav-action-button inline-flex items-center justify-center text-sm"
             >
               {userRole ? 'Dashboard' : 'Client Login'}
             </Link>
@@ -221,7 +221,7 @@ export default function Navigation() {
 
         {/* Mobile Menu */}
         {isOpen && (
-          <div className="md:hidden pb-4 space-y-1">
+          <div className="site-nav-mobile-panel md:hidden pb-5 space-y-2">
             {visibleNavigationItems.map(item => {
               const children = Array.isArray(item.children) ? item.children : []
               const dropdownKey = `${item.label}-${item.url}`
@@ -232,7 +232,7 @@ export default function Navigation() {
                   <Link
                     key={dropdownKey}
                     to={item.url}
-                    className={`site-nav-link block rounded-xl px-2 py-3 text-base font-medium transition ${
+                    className={`site-nav-link block rounded-xl px-3 py-3 text-base font-medium transition ${
                       isParentActive ? 'site-nav-link-active bg-blue-50' : 'hover:bg-gray-50'
                     }`}
                   >
@@ -286,15 +286,18 @@ export default function Navigation() {
                 </div>
               )
             })}
-            <Link to={userRole ? dashboardPath : '/login'} className="btn-primary mt-2 inline-flex w-full items-center justify-center text-base font-semibold">
-              {userRole ? 'Dashboard' : 'Client Login'}
-            </Link>
-            <button
-              onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}
-              className="site-nav-mobile-button block w-full rounded-xl px-2 py-3 text-left text-base font-medium transition"
-            >
-              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-            </button>
+            <div className="site-nav-mobile-actions grid grid-cols-2 gap-3 pt-2">
+              <Link to={userRole ? dashboardPath : '/login'} className="btn-primary site-nav-action-button inline-flex w-full items-center justify-center text-sm font-semibold">
+                {userRole ? 'Dashboard' : 'Client Login'}
+              </Link>
+              <button
+                onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}
+                className="site-nav-icon-button inline-flex min-h-[44px] w-full items-center justify-center gap-2 px-4 text-sm font-semibold transition"
+              >
+                {theme === 'dark' ? <FiSun size={18} /> : <FiMoon size={18} />}
+                <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
