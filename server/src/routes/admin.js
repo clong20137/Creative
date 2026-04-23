@@ -282,6 +282,14 @@ async function ensureCmsLicenseSchema() {
   await addColumn('lastValidatedAt', { type: DataTypes.DATE, allowNull: true })
   await addColumn('features', { type: DataTypes.JSON, allowNull: true })
   await addColumn('notes', { type: DataTypes.TEXT, allowNull: true })
+  await addColumn('stripeCheckoutSessionId', { type: DataTypes.STRING, allowNull: true })
+  await addColumn('stripeSubscriptionId', { type: DataTypes.STRING, allowNull: true })
+  await addColumn('stripeCustomerId', { type: DataTypes.STRING, allowNull: true })
+  await addColumn('cancelAtPeriodEnd', {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  })
 
   cmsLicenseSchemaReady = true
 }

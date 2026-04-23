@@ -93,6 +93,23 @@ const CMSLicense = sequelize.define('CMSLicense', {
   notes: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  stripeCheckoutSessionId: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  stripeSubscriptionId: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  stripeCustomerId: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  cancelAtPeriodEnd: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
   }
 }, {
   timestamps: true

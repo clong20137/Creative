@@ -5,6 +5,8 @@ import Plugin from '../models/Plugin.js'
 import ClientPluginPurchase from '../models/ClientPluginPurchase.js'
 import ProtectedContentItem from '../models/ProtectedContentItem.js'
 import ProtectedContentPurchase from '../models/ProtectedContentPurchase.js'
+import SubscriptionPlan from '../models/SubscriptionPlan.js'
+import CMSLicense from '../models/CMSLicense.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
 
 const router = express.Router()
@@ -108,6 +110,86 @@ async function markProtectedContentPurchased(session) {
   }
 }
 
+async function markCmsLicensePurchased(session, stripe) {
+  const planId = session.metadata?.cmsLicensePlanId
+  const clientId = session.metadata?.clientId
+  if (!planId || !clientId || session.payment_status !== 'paid') return
+
+  const plan = await SubscriptionPlan.findByPk(planId)
+  if (!plan || plan.productType !== 'cms-license') return
+
+  let renewalDate = null
+  let cancelAtPeriodEnd = false
+  let customerId = typeof session.customer === 'string' ? session.customer : null
+  let subscriptionId = typeof session.subscription === 'string' ? session.subscription : null
+  if (subscriptionId) {
+    try {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+      renewalDate = subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null
+      cancelAtPeriodEnd = Boolean(subscription.cancel_at_period_end)
+      customerId = typeof subscription.customer === 'string' ? subscription.customer : customerId
+    } catch (error) {
+      renewalDate = null
+    }
+  }
+
+  const licenseData = {
+    clientId: Number(clientId),
+    planId: plan.id,
+    planName: plan.name,
+    tier: plan.tier || 'starter',
+    status: 'active',
+    price: plan.price || 0,
+    billingCycle: plan.billingCycle || 'monthly',
+    licensedDomain: String(session.metadata?.licensedDomain || '').trim() || null,
+    updateChannel: plan.updateChannel || 'stable',
+    includedUpdates: plan.includedUpdates !== false,
+    startDate: new Date(),
+    renewalDate,
+    endDate: null,
+    lastValidatedAt: new Date(),
+    features: Array.isArray(plan.features) ? plan.features : [],
+    notes: 'Activated from Stripe checkout',
+    stripeCheckoutSessionId: session.id,
+    stripeSubscriptionId: subscriptionId,
+    stripeCustomerId: customerId,
+    cancelAtPeriodEnd
+  }
+
+  const existingLicense = await CMSLicense.findOne({
+    where: { clientId: Number(clientId) },
+    order: [['createdAt', 'DESC']]
+  })
+  if (existingLicense) {
+    await existingLicense.update({
+      ...licenseData,
+      licenseKey: existingLicense.licenseKey
+    })
+  } else {
+    await CMSLicense.create({
+      ...licenseData,
+      licenseKey: `CMS-${Math.random().toString(36).slice(2, 8).toUpperCase()}-${Date.now().toString().slice(-6)}`
+    })
+  }
+}
+
+async function syncCmsLicenseSubscription(eventObject) {
+  const subscriptionId = typeof eventObject?.id === 'string' ? eventObject.id : null
+  if (!subscriptionId) return
+
+  const license = await CMSLicense.findOne({ where: { stripeSubscriptionId: subscriptionId } })
+  if (!license) return
+
+  const isActive = ['active', 'trialing'].includes(eventObject.status)
+  await license.update({
+    status: isActive ? 'active' : (eventObject.status === 'canceled' ? 'cancelled' : 'inactive'),
+    renewalDate: eventObject.current_period_end ? new Date(eventObject.current_period_end * 1000) : license.renewalDate,
+    endDate: eventObject.ended_at ? new Date(eventObject.ended_at * 1000) : (eventObject.cancel_at_period_end ? license.renewalDate : null),
+    cancelAtPeriodEnd: Boolean(eventObject.cancel_at_period_end),
+    stripeCustomerId: typeof eventObject.customer === 'string' ? eventObject.customer : license.stripeCustomerId
+  })
+}
+
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const signature = req.headers['stripe-signature']
@@ -118,6 +200,11 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       await markInvoicePaid(event.data.object)
       await markPluginPurchased(event.data.object)
       await markProtectedContentPurchased(event.data.object)
+      await markCmsLicensePurchased(event.data.object, stripe)
+    }
+
+    if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+      await syncCmsLicenseSubscription(event.data.object)
     }
 
     res.json({ received: true })

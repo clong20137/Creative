@@ -1,13 +1,35 @@
 import express from 'express'
+import Stripe from 'stripe'
 import Subscription from '../models/Subscription.js'
 import SubscriptionPlan from '../models/SubscriptionPlan.js'
 import CMSLicense from '../models/CMSLicense.js'
+import User from '../models/User.js'
 import { DataTypes } from 'sequelize'
 import { ensureActiveUser, requireRole, requireSelfOrAdmin, verifyToken } from '../utils/auth.js'
+import { getOrCreateSiteSettings } from './site-settings.js'
 
 const router = express.Router()
 let subscriptionSchemaReady = false
 let cmsLicenseSchemaReady = false
+
+async function getStripeClient() {
+  const settings = await getOrCreateSiteSettings()
+  const secretKey = settings.stripeSecretKey || process.env.STRIPE_SECRET_KEY
+  if (!secretKey || secretKey.includes('your_key_here')) return null
+  return new Stripe(secretKey)
+}
+
+function getBillingInterval(billingCycle) {
+  if (billingCycle === 'annually') return { interval: 'year', interval_count: 1 }
+  if (billingCycle === 'quarterly') return { interval: 'month', interval_count: 3 }
+  return { interval: 'month', interval_count: 1 }
+}
+
+function buildAbsoluteUrl(req, path) {
+  const host = req.get('host')
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http'
+  return `${protocol}://${host}${path}`
+}
 
 async function ensureSubscriptionSchema() {
   if (subscriptionSchemaReady) return
@@ -166,6 +188,23 @@ async function ensureCmsLicenseSchema() {
     type: DataTypes.TEXT,
     allowNull: true
   })
+  await addColumn('stripeCheckoutSessionId', {
+    type: DataTypes.STRING,
+    allowNull: true
+  })
+  await addColumn('stripeSubscriptionId', {
+    type: DataTypes.STRING,
+    allowNull: true
+  })
+  await addColumn('stripeCustomerId', {
+    type: DataTypes.STRING,
+    allowNull: true
+  })
+  await addColumn('cancelAtPeriodEnd', {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  })
 
   cmsLicenseSchemaReady = true
 }
@@ -243,6 +282,128 @@ router.get('/client/:clientId/license', verifyToken, ensureActiveUser, requireSe
     })
 
     res.json({ hasActiveLicense: false, license: latestLicense })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/license-plans', verifyToken, ensureActiveUser, async (req, res) => {
+  try {
+    await ensureSubscriptionSchema()
+    const plans = await SubscriptionPlan.findAll({
+      where: { productType: 'cms-license', isActive: true },
+      order: [['price', 'ASC']]
+    })
+    res.json(plans)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/client/:clientId/license/checkout-session', verifyToken, ensureActiveUser, requireSelfOrAdmin((req) => req.params.clientId), async (req, res) => {
+  try {
+    await ensureSubscriptionSchema()
+    await ensureCmsLicenseSchema()
+
+    const stripe = await getStripeClient()
+    if (!stripe) return res.status(400).json({ error: 'Stripe is not configured' })
+
+    const client = await User.findByPk(req.params.clientId, { attributes: ['id', 'email', 'name'] })
+    if (!client) return res.status(404).json({ error: 'Client not found' })
+
+    const planId = Number(req.body.planId || 0)
+    const licensedDomain = String(req.body.licensedDomain || '').trim() || null
+    if (!planId) return res.status(400).json({ error: 'A license plan is required' })
+
+    const plan = await SubscriptionPlan.findOne({
+      where: { id: planId, productType: 'cms-license', isActive: true }
+    })
+    if (!plan) return res.status(404).json({ error: 'License plan not found' })
+
+    const interval = getBillingInterval(plan.billingCycle)
+    const successUrl = buildAbsoluteUrl(req, '/client-dashboard/license?checkout=success')
+    const cancelUrl = buildAbsoluteUrl(req, '/client-dashboard/license?checkout=cancelled')
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      customer_email: client.email,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        cmsLicensePlanId: String(plan.id),
+        clientId: String(client.id),
+        licensedDomain: licensedDomain || '',
+        updateChannel: plan.updateChannel || 'stable'
+      },
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: plan.name,
+              description: plan.description || 'Creative CMS license'
+            },
+            recurring: interval,
+            unit_amount: Math.round(Number(plan.price || 0) * 100)
+          },
+          quantity: 1
+        }
+      ]
+    })
+
+    res.json({ url: session.url })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.put('/client/:clientId/license/cancel', verifyToken, ensureActiveUser, requireSelfOrAdmin((req) => req.params.clientId), async (req, res) => {
+  try {
+    await ensureCmsLicenseSchema()
+    const license = await CMSLicense.findOne({
+      where: { clientId: req.params.clientId, status: 'active' },
+      order: [['createdAt', 'DESC']]
+    })
+    if (!license) return res.status(404).json({ error: 'No active license found' })
+
+    const stripe = await getStripeClient()
+    if (stripe && license.stripeSubscriptionId) {
+      await stripe.subscriptions.update(license.stripeSubscriptionId, { cancel_at_period_end: true })
+    }
+
+    await license.update({
+      cancelAtPeriodEnd: true,
+      notes: 'Cancellation requested by client'
+    })
+
+    res.json({ message: 'License cancellation scheduled', license })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.put('/client/:clientId/license/reactivate', verifyToken, ensureActiveUser, requireSelfOrAdmin((req) => req.params.clientId), async (req, res) => {
+  try {
+    await ensureCmsLicenseSchema()
+    const license = await CMSLicense.findOne({
+      where: { clientId: req.params.clientId },
+      order: [['createdAt', 'DESC']]
+    })
+    if (!license) return res.status(404).json({ error: 'No license found' })
+
+    const stripe = await getStripeClient()
+    if (stripe && license.stripeSubscriptionId) {
+      await stripe.subscriptions.update(license.stripeSubscriptionId, { cancel_at_period_end: false })
+    }
+
+    await license.update({
+      status: 'active',
+      cancelAtPeriodEnd: false,
+      endDate: null,
+      notes: 'License reactivated by client'
+    })
+
+    res.json({ message: 'License reactivated', license })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
