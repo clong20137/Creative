@@ -110,6 +110,16 @@ app.use((req, res, next) => {
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin')
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+    "img-src 'self' data: blob: https:",
+    "media-src 'self' data: blob: https:",
+    "style-src 'self' 'unsafe-inline' https:",
+    "script-src 'self' https://challenges.cloudflare.com",
+    "connect-src 'self' https://www.googleapis.com https://searchconsole.googleapis.com https://oauth2.googleapis.com https://api.stripe.com https://challenges.cloudflare.com"
+  ].join('; '))
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
   }

@@ -14,10 +14,24 @@ import ProtectedContentPurchase from '../models/ProtectedContentPurchase.js'
 import CRMLead from '../models/CRMLead.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
 import User from '../models/User.js'
+import { createRateLimiter } from '../utils/rate-limit.js'
+import { cleanMultiline, cleanString, isValidEmail } from '../utils/validation.js'
 
 const router = express.Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 let protectedContentSchemaReady = false
+const bookingRateLimit = createRateLimiter({
+  name: 'booking-appointments',
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many booking requests. Please wait a bit and try again.'
+})
+const crmLeadRateLimit = createRateLimiter({
+  name: 'crm-leads',
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many quote requests. Please wait a bit and try again.'
+})
 
 async function ensureProtectedContentSchema() {
   if (protectedContentSchemaReady) return
@@ -522,10 +536,18 @@ router.get('/booking/slots', async (req, res) => {
   }
 })
 
-router.post('/booking/appointments', async (req, res) => {
+router.post('/booking/appointments', bookingRateLimit, async (req, res) => {
   try {
     const slot = await BookingAvailabilitySlot.findByPk(req.body.availabilitySlotId)
     if (!slot || !slot.isActive) return res.status(404).json({ error: 'Availability slot not found' })
+    const name = cleanString(req.body.name, 120)
+    const email = cleanString(req.body.email, 160).toLowerCase()
+    const phone = cleanString(req.body.phone, 40)
+    const meetingType = cleanString(req.body.meetingType, 40)
+    const notes = cleanMultiline(req.body.notes, 2000)
+    if (!name || !email || !meetingType) return res.status(400).json({ error: 'Name, email, and meeting type are required' })
+    if (!isValidEmail(email)) return res.status(400).json({ error: 'A valid email address is required' })
+    if (!['in-person', 'zoom', 'google-meet', 'phone'].includes(meetingType)) return res.status(400).json({ error: 'Invalid meeting type' })
 
     const existingAppointment = await BookingAppointment.findOne({
       where: { availabilitySlotId: slot.id, status: 'scheduled' }
@@ -534,11 +556,11 @@ router.post('/booking/appointments', async (req, res) => {
 
     const appointment = await BookingAppointment.create({
       availabilitySlotId: slot.id,
-      name: req.body.name,
-      email: req.body.email,
-      phone: req.body.phone || '',
-      meetingType: req.body.meetingType,
-      notes: req.body.notes || ''
+      name,
+      email,
+      phone,
+      meetingType,
+      notes
     })
 
     res.status(201).json(appointment)
@@ -643,25 +665,37 @@ router.get('/crm', async (req, res) => {
   }
 })
 
-router.post('/crm/leads', async (req, res) => {
+router.post('/crm/leads', crmLeadRateLimit, async (req, res) => {
   try {
     const plugin = await getOrCreateCrmPlugin()
     if (!plugin.isEnabled) return res.status(404).json({ error: 'CRM plugin is not active' })
-    if (!req.body.name || !req.body.email) return res.status(400).json({ error: 'Name and email are required' })
+    const inquiryType = cleanString(req.body.inquiryType || 'quote', 40) || 'quote'
+    const name = cleanString(req.body.name, 120)
+    const email = cleanString(req.body.email, 160).toLowerCase()
+    const phone = cleanString(req.body.phone, 40)
+    const company = cleanString(req.body.company, 120)
+    const serviceTitle = cleanString(req.body.serviceTitle, 160)
+    const description = cleanMultiline(req.body.description, 4000)
+    const budget = cleanString(req.body.budget, 80)
+    const timeline = cleanString(req.body.timeline, 80)
+    const preferredContact = cleanString(req.body.preferredContact, 40)
+    const sourcePage = cleanString(req.body.sourcePage, 255)
+    if (!name || !email) return res.status(400).json({ error: 'Name and email are required' })
+    if (!isValidEmail(email)) return res.status(400).json({ error: 'A valid email address is required' })
 
     const lead = await CRMLead.create({
-      inquiryType: req.body.inquiryType || 'quote',
-      name: req.body.name,
-      email: req.body.email,
-      phone: req.body.phone || '',
-      company: req.body.company || '',
-      serviceTitle: req.body.serviceTitle || '',
-      description: req.body.description || '',
-      budget: req.body.budget || '',
-      timeline: req.body.timeline || '',
-      preferredContact: req.body.preferredContact || '',
-      sourcePage: req.body.sourcePage || '',
-      metadata: req.body.metadata || null
+      inquiryType,
+      name,
+      email,
+      phone,
+      company,
+      serviceTitle,
+      description,
+      budget,
+      timeline,
+      preferredContact,
+      sourcePage,
+      metadata: req.body.metadata && typeof req.body.metadata === 'object' && !Array.isArray(req.body.metadata) ? req.body.metadata : null
     })
 
     res.status(201).json({ message: 'Quote request received', leadId: lead.id })

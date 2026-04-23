@@ -5,6 +5,7 @@ import nodemailer from 'nodemailer'
 import crypto from 'crypto'
 import User from '../models/User.js'
 import { verifyTurnstileToken } from '../utils/turnstile.js'
+import { cleanString, isValidEmail } from '../utils/validation.js'
 
 const router = express.Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -111,9 +112,13 @@ async function sendPasswordResetCode(user, code) {
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, company, turnstileToken } = req.body
+    const { password, turnstileToken } = req.body
+    const name = cleanString(req.body.name, 120)
+    const email = cleanString(req.body.email, 160).toLowerCase()
+    const company = cleanString(req.body.company, 120)
     if (!await verifyTurnstileToken(turnstileToken, req.ip)) return res.status(400).json({ error: 'Captcha verification failed' })
     if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' })
+    if (!name || !email || !isValidEmail(email)) return res.status(400).json({ error: 'A valid name and email are required' })
     
     const existingUser = await User.findOne({ where: { email } })
     if (existingUser) return res.status(400).json({ error: 'Email already exists' })
@@ -135,7 +140,9 @@ router.post('/register', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password, turnstileToken } = req.body
+    const email = cleanString(req.body.email, 160).toLowerCase()
+    const password = String(req.body.password || '')
+    const { turnstileToken } = req.body
     if (!await verifyTurnstileToken(turnstileToken, req.ip)) return res.status(400).json({ error: 'Captcha verification failed' })
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' })
     
@@ -223,7 +230,8 @@ export { base32Encode, verifyTotp }
 
 router.post('/forgot-password', async (req, res) => {
   try {
-    const { email, turnstileToken } = req.body
+    const email = cleanString(req.body.email, 160).toLowerCase()
+    const { turnstileToken } = req.body
     if (!await verifyTurnstileToken(turnstileToken, req.ip)) return res.status(400).json({ error: 'Captcha verification failed' })
     const user = await User.findOne({ where: { email } })
 

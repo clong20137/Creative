@@ -5,6 +5,7 @@ import crypto from 'crypto'
 import User from '../models/User.js'
 import { base32Encode, verifyTotp } from './auth.js'
 import { ensureActiveUser, verifyToken } from '../utils/auth.js'
+import { cleanString, sanitizeUserForResponse } from '../utils/validation.js'
 
 const router = express.Router()
 
@@ -14,7 +15,7 @@ router.get('/profile', verifyToken, ensureActiveUser, async (req, res) => {
     const user = await User.findByPk(req.userId, { attributes: { exclude: ['password', 'twoFactorCode', 'twoFactorSecret'] } })
     if (!user) return res.status(404).json({ error: 'User not found' })
     
-    res.json(user)
+    res.json(sanitizeUserForResponse(user))
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -29,17 +30,17 @@ router.put('/profile', verifyToken, ensureActiveUser, async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' })
     
     await user.update({
-      name: name || user.name,
-      phone: phone || user.phone,
-      company: company || user.company,
-      address: address || user.address,
-      city: city || user.city,
-      state: state || user.state,
-      zipCode: zipCode || user.zipCode,
-      country: country || user.country
+      name: cleanString(name, 120) || user.name,
+      phone: cleanString(phone, 40) || user.phone,
+      company: cleanString(company, 120) || user.company,
+      address: cleanString(address, 180) || user.address,
+      city: cleanString(city, 120) || user.city,
+      state: cleanString(state, 120) || user.state,
+      zipCode: cleanString(zipCode, 20) || user.zipCode,
+      country: cleanString(country, 120) || user.country
     })
     
-    res.json({ message: 'Profile updated successfully', user })
+    res.json({ message: 'Profile updated successfully', user: sanitizeUserForResponse(user) })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

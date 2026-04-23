@@ -32,6 +32,8 @@ import { ensureSiteDemos } from './site-demos.js'
 import crypto from 'crypto'
 import { base32Encode, verifyTotp } from './auth.js'
 import jwt from 'jsonwebtoken'
+import { ensureActiveUser, requireRole, verifyToken } from '../utils/auth.js'
+import { cleanString, sanitizeUserForResponse } from '../utils/validation.js'
 
 const router = express.Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -52,7 +54,6 @@ const mediaMimeExtensions = {
   'image/png': 'png',
   'image/webp': 'webp',
   'image/gif': 'gif',
-  'image/svg+xml': 'svg',
   'image/x-icon': 'ico',
   'image/vnd.microsoft.icon': 'ico',
   'video/mp4': 'mp4',
@@ -613,18 +614,7 @@ async function moveMediaAssetFile(asset, nextVisibility) {
   }
 }
 
-router.use((req, res, next) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1]
-    if (!token) return res.status(401).json({ error: 'No token provided' })
-    const decoded = jwt.verify(token, JWT_SECRET)
-    if (decoded.role !== 'admin') return res.status(403).json({ error: 'Admin access required' })
-    req.userId = decoded.userId
-    next()
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid token' })
-  }
-})
+router.use(verifyToken, ensureActiveUser, requireRole('admin'))
 
 // Get dashboard stats
 router.get('/stats', async (req, res) => {
@@ -1842,8 +1832,14 @@ router.post('/users', async (req, res) => {
     if (!req.body.password || req.body.password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' })
     }
-    const user = await User.create(req.body)
-    const { password, ...safeUser } = user.toJSON()
+    const user = await User.create({
+      ...req.body,
+      name: cleanString(req.body.name, 120),
+      email: cleanString(req.body.email, 160).toLowerCase(),
+      company: cleanString(req.body.company, 120),
+      phone: cleanString(req.body.phone, 40)
+    })
+    const safeUser = sanitizeUserForResponse(user)
     res.status(201).json({ message: 'User created', user: safeUser })
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -1855,8 +1851,14 @@ router.put('/users/:id', async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id)
     if (!user) return res.status(404).json({ error: 'User not found' })
-    await user.update(req.body)
-    const { password, ...safeUser } = user.toJSON()
+    await user.update({
+      ...req.body,
+      name: req.body.name !== undefined ? cleanString(req.body.name, 120) : user.name,
+      email: req.body.email !== undefined ? cleanString(req.body.email, 160).toLowerCase() : user.email,
+      company: req.body.company !== undefined ? cleanString(req.body.company, 120) : user.company,
+      phone: req.body.phone !== undefined ? cleanString(req.body.phone, 40) : user.phone
+    })
+    const safeUser = sanitizeUserForResponse(user)
     res.json(safeUser)
   } catch (error) {
     res.status(500).json({ error: error.message })
