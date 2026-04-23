@@ -41,12 +41,20 @@ function getPreviewUrl(asset: any) {
   return `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
 }
 
+function usageSummary(asset: any) {
+  const usageCount = Number(asset.usageCount || 0)
+  if (usageCount <= 0) return 'Unused'
+  if (usageCount === 1) return 'Used once'
+  return `Used ${usageCount} times`
+}
+
 export default function AdminMediaLibrary() {
   const [assets, setAssets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [typeFilter, setTypeFilter] = useState('all')
   const [visibilityFilter, setVisibilityFilter] = useState('all')
+  const [altFilter, setAltFilter] = useState('all')
   const [folderFilter, setFolderFilter] = useState('all')
   const [tagFilter, setTagFilter] = useState('all')
   const [uploadFolder, setUploadFolder] = useState('Uncategorized')
@@ -78,12 +86,13 @@ export default function AdminMediaLibrary() {
     const term = query.trim().toLowerCase()
     return assets.filter(asset => {
       const tags = normalizeTags(asset.tags)
+      const matchesAlt = altFilter === 'all' || (altFilter === 'missing' ? asset.altStatus === 'missing' : asset.altStatus === 'complete')
       const matchesFolder = folderFilter === 'all' || String(asset.folder || 'Uncategorized') === folderFilter
       const matchesTag = tagFilter === 'all' || tags.includes(tagFilter)
       const matchesQuery = !term || [asset.title, asset.originalName, asset.filename, asset.altText, asset.mimeType, asset.folder, tags.join(' ')].some(value => String(value || '').toLowerCase().includes(term))
-      return matchesFolder && matchesTag && matchesQuery
+      return matchesAlt && matchesFolder && matchesTag && matchesQuery
     })
-  }, [assets, folderFilter, query, tagFilter])
+  }, [altFilter, assets, folderFilter, query, tagFilter])
 
   const folders = useMemo(() => {
     return Array.from(new Set(assets.map(asset => String(asset.folder || 'Uncategorized')))).sort((a, b) => a.localeCompare(b))
@@ -91,6 +100,14 @@ export default function AdminMediaLibrary() {
 
   const tags = useMemo(() => {
     return Array.from(new Set(assets.flatMap(asset => normalizeTags(asset.tags)))).sort((a, b) => a.localeCompare(b))
+  }, [assets])
+
+  const libraryStats = useMemo(() => {
+    const total = assets.length
+    const missingAlt = assets.filter(asset => asset.altStatus === 'missing').length
+    const usedAssets = assets.filter(asset => Number(asset.usageCount || 0) > 0).length
+    const unusedAssets = total - usedAssets
+    return { total, missingAlt, usedAssets, unusedAssets, folders: folders.length }
   }, [assets])
 
   const sortedAssets = useMemo(() => {
@@ -198,7 +215,11 @@ export default function AdminMediaLibrary() {
   }
 
   const deleteAsset = async (asset: any) => {
-    if (!window.confirm(`Delete ${asset.title || asset.filename}?`)) return
+    const usageCount = Number(asset.usageCount || 0)
+    const warning = usageCount > 0
+      ? `${asset.title || asset.filename} is still used in ${usageCount} location${usageCount === 1 ? '' : 's'}. Delete it anyway?`
+      : `Delete ${asset.title || asset.filename}?`
+    if (!window.confirm(warning)) return
     try {
       await adminAPI.deleteMedia(String(asset.id))
       setAssets(current => current.filter(item => item.id !== asset.id))
@@ -248,6 +269,11 @@ export default function AdminMediaLibrary() {
             <option value="public">Public</option>
             <option value="private">Private</option>
           </select>
+          <select value={altFilter} onChange={(e) => setAltFilter(e.target.value)} className="rounded-lg border px-4 py-2">
+            <option value="all">All alt text</option>
+            <option value="missing">Missing alt text</option>
+            <option value="complete">Has alt text</option>
+          </select>
           <select value={folderFilter} onChange={(e) => setFolderFilter(e.target.value)} className="rounded-lg border px-4 py-2">
             <option value="all">All folders</option>
             {folders.map(folder => <option key={folder} value={folder}>{folder}</option>)}
@@ -272,6 +298,44 @@ export default function AdminMediaLibrary() {
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <input value={uploadFolder} onChange={(e) => setUploadFolder(e.target.value)} placeholder="Upload folder" className="rounded-lg border px-4 py-2" />
           <input value={uploadTags} onChange={(e) => setUploadTags(e.target.value)} placeholder="Upload tags, comma separated" className="rounded-lg border px-4 py-2" />
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <StatCard label="Total Assets" value={libraryStats.total} tone="neutral" />
+          <StatCard label="Missing Alt" value={libraryStats.missingAlt} tone={libraryStats.missingAlt === 0 ? 'good' : 'warn'} />
+          <StatCard label="Used Assets" value={libraryStats.usedAssets} tone="good" />
+          <StatCard label="Unused Assets" value={libraryStats.unusedAssets} tone={libraryStats.unusedAssets === 0 ? 'good' : 'neutral'} />
+          <StatCard label="Folders" value={libraryStats.folders} tone="neutral" />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {folders.slice(0, 8).map(folder => (
+            <button
+              key={folder}
+              type="button"
+              onClick={() => setFolderFilter(folder)}
+              className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                folderFilter === folder ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {folder}
+            </button>
+          ))}
+          {folders.length > 8 && <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">+{folders.length - 8} more folders</span>}
+        </div>
+        <div className="mt-4 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-bold text-gray-900">Library cleanup</p>
+              <p className="text-sm text-gray-600">Use the filters above to quickly find missing alt text, unused assets, or media grouped by folder.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setAltFilter('missing')} className="rounded-lg border bg-white px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-100">
+                Review Missing Alt
+              </button>
+              <button type="button" onClick={() => { setAltFilter('all'); setFolderFilter('all'); setTagFilter('all'); setQuery('') }} className="rounded-lg border bg-white px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-100">
+                Reset Filters
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -327,6 +391,14 @@ export default function AdminMediaLibrary() {
                   </div>
                   <MediaIcon type={asset.mediaType} />
                 </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className={`rounded px-2 py-1 text-xs font-bold ${asset.altStatus === 'missing' ? 'bg-orange-50 text-orange-700' : 'bg-green-50 text-green-700'}`}>
+                    {asset.altStatus === 'missing' ? 'Missing alt text' : 'Alt text ready'}
+                  </span>
+                  <span className={`rounded px-2 py-1 text-xs font-bold ${Number(asset.usageCount || 0) > 0 ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
+                    {usageSummary(asset)}
+                  </span>
+                </div>
                 <input defaultValue={asset.title || ''} onBlur={(e) => updateAsset(asset, { title: e.target.value })} placeholder="Title" className="w-full rounded-lg border px-3 py-2" />
                 <input defaultValue={asset.altText || ''} onBlur={(e) => updateAsset(asset, { altText: e.target.value })} placeholder="Alt text / description" className="w-full rounded-lg border px-3 py-2" />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -341,6 +413,24 @@ export default function AdminMediaLibrary() {
                   <span className="rounded bg-gray-100 px-2 py-1 text-xs font-bold text-gray-700">{asset.folder || 'Uncategorized'}</span>
                   {normalizeTags(asset.tags).map(tag => <span key={tag} className="rounded bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">{tag}</span>)}
                 </div>
+                {Array.isArray(asset.usageLocations) && asset.usageLocations.length > 0 && (
+                  <div className="rounded-lg bg-gray-50 p-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Where used</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {asset.usageLocations.slice(0, 5).map((usage: any, index: number) => (
+                        <span key={`${usage.type}-${usage.label}-${index}`} className="rounded bg-white px-2 py-1 text-xs font-semibold text-gray-700">
+                          {usage.type}: {usage.label}
+                        </span>
+                      ))}
+                    </div>
+                    {asset.usageLocations.length > 5 && <p className="mt-2 text-xs text-gray-500">+{asset.usageLocations.length - 5} more locations</p>}
+                  </div>
+                )}
+                {Array.isArray(asset.usageLocations) && asset.usageLocations.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-orange-200 bg-orange-50 p-3 text-xs font-semibold text-orange-700">
+                    This asset is not currently used anywhere. Safe candidate for cleanup.
+                  </div>
+                )}
                 <p className="break-all rounded-lg bg-gray-50 p-3 text-xs text-gray-600">{asset.url}</p>
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                   <button type="button" onClick={() => copyUrl(asset.url)} className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold hover:bg-gray-50"><FiCopy /> Copy URL</button>
@@ -354,5 +444,20 @@ export default function AdminMediaLibrary() {
         </div>
       )}
     </AdminLayout>
+  )
+}
+
+function StatCard({ label, value, tone = 'neutral' }: { label: string; value: number; tone?: 'neutral' | 'good' | 'warn' }) {
+  const toneClass = tone === 'good'
+    ? 'bg-green-50 text-green-700'
+    : tone === 'warn'
+      ? 'bg-orange-50 text-orange-700'
+      : 'bg-gray-50 text-gray-700'
+
+  return (
+    <div className={`rounded-lg p-3 ${toneClass}`}>
+      <p className="text-[10px] font-bold uppercase tracking-wide opacity-75">{label}</p>
+      <p className="mt-1 text-lg font-black">{value}</p>
+    </div>
   )
 }

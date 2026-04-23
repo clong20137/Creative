@@ -46,6 +46,7 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image',
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState(type || 'all')
   const [visibilityFilter, setVisibilityFilter] = useState(visibility || 'all')
+  const [altFilter, setAltFilter] = useState('all')
   const [folderFilter, setFolderFilter] = useState('all')
   const [tagFilter, setTagFilter] = useState('all')
   const [uploadFolder, setUploadFolder] = useState('Uncategorized')
@@ -78,12 +79,13 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image',
     const term = query.trim().toLowerCase()
     return assets.filter(asset => {
       const tags = normalizeTags(asset.tags)
+      const matchesAlt = altFilter === 'all' || (altFilter === 'missing' ? asset.altStatus === 'missing' : asset.altStatus === 'complete')
       const matchesFolder = folderFilter === 'all' || String(asset.folder || 'Uncategorized') === folderFilter
       const matchesTag = tagFilter === 'all' || tags.includes(tagFilter)
       const matchesQuery = !term || [asset.title, asset.originalName, asset.filename, asset.altText, asset.mimeType, asset.folder, tags.join(' ')].some(value => String(value || '').toLowerCase().includes(term))
-      return matchesFolder && matchesTag && matchesQuery
+      return matchesAlt && matchesFolder && matchesTag && matchesQuery
     })
-  }, [assets, folderFilter, query, tagFilter])
+  }, [altFilter, assets, folderFilter, query, tagFilter])
 
   const folders = useMemo(() => {
     return Array.from(new Set(assets.map(asset => String(asset.folder || 'Uncategorized')))).sort((a, b) => a.localeCompare(b))
@@ -138,7 +140,7 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image',
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 border-b bg-gray-50 p-4 lg:grid-cols-[10rem_10rem_10rem_10rem_1fr_auto]">
+        <div className="grid grid-cols-1 gap-3 border-b bg-gray-50 p-4 lg:grid-cols-[10rem_10rem_10rem_10rem_10rem_1fr_auto]">
           <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-lg border bg-white px-4 py-2">
             <option value="all">All media</option>
             <option value="image">Images</option>
@@ -150,6 +152,11 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image',
             <option value="all">All access</option>
             <option value="public">Public</option>
             <option value="private">Private</option>
+          </select>
+          <select value={altFilter} onChange={(e) => setAltFilter(e.target.value)} className="rounded-lg border bg-white px-4 py-2">
+            <option value="all">All alt text</option>
+            <option value="missing">Missing alt text</option>
+            <option value="complete">Has alt text</option>
           </select>
           <select value={folderFilter} onChange={(e) => setFolderFilter(e.target.value)} className="rounded-lg border bg-white px-4 py-2">
             <option value="all">All folders</option>
@@ -178,7 +185,7 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image',
               }}
             />
           </label>
-          <div className="grid grid-cols-1 gap-3 lg:col-span-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 lg:col-span-7 lg:grid-cols-2">
             <input value={uploadFolder} onChange={(e) => setUploadFolder(e.target.value)} placeholder="Upload folder" className="rounded-lg border bg-white px-4 py-2" />
             <input value={uploadTags} onChange={(e) => setUploadTags(e.target.value)} placeholder="Upload tags, comma separated" className="rounded-lg border bg-white px-4 py-2" />
           </div>
@@ -214,6 +221,14 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image',
                     <p className="text-xs font-semibold uppercase text-blue-600">{asset.mediaType} / {formatBytes(Number(asset.size || 0))}</p>
                     <p className={`text-xs font-bold uppercase ${asset.visibility === 'private' ? 'text-red-600' : 'text-green-700'}`}>{asset.visibility || 'public'}</p>
                     <p className="truncate text-xs font-semibold text-gray-600">{asset.folder || 'Uncategorized'}</p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <span className={`rounded px-2 py-1 text-[11px] font-bold ${asset.altStatus === 'missing' ? 'bg-orange-50 text-orange-700' : 'bg-green-50 text-green-700'}`}>
+                        {asset.altStatus === 'missing' ? 'Missing alt' : 'Alt ready'}
+                      </span>
+                      <span className={`rounded px-2 py-1 text-[11px] font-bold ${Number(asset.usageCount || 0) > 0 ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
+                        {Number(asset.usageCount || 0) > 0 ? `${asset.usageCount} use${Number(asset.usageCount || 0) === 1 ? '' : 's'}` : 'Unused'}
+                      </span>
+                    </div>
                     <p className="truncate text-xs text-gray-500">{asset.url}</p>
                   </div>
                 </button>

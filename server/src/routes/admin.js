@@ -81,6 +81,139 @@ function getIsoDate(daysAgo = 0) {
   return date.toISOString().slice(0, 10)
 }
 
+function assetReferenceCandidates(asset) {
+  return Array.from(new Set([
+    asset?.url,
+    asset?.filename ? `/api/uploads/${asset.filename}` : '',
+    asset?.filename ? `/uploads/${asset.filename}` : '',
+    asset?.filename || '',
+    asset?.id ? `/api/protected-media/${asset.id}` : '',
+    asset?.id ? `/protected-media/${asset.id}` : ''
+  ].filter(Boolean).map(value => String(value))))
+}
+
+function valueContainsAssetReference(value, asset) {
+  const candidates = assetReferenceCandidates(asset)
+  let found = false
+
+  const inspect = (current) => {
+    if (found || current === null || current === undefined) return
+    if (typeof current === 'string') {
+      found = candidates.some(candidate => current.includes(candidate))
+      return
+    }
+    if (Array.isArray(current)) {
+      current.forEach(inspect)
+      return
+    }
+    if (typeof current === 'object') {
+      Object.values(current).forEach(inspect)
+    }
+  }
+
+  inspect(value)
+  return found
+}
+
+function buildMediaUsageLabel(type, label, path = '') {
+  return {
+    type,
+    label,
+    path
+  }
+}
+
+async function enrichMediaAssetsWithUsage(assets) {
+  if (!Array.isArray(assets) || assets.length === 0) return []
+
+  const [settings, customPages, portfolioItems, restaurantItems, realEstateListings, eventItems, protectedItems, siteDemos] = await Promise.all([
+    getOrCreateSiteSettings(),
+    CustomPage.findAll({ attributes: ['id', 'title', 'slug', 'sections'] }).catch(() => []),
+    PortfolioItem.findAll({ attributes: ['id', 'title', 'image'] }).catch(() => []),
+    RestaurantMenuItem.findAll({ attributes: ['id', 'name', 'image'] }).catch(() => []),
+    RealEstateListing.findAll({ attributes: ['id', 'title', 'image'] }).catch(() => []),
+    EventItem.findAll({ attributes: ['id', 'title', 'image'] }).catch(() => []),
+    ProtectedContentItem.findAll({ attributes: ['id', 'title', 'mediaAssetId', 'contentUrl'] }).catch(() => []),
+    SiteDemo.findAll({ attributes: ['id', 'name', 'slug', 'previewImage'] }).catch(() => [])
+  ])
+
+  const settingsJson = settings?.toJSON?.() || {}
+
+  return assets.map((asset) => {
+    const usageLocations = []
+    const addUsage = (usage) => {
+      if (!usageLocations.some(item => item.type === usage.type && item.label === usage.label && item.path === usage.path)) {
+        usageLocations.push(usage)
+      }
+    }
+
+    if (valueContainsAssetReference(settingsJson.logoUrl, asset)) addUsage(buildMediaUsageLabel('Site Setting', 'Logo', '/admin/settings'))
+    if (valueContainsAssetReference(settingsJson.faviconUrl, asset)) addUsage(buildMediaUsageLabel('Site Setting', 'Favicon', '/admin/settings'))
+    if (valueContainsAssetReference(settingsJson.heroMediaUrl, asset)) addUsage(buildMediaUsageLabel('Site Setting', 'Homepage hero media', '/admin/settings'))
+
+    Object.entries(settingsJson.pageSections || {}).forEach(([pageKey, pageSections]) => {
+      if (valueContainsAssetReference(pageSections, asset)) {
+        addUsage(buildMediaUsageLabel('Built-in Page', `${String(pageKey)} page sections`, '/admin/pages'))
+      }
+    })
+
+    if (valueContainsAssetReference(settingsJson.whatWeDo, asset)) addUsage(buildMediaUsageLabel('Homepage', 'What We Do section', '/admin/settings'))
+    if (valueContainsAssetReference(settingsJson.featuredWork, asset)) addUsage(buildMediaUsageLabel('Homepage', 'Featured Work section', '/admin/settings'))
+    if (valueContainsAssetReference(settingsJson.services, asset)) addUsage(buildMediaUsageLabel('Services', 'Services list', '/admin/pages'))
+    if (valueContainsAssetReference(settingsJson.testimonials, asset)) addUsage(buildMediaUsageLabel('Testimonials', 'Manual testimonials', '/admin/pages'))
+
+    customPages.forEach((page) => {
+      if (valueContainsAssetReference(page.sections, asset)) {
+        addUsage(buildMediaUsageLabel('Custom Page', page.title || page.slug, `/admin/pages?slug=${page.slug}`))
+      }
+    })
+
+    portfolioItems.forEach((item) => {
+      if (valueContainsAssetReference(item.image, asset)) {
+        addUsage(buildMediaUsageLabel('Portfolio Item', item.title || `Portfolio #${item.id}`, '/admin/portfolio'))
+      }
+    })
+
+    restaurantItems.forEach((item) => {
+      if (valueContainsAssetReference(item.image, asset)) {
+        addUsage(buildMediaUsageLabel('Restaurant Plugin', item.name || `Menu item #${item.id}`, '/admin/plugins/restaurant'))
+      }
+    })
+
+    realEstateListings.forEach((item) => {
+      if (valueContainsAssetReference(item.image, asset)) {
+        addUsage(buildMediaUsageLabel('Real Estate Plugin', item.title || `Listing #${item.id}`, '/admin/plugins/real-estate'))
+      }
+    })
+
+    eventItems.forEach((item) => {
+      if (valueContainsAssetReference(item.image, asset)) {
+        addUsage(buildMediaUsageLabel('Events Plugin', item.title || `Event #${item.id}`, '/admin/plugins/events'))
+      }
+    })
+
+    protectedItems.forEach((item) => {
+      if (Number(item.mediaAssetId || 0) === Number(asset.id) || valueContainsAssetReference(item.contentUrl, asset)) {
+        addUsage(buildMediaUsageLabel('Protected Content', item.title || `Protected item #${item.id}`, '/admin/plugins/protected-content'))
+      }
+    })
+
+    siteDemos.forEach((demo) => {
+      if (valueContainsAssetReference(demo.previewImage, asset)) {
+        addUsage(buildMediaUsageLabel('Site Demo', demo.name || demo.slug, '/admin/site-demos'))
+      }
+    })
+
+    const data = asset.toJSON ? asset.toJSON() : asset
+    return {
+      ...data,
+      usageCount: usageLocations.length,
+      usageLocations,
+      altStatus: String(data.altText || '').trim() ? 'complete' : 'missing'
+    }
+  })
+}
+
 function normalizeSearchConsoleProperty(value) {
   const property = String(value || '').trim()
   if (!property || property.startsWith('sc-domain:')) return property
@@ -1309,7 +1442,7 @@ router.get('/media', async (req, res) => {
     if (req.query.type && req.query.type !== 'all') where.mediaType = req.query.type
     if (req.query.visibility && req.query.visibility !== 'all') where.visibility = req.query.visibility
     const assets = await MediaAsset.findAll({ where, order: [['createdAt', 'DESC']] })
-    res.json(assets)
+    res.json(await enrichMediaAssetsWithUsage(assets))
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -1364,7 +1497,7 @@ router.put('/media/bulk', async (req, res) => {
     }))
 
     const updatedAssets = await MediaAsset.findAll({ where: { id: ids }, order: [['createdAt', 'DESC']] })
-    res.json(updatedAssets)
+    res.json(await enrichMediaAssetsWithUsage(updatedAssets))
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -1385,7 +1518,7 @@ router.put('/media/:id', async (req, res) => {
       tags: Array.isArray(req.body.tags) ? req.body.tags : asset.tags,
       ...visibilityUpdates
     })
-    res.json(asset)
+    res.json((await enrichMediaAssetsWithUsage([asset]))[0])
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
