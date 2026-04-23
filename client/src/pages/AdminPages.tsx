@@ -802,27 +802,50 @@ export default function AdminPages() {
   const duplicateActiveSection = (index: number) => activeTab === 'Custom Pages' ? duplicatePageSection(index) : duplicateBuiltInSection(activeBuiltInPageKey, index)
   const addReusableSection = (template: any) => {
     recordHistory()
-    const section = cloneSectionWithNewIds(template.section || template)
+    const templateSections = Array.isArray(template.sections) && template.sections.length > 0
+      ? template.sections.map((section: any) => cloneSectionWithNewIds(section))
+      : [cloneSectionWithNewIds(template.section || template)]
     if (activeTab === 'Custom Pages') {
-      setPageDraft((current: any) => ({ ...current, sections: [...(current.sections || []), section] }))
+      setPageDraft((current: any) => ({ ...current, sections: [...(current.sections || []), ...templateSections] }))
     } else {
-      updateBuiltInSections(activeBuiltInPageKey, [...getBuiltInSections(activeBuiltInPageKey), section])
+      updateBuiltInSections(activeBuiltInPageKey, [...getBuiltInSections(activeBuiltInPageKey), ...templateSections])
     }
-    markNewSection(section.id)
+    if (templateSections[0]?.id) markNewSection(templateSections[0].id)
+    setMessage(`${template.kind === 'layout' ? 'Layout template' : 'Reusable block'} added. Save the page to keep it.`)
   }
   const saveSelectedSectionAsTemplate = () => {
     if (!selectedSection) return
-    const name = window.prompt('Template name', getSectionTitle(selectedSection, selectedSectionIndex))
+    const name = window.prompt('Block template name', getSectionTitle(selectedSection, selectedSectionIndex))
     if (!name) return
     recordHistory()
     const template = {
       id: crypto.randomUUID(),
       name,
+      kind: 'block',
       type: selectedSection.type || 'section',
+      sectionCount: 1,
+      sourcePage: activePageLabel,
       section: cloneSectionWithNewIds(selectedSection)
     }
     setSettings(prev => ({ ...prev, reusableSections: [...(prev.reusableSections || []), template] }))
-    setMessage('Section saved as a reusable template. Save the page to keep it.')
+    setMessage('Reusable block saved. Save the page to keep it.')
+  }
+  const saveCurrentPageAsTemplate = () => {
+    if (!activeSections.length) return
+    const name = window.prompt('Layout template name', `${activePageLabel} Layout`)
+    if (!name) return
+    recordHistory()
+    const template = {
+      id: crypto.randomUUID(),
+      name,
+      kind: 'layout',
+      type: 'layout',
+      sectionCount: activeSections.length,
+      sourcePage: activePageLabel,
+      sections: activeSections.map((section: any) => cloneSectionWithNewIds(section))
+    }
+    setSettings(prev => ({ ...prev, reusableSections: [...(prev.reusableSections || []), template] }))
+    setMessage('Layout template saved. Save the page to keep it.')
   }
   const deleteReusableSection = (templateId: string) => {
     recordHistory()
@@ -1010,8 +1033,10 @@ export default function AdminPages() {
                 reusableSections={settings.reusableSections || []}
                 addReusableSection={addReusableSection}
                 saveSelectedSectionAsTemplate={saveSelectedSectionAsTemplate}
+                saveCurrentPageAsTemplate={saveCurrentPageAsTemplate}
                 deleteReusableSection={deleteReusableSection}
                 hasSelectedSection={Boolean(selectedSection)}
+                hasSections={activeSections.length > 0}
               />
             </section>
 
@@ -1713,10 +1738,17 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
   )
 }
 
-function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSection, saveSelectedSectionAsTemplate, deleteReusableSection, hasSelectedSection }: any) {
+function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSection, saveSelectedSectionAsTemplate, saveCurrentPageAsTemplate, deleteReusableSection, hasSelectedSection, hasSections }: any) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [sectionSearch, setSectionSearch] = useState('')
   const filteredSections = sectionTypeOptions.filter(option => option.label.toLowerCase().includes(sectionSearch.trim().toLowerCase()))
+  const filteredTemplates = reusableSections.filter((template: any) => {
+    const search = sectionSearch.trim().toLowerCase()
+    if (!search) return true
+    return String(template.name || '').toLowerCase().includes(search)
+      || String(template.kind || '').toLowerCase().includes(search)
+      || String(template.sourcePage || '').toLowerCase().includes(search)
+  })
   const scrollSections = (direction: 'left' | 'right') => {
     scrollRef.current?.scrollBy({ left: direction === 'left' ? -360 : 360, behavior: 'smooth' })
   }
@@ -1735,7 +1767,15 @@ function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSec
             disabled={!hasSelectedSection}
             className="rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:opacity-40"
           >
-            Save Selected
+            Save Block
+          </button>
+          <button
+            type="button"
+            onClick={saveCurrentPageAsTemplate}
+            disabled={!hasSections}
+            className="rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:opacity-40"
+          >
+            Save Layout
           </button>
           <label className="flex w-full items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm text-gray-600 lg:w-72">
             <FiSearch className="shrink-0" />
@@ -1789,18 +1829,30 @@ function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSec
             <span className="text-xs font-semibold text-gray-500">{reusableSections.length} saved</span>
           </div>
           <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
-            {reusableSections.map((template: any) => {
-              const Icon = sectionTypeOptions.find(option => option.value === template.type)?.icon || FiLayout
+            {filteredTemplates.map((template: any) => {
+              const Icon = template.kind === 'layout'
+                ? FiColumns
+                : sectionTypeOptions.find(option => option.value === template.type)?.icon || FiLayout
               return (
-                <div key={template.id} className="w-32 shrink-0 rounded-lg border bg-white p-2 text-center">
+                <div key={template.id} className="w-40 shrink-0 rounded-lg border bg-white p-2 text-center">
                   <button type="button" onClick={() => addReusableSection(template)} className="flex min-h-20 w-full flex-col items-center justify-center gap-2 rounded-md text-xs font-semibold hover:bg-blue-50 hover:text-blue-700">
                     <Icon size={20} />
                     <span className="leading-tight">{template.name}</span>
                   </button>
+                  <div className="mt-2 space-y-1 text-[11px] text-gray-500">
+                    <p className="font-semibold uppercase tracking-wide">{template.kind === 'layout' ? 'Layout Template' : 'Block Template'}</p>
+                    <p>{template.sectionCount || 1} section{Number(template.sectionCount || 1) === 1 ? '' : 's'}</p>
+                    {template.sourcePage && <p className="truncate">{template.sourcePage}</p>}
+                  </div>
                   <button type="button" onClick={() => deleteReusableSection(template.id)} className="mt-1 text-xs font-semibold text-red-600 hover:text-red-700">Remove</button>
                 </div>
               )
             })}
+            {filteredTemplates.length === 0 && (
+              <div className="flex min-h-20 min-w-48 items-center justify-center rounded-lg border border-dashed px-4 text-sm text-gray-600">
+                No templates found.
+              </div>
+            )}
           </div>
         </div>
       )}
