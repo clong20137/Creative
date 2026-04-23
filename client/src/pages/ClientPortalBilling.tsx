@@ -97,20 +97,20 @@ export default function ClientPortalBilling() {
           </div>
         )}
 
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">My Subscription</h2>
+        <div className="mb-8 sm:mb-12">
+          <h2 className="mb-4 text-xl font-bold text-gray-900 sm:mb-6 sm:text-2xl">My Subscription</h2>
           {loading ? (
             <PageSkeleton />
           ) : subscription ? (
-            <div className="card p-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="card p-4 sm:p-6 lg:p-8">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-8">
                 <div>
                   <p className="text-gray-600 text-sm mb-1">Plan</p>
-                  <p className="text-2xl font-bold text-gray-900 capitalize">{subscription.tier}</p>
+                  <p className="text-xl font-bold text-gray-900 capitalize sm:text-2xl">{subscription.tier}</p>
                 </div>
                 <div>
                   <p className="text-gray-600 text-sm mb-1">Billing Cycle</p>
-                  <p className="text-2xl font-bold text-gray-900">${subscription.price}/{subscription.billingCycle}</p>
+                  <p className="text-xl font-bold text-gray-900 sm:text-2xl">${subscription.price}/{subscription.billingCycle}</p>
                 </div>
                 <div>
                   <p className="text-gray-600 text-sm mb-1">Status</p>
@@ -132,17 +132,17 @@ export default function ClientPortalBilling() {
                 </ul>
               </div>
 
-              <div className="mt-8 flex gap-4">
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:gap-4">
                 <button
                   onClick={() => setShowUpgradeModal(true)}
-                  className="flex items-center gap-2 btn-primary"
+                  className="flex items-center justify-center gap-2 btn-primary"
                 >
                   <FiRefreshCw /> Upgrade Plan
                 </button>
                 {subscription.status === 'active' && (
                   <button
                     onClick={handleCancelSubscription}
-                    className="flex items-center gap-2 btn-secondary"
+                    className="flex items-center justify-center gap-2 btn-secondary"
                   >
                     <FiX /> Cancel Subscription
                   </button>
@@ -155,7 +155,7 @@ export default function ClientPortalBilling() {
             </div>
           ) : (
             <div className="card p-8 text-center">
-              <p className="text-gray-600 mb-4">You don't have an active subscription</p>
+              <p className="mb-4 text-gray-600">You don't have an active subscription</p>
               <button
                 onClick={() => setShowUpgradeModal(true)}
                 className="btn-primary"
@@ -168,15 +168,16 @@ export default function ClientPortalBilling() {
 
         {/* Invoices Section */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Invoices & Billing</h2>
+          <h2 className="mb-4 text-xl font-bold text-gray-900 sm:mb-6 sm:text-2xl">Invoices & Billing</h2>
           {loading ? (
             <PageSkeleton />
           ) : invoices.length > 0 ? (
             <div className="space-y-4">
               {invoices.map((invoice) => (
-                <div key={invoice.id} className="card p-6 flex items-center justify-between hover:shadow-lg transition">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-2">
+                <div key={invoice.id} className="card p-4 transition hover:shadow-lg sm:p-6">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex flex-wrap items-center gap-3">
                       <h3 className="font-bold text-gray-900">{invoice.invoiceNumber}</h3>
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusColor(invoice.status)}`}>
                         {invoice.status}
@@ -187,25 +188,26 @@ export default function ClientPortalBilling() {
                     </p>
                   </div>
 
-                  <div className="text-right mr-6">
-                    <p className="text-2xl font-bold text-gray-900">${invoice.total.toLocaleString()}</p>
+                  <div className="text-left lg:mr-6 lg:text-right">
+                    <p className="text-xl font-bold text-gray-900 sm:text-2xl">${invoice.total.toLocaleString()}</p>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <button
                       onClick={() => downloadInvoice(String(invoice.id))}
-                      className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition"
+                      className="flex items-center justify-center rounded-lg bg-blue-100 p-2 text-blue-600 transition hover:bg-blue-200"
                     >
                       <FiDownload size={20} />
                     </button>
                     {invoice.status !== 'paid' && (
                       <button
                         onClick={() => handlePayInvoice(String(invoice.id))}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                        className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white transition hover:bg-green-700"
                       >
                         <FiCreditCard size={16} /> Pay Now
                       </button>
                     )}
+                  </div>
                   </div>
                 </div>
               ))}
@@ -220,10 +222,10 @@ export default function ClientPortalBilling() {
 
       {/* Upgrade Plan Modal */}
       {showUpgradeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 sm:p-6 lg:p-8">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">Choose Your Plan</h3>
+              <h3 className="text-xl font-bold text-gray-900 sm:text-2xl">Choose Your Plan</h3>
               <button
                 onClick={() => setShowUpgradeModal(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -232,7 +234,7 @@ export default function ClientPortalBilling() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
               {[
                 { name: 'Starter', price: 1500, features: ['5 Projects', 'Basic Support'] },
                 { name: 'Professional', price: 3500, features: ['Unlimited Projects', 'Priority Support'] },
@@ -240,7 +242,7 @@ export default function ClientPortalBilling() {
               ].map((plan, i) => (
                 <div key={i} className="border rounded-lg p-4">
                   <h4 className="font-bold text-gray-900 mb-2">{plan.name}</h4>
-                  <p className="text-2xl font-bold text-blue-600 mb-4">${plan.price}</p>
+                  <p className="mb-4 text-xl font-bold text-blue-600 sm:text-2xl">${plan.price}</p>
                   <ul className="space-y-2 mb-4">
                     {plan.features.map((f, j) => (
                       <li key={j} className="text-sm text-gray-600">✓ {f}</li>

@@ -518,13 +518,13 @@ export default function AdminPluginDetail() {
       {error && <div className="mb-6 p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">{error}</div>}
 
       {loading ? <PageSkeleton /> : (
-        <div className="space-y-8">
-          <section className="card p-6">
+        <div className="space-y-6 sm:space-y-8">
+          <section className="card p-4 sm:p-6">
             <Link to="/admin/plugins" className="text-blue-600 font-semibold hover:text-blue-800">Back to Plugins</Link>
             <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-3 mb-3">
-                  <h2 className="text-2xl font-bold text-gray-900">{plugin.name}</h2>
+                  <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">{plugin.name}</h2>
                   <span className={`px-2 py-1 rounded text-xs font-semibold ${plugin.isPurchased ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                     {plugin.isPurchased ? 'Purchased' : 'Not purchased'}
                   </span>
@@ -534,11 +534,11 @@ export default function AdminPluginDetail() {
                 </div>
                 <p className="text-gray-600 max-w-3xl">{plugin.description}</p>
               </div>
-              <div className="flex flex-col gap-3 sm:min-w-56">
+              <div className="flex w-full flex-col gap-3 sm:min-w-56 lg:w-auto">
                 <label className="text-sm font-semibold text-gray-700">Plugin Price</label>
                 <input type="number" min="0" step="0.01" value={pluginPrice} onChange={(e) => setPluginPrice(e.target.value)} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
-                <button onClick={() => updatePlugin({ price: Number(pluginPrice || 0), isEnabled: plugin.isEnabled })} className="btn-primary">Save Price</button>
-                <button onClick={() => updatePlugin({ price: Number(pluginPrice || 0), isEnabled: !plugin.isEnabled })} className="btn-secondary">
+                <button onClick={() => updatePlugin({ price: Number(pluginPrice || 0), isEnabled: plugin.isEnabled })} className="w-full btn-primary">Save Price</button>
+                <button onClick={() => updatePlugin({ price: Number(pluginPrice || 0), isEnabled: !plugin.isEnabled })} className="w-full btn-secondary">
                   {plugin.isEnabled ? 'Deactivate Plugin' : 'Activate Plugin'}
                 </button>
               </div>
@@ -549,17 +549,17 @@ export default function AdminPluginDetail() {
             <>
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Restaurant Menu Items</h2>
+                  <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Restaurant Menu Items</h2>
                   <p className="text-gray-600">Price shown to buyers: {formatPrice(plugin.price)}</p>
                 </div>
-                <button onClick={() => { setShowMenuForm(!showMenuForm); setEditingMenuId(null) }} className="inline-flex items-center gap-2 btn-primary">
+                <button onClick={() => { setShowMenuForm(!showMenuForm); setEditingMenuId(null) }} className="inline-flex w-full items-center justify-center gap-2 btn-primary md:w-auto">
                   {showMenuForm ? <FiX /> : <FiPlus />}
                   {showMenuForm ? 'Close Form' : 'Add Menu Item'}
                 </button>
               </div>
 
               {showMenuForm && (
-                <form onSubmit={saveMenuItem} className="card p-6 space-y-4">
+                <form onSubmit={saveMenuItem} className="card space-y-4 p-4 sm:p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="text" placeholder="Item name" value={menuForm.name} onChange={(e) => setMenuForm({ ...menuForm, name: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" required />
                     <input type="text" placeholder="Category" value={menuForm.category} onChange={(e) => setMenuForm({ ...menuForm, category: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" required />
@@ -582,16 +582,16 @@ export default function AdminPluginDetail() {
                     <input type="checkbox" checked={menuForm.isAvailable} onChange={(e) => setMenuForm({ ...menuForm, isAvailable: e.target.checked })} />
                     Available on menu
                   </label>
-                  <button type="submit" className="btn-primary">{editingMenuId ? 'Save Menu Item' : 'Create Menu Item'}</button>
+                  <button type="submit" className="w-full btn-primary sm:w-auto">{editingMenuId ? 'Save Menu Item' : 'Create Menu Item'}</button>
                 </form>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
                 {menuItems.map((item) => (
                   <div key={item.id} className="card overflow-hidden">
                     {item.image ? <img src={resolveAssetUrl(item.image)} alt={item.name} className="h-48 w-full object-cover" /> : <div className="h-48 bg-gray-100 flex items-center justify-center text-gray-500">No image</div>}
-                    <div className="p-6">
-                      <div className="flex justify-between gap-4 mb-2">
+                    <div className="p-4 sm:p-6">
+                      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:justify-between sm:gap-4">
                         <div>
                           <p className="text-sm font-semibold text-blue-600">{item.category}</p>
                           <h3 className="text-xl font-bold text-gray-900">{item.name}</h3>
@@ -599,14 +599,14 @@ export default function AdminPluginDetail() {
                         <p className="text-xl font-bold text-gray-900">${Number(item.price || 0).toFixed(2)}</p>
                       </div>
                       <p className="text-gray-600 mb-4">{item.description || 'No description'}</p>
-                      <div className="flex gap-2">
-                        <button onClick={() => editMenuItem(item)} className="inline-flex items-center gap-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"><FiEdit /> Edit</button>
-                        <button onClick={() => deleteMenuItem(String(item.id))} className="inline-flex items-center gap-1 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"><FiTrash2 /> Delete</button>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <button onClick={() => editMenuItem(item)} className="inline-flex items-center justify-center gap-1 rounded-lg bg-blue-100 px-3 py-2 text-blue-700 hover:bg-blue-200"><FiEdit /> Edit</button>
+                        <button onClick={() => deleteMenuItem(String(item.id))} className="inline-flex items-center justify-center gap-1 rounded-lg bg-red-100 px-3 py-2 text-red-700 hover:bg-red-200"><FiTrash2 /> Delete</button>
                       </div>
                     </div>
                   </div>
                 ))}
-                {menuItems.length === 0 && <div className="card p-8 text-center text-gray-600 xl:col-span-3">No menu items yet.</div>}
+                {menuItems.length === 0 && <div className="card p-6 text-center text-gray-600 sm:p-8 xl:col-span-3">No menu items yet.</div>}
               </div>
             </>
           )}
@@ -615,17 +615,17 @@ export default function AdminPluginDetail() {
             <>
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Real Estate Listings</h2>
+                  <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Real Estate Listings</h2>
                   <p className="text-gray-600">Price shown to buyers: {formatPrice(plugin.price)}</p>
                 </div>
-                <button onClick={() => { setShowListingForm(!showListingForm); setEditingListingId(null) }} className="inline-flex items-center gap-2 btn-primary">
+                <button onClick={() => { setShowListingForm(!showListingForm); setEditingListingId(null) }} className="inline-flex w-full items-center justify-center gap-2 btn-primary md:w-auto">
                   {showListingForm ? <FiX /> : <FiPlus />}
                   {showListingForm ? 'Close Form' : 'Add Listing'}
                 </button>
               </div>
 
               {showListingForm && (
-                <form onSubmit={saveListing} className="card p-6 space-y-4">
+                <form onSubmit={saveListing} className="card space-y-4 p-4 sm:p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="text" placeholder="Listing title" value={listingForm.title} onChange={(e) => setListingForm({ ...listingForm, title: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" required />
                     <input type="text" placeholder="Address or location" value={listingForm.address} onChange={(e) => setListingForm({ ...listingForm, address: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
@@ -649,27 +649,27 @@ export default function AdminPluginDetail() {
                     <input type="checkbox" checked={listingForm.isActive} onChange={(e) => setListingForm({ ...listingForm, isActive: e.target.checked })} />
                     Show listing publicly
                   </label>
-                  <button type="submit" className="btn-primary">{editingListingId ? 'Save Listing' : 'Create Listing'}</button>
+                  <button type="submit" className="w-full btn-primary sm:w-auto">{editingListingId ? 'Save Listing' : 'Create Listing'}</button>
                 </form>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
                 {listings.map((listing) => (
                   <div key={listing.id} className="card overflow-hidden">
                     {listing.image ? <img src={resolveAssetUrl(listing.image)} alt={listing.title} className="h-48 w-full object-cover" /> : <div className="h-48 bg-gray-100 flex items-center justify-center text-gray-500">No image</div>}
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                       <p className="text-xl font-bold text-blue-600 mb-2">{formatPrice(listing.price)}</p>
                       <h3 className="text-xl font-bold text-gray-900">{listing.title}</h3>
                       {listing.address && <p className="text-sm font-semibold text-gray-500 mt-1">{listing.address}</p>}
                       <p className="text-gray-600 my-4">{listing.description || 'No description'}</p>
-                      <div className="flex gap-2">
-                        <button onClick={() => editListing(listing)} className="inline-flex items-center gap-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"><FiEdit /> Edit</button>
-                        <button onClick={() => deleteListing(String(listing.id))} className="inline-flex items-center gap-1 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"><FiTrash2 /> Delete</button>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <button onClick={() => editListing(listing)} className="inline-flex items-center justify-center gap-1 rounded-lg bg-blue-100 px-3 py-2 text-blue-700 hover:bg-blue-200"><FiEdit /> Edit</button>
+                        <button onClick={() => deleteListing(String(listing.id))} className="inline-flex items-center justify-center gap-1 rounded-lg bg-red-100 px-3 py-2 text-red-700 hover:bg-red-200"><FiTrash2 /> Delete</button>
                       </div>
                     </div>
                   </div>
                 ))}
-                {listings.length === 0 && <div className="card p-8 text-center text-gray-600 xl:col-span-3">No listings yet.</div>}
+                {listings.length === 0 && <div className="card p-6 text-center text-gray-600 sm:p-8 xl:col-span-3">No listings yet.</div>}
               </div>
             </>
           )}
@@ -678,17 +678,17 @@ export default function AdminPluginDetail() {
             <>
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Availability</h2>
+                  <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Availability</h2>
                   <p className="text-gray-600">Price shown to buyers: {formatPrice(plugin.price)}</p>
                 </div>
-                <button onClick={() => { setShowBookingForm(!showBookingForm); setEditingSlotId(null) }} className="inline-flex items-center gap-2 btn-primary">
+                <button onClick={() => { setShowBookingForm(!showBookingForm); setEditingSlotId(null) }} className="inline-flex w-full items-center justify-center gap-2 btn-primary md:w-auto">
                   {showBookingForm ? <FiX /> : <FiPlus />}
                   {showBookingForm ? 'Close Form' : 'Add Time Slot'}
                 </button>
               </div>
 
               {showBookingForm && (
-                <form onSubmit={saveBookingSlot} className="card p-6 space-y-4">
+                <form onSubmit={saveBookingSlot} className="card space-y-4 p-4 sm:p-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <input type="date" value={bookingForm.date} onChange={(e) => setBookingForm({ ...bookingForm, date: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" required />
                     <input type="time" value={bookingForm.startTime} onChange={(e) => setBookingForm({ ...bookingForm, startTime: e.target.value })} className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" required />
@@ -706,7 +706,7 @@ export default function AdminPluginDetail() {
                     <input type="checkbox" checked={bookingForm.isActive} onChange={(e) => setBookingForm({ ...bookingForm, isActive: e.target.checked })} />
                     Show this slot publicly
                   </label>
-                  <button type="submit" className="btn-primary">{editingSlotId ? 'Save Time Slot' : 'Create Time Slot'}</button>
+                  <button type="submit" className="w-full btn-primary sm:w-auto">{editingSlotId ? 'Save Time Slot' : 'Create Time Slot'}</button>
                 </form>
               )}
 

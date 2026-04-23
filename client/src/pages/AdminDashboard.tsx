@@ -63,7 +63,7 @@ export default function AdminDashboard() {
         {loading ? (
           <DashboardStatsSkeleton />
         ) : stats ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:mb-10 lg:grid-cols-5 lg:gap-6">
             <StatCard
               icon={FiUsers}
               label="Total Clients"
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
         ) : null}
 
         {/* Quick Links */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
           {[
             { label: 'Manage Clients', url: '/admin/clients', icon: FiUsers },
             { label: 'View Projects', url: '/admin/projects', icon: FiFileText },
@@ -110,10 +110,10 @@ export default function AdminDashboard() {
               <button
                 key={i}
                 onClick={() => navigate(link.url)}
-                className="card p-6 hover:shadow-lg transition text-center"
+                className="card p-4 text-center transition hover:shadow-lg sm:p-5 lg:p-6"
               >
-                <Icon size={32} className="mx-auto mb-3 text-blue-600" />
-                <p className="font-semibold text-gray-900">{link.label}</p>
+                <Icon size={28} className="mx-auto mb-2 text-blue-600 sm:mb-3 sm:text-[32px]" />
+                <p className="text-sm font-semibold text-gray-900 sm:text-base">{link.label}</p>
               </button>
             )
           })}
@@ -122,7 +122,7 @@ export default function AdminDashboard() {
         <SeoDashboardPanel data={seoDashboard} />
 
         {stats && (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-12">
+          <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-6">
             <LineGraph
               title="Monthly Revenue"
               subtitle="Paid invoice revenue by month"
@@ -173,12 +173,12 @@ function StatCard({ icon: Icon, label, value, color }: any) {
   }
 
   return (
-    <div className="card p-6">
-      <div className={`w-12 h-12 rounded-lg ${colorClasses[color]} flex items-center justify-center mb-4`}>
+    <div className="card p-4 sm:p-5 lg:p-6">
+      <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-lg sm:mb-4 sm:h-12 sm:w-12 ${colorClasses[color]}`}>
         <Icon size={24} />
       </div>
       <p className="text-gray-600 text-sm mb-1">{label}</p>
-      <p className="text-3xl font-bold text-gray-900">{value}</p>
+      <p className="text-2xl font-bold text-gray-900 sm:text-3xl">{value}</p>
     </div>
   )
 }
@@ -194,11 +194,11 @@ function SeoDashboardPanel({ data }: any) {
   const lowCtrPages = insights.lowCtrPages || []
 
   return (
-    <section className="mt-12 space-y-6">
+    <section className="mt-8 space-y-4 sm:space-y-5 lg:mt-10 lg:space-y-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Google Search and Site Health</h2>
-          <p className="text-gray-600">Search Console rankings and PageSpeed Insights for your configured site.</p>
+          <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Google Search and Site Health</h2>
+          <p className="text-sm text-gray-600 sm:text-base">Search Console rankings and PageSpeed Insights for your configured site.</p>
         </div>
         {data?.dateRange && (
           <p className="text-sm font-semibold text-gray-600">
@@ -219,7 +219,7 @@ function SeoDashboardPanel({ data }: any) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
         <MiniMetric icon={FiSearch} label="Google Clicks" value={search ? Number(search.clicks || 0).toLocaleString() : 'Not connected'} />
         <MiniMetric icon={FiBarChart} label="Impressions" value={search ? Number(search.impressions || 0).toLocaleString() : 'Not connected'} />
         <MiniMetric icon={FiTrendingUp} label="Avg Position" value={search?.averagePosition ? search.averagePosition.toFixed(1) : 'Not connected'} />
@@ -227,11 +227,11 @@ function SeoDashboardPanel({ data }: any) {
         <MiniMetric icon={FiZap} label="Mobile Speed" value={mobile ? `${mobile.performance}/100` : 'No URL'} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <div className="card p-6 xl:col-span-1">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:gap-6">
+        <div className="card p-4 sm:p-5 lg:p-6 xl:col-span-1">
           <div className="mb-4 flex items-center gap-2">
             <FiAlertCircle className="text-amber-500" size={20} />
-            <h3 className="text-xl font-bold text-gray-900">SEO Priorities</h3>
+            <h3 className="text-lg font-bold text-gray-900 sm:text-xl">SEO Priorities</h3>
           </div>
           <div className="space-y-3">
             {recommendations.map((item: any) => (
@@ -253,11 +253,11 @@ function SeoDashboardPanel({ data }: any) {
         <RankingTable title="Pages With Low CTR" rows={lowCtrPages} labelKey="page" />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:gap-6">
         <RankingTable title="Top Search Queries" rows={search?.topQueries || []} labelKey="query" />
         <RankingTable title="Top Ranking Pages" rows={search?.topPages || []} labelKey="page" />
-        <div className="card p-6">
-          <h3 className="mb-4 text-xl font-bold text-gray-900">PageSpeed Insights</h3>
+        <div className="card p-4 sm:p-5 lg:p-6">
+          <h3 className="mb-4 text-lg font-bold text-gray-900 sm:text-xl">PageSpeed Insights</h3>
           {pageSpeed?.disabledReason ? (
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-800">
               {pageSpeed.disabledReason}
@@ -268,9 +268,9 @@ function SeoDashboardPanel({ data }: any) {
                 <div key={item.strategy} className="rounded-lg bg-gray-100 p-4">
                   <div className="flex items-center justify-between">
                     <p className="font-bold capitalize text-gray-900">{item.strategy}</p>
-                    <p className="text-sm font-semibold text-gray-600">{new Date(item.checkedAt).toLocaleString()}</p>
+                    <p className="text-xs font-semibold text-gray-600 sm:text-sm">{new Date(item.checkedAt).toLocaleString()}</p>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 sm:gap-3">
                     <Score label="Performance" value={item.performance} />
                     <Score label="SEO" value={item.seo} />
                     <p className="text-gray-600">FCP: <strong>{item.firstContentfulPaint || 'n/a'}</strong></p>
@@ -292,18 +292,18 @@ function SeoDashboardPanel({ data }: any) {
 
 function MiniMetric({ icon: Icon, label, value }: any) {
   return (
-    <div className="card p-5">
+    <div className="card p-4 sm:p-5">
       <Icon className="mb-3 text-blue-600" size={24} />
       <p className="text-sm text-gray-600">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-gray-900">{value}</p>
+      <p className="mt-1 text-xl font-bold text-gray-900 sm:text-2xl">{value}</p>
     </div>
   )
 }
 
 function RankingTable({ title, rows, labelKey }: any) {
   return (
-    <div className="card p-6">
-      <h3 className="mb-4 text-xl font-bold text-gray-900">{title}</h3>
+    <div className="card p-4 sm:p-5 lg:p-6">
+      <h3 className="mb-4 text-lg font-bold text-gray-900 sm:text-xl">{title}</h3>
       <div className="space-y-3">
         {rows.slice(0, 8).map((row: any) => (
           <div key={row[labelKey]} className="rounded-lg bg-gray-100 p-3">
@@ -342,12 +342,12 @@ function LineGraph({ title, subtitle, data, currency = false }: any) {
   const path = points.map((point: any, index: number) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
 
   return (
-    <div className="card p-6">
+    <div className="card p-4 sm:p-5 lg:p-6">
       <div className="mb-6">
-        <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+        <h3 className="text-lg font-bold text-gray-900 sm:text-xl">{title}</h3>
         {subtitle && <p className="text-sm text-gray-600">{subtitle}</p>}
       </div>
-      <svg viewBox="0 0 100 100" className="h-56 w-full overflow-visible" role="img" aria-label={title}>
+      <svg viewBox="0 0 100 100" className="h-44 w-full overflow-visible sm:h-52 lg:h-56" role="img" aria-label={title}>
         {[22, 38, 54, 70, 86].map(line => (
           <line key={line} x1="0" x2="100" y1={line} y2={line} stroke="#E5E7EB" strokeWidth="0.5" />
         ))}
@@ -356,7 +356,7 @@ function LineGraph({ title, subtitle, data, currency = false }: any) {
           <circle key={`${point.label}-${point.x}`} cx={point.x} cy={point.y} r="2.8" fill="#2563EB" />
         ))}
       </svg>
-      <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
+      <div className="mt-4 grid grid-cols-2 gap-2 text-sm md:grid-cols-3 md:gap-3">
         {chartData.slice(-6).map((item: any) => (
           <div key={item.label} className="rounded-lg bg-gray-100 p-3">
             <p className="font-semibold text-gray-700">{item.label}</p>
@@ -372,14 +372,14 @@ function ColumnGraph({ title, data }: any) {
   const max = Math.max(...data.map((item: any) => Number(item.value || 0)), 1)
 
   return (
-    <div className="card p-6">
-      <h3 className="text-xl font-bold text-gray-900 mb-6">{title}</h3>
-      <div className="flex h-64 items-end gap-4 border-b border-gray-200 pb-4">
+    <div className="card p-4 sm:p-5 lg:p-6">
+      <h3 className="mb-4 text-lg font-bold text-gray-900 sm:mb-6 sm:text-xl">{title}</h3>
+      <div className="flex h-52 items-end gap-3 border-b border-gray-200 pb-4 sm:h-64 sm:gap-4">
         {data.map((item: any) => {
           const height = Math.max(8, (Number(item.value || 0) / max) * 100)
           return (
             <div key={item.label} className="flex flex-1 flex-col items-center gap-3">
-              <div className="flex h-44 w-full items-end">
+              <div className="flex h-32 w-full items-end sm:h-44">
                 <div
                   className="w-full rounded-t-lg bg-blue-600"
                   style={{ height: `${height}%` }}
@@ -387,7 +387,7 @@ function ColumnGraph({ title, data }: any) {
                 />
               </div>
               <div className="text-center">
-                <p className="text-lg font-bold text-gray-900">{Number(item.value || 0).toLocaleString()}</p>
+                <p className="text-base font-bold text-gray-900 sm:text-lg">{Number(item.value || 0).toLocaleString()}</p>
                 <p className="text-xs font-semibold text-gray-600">{item.label}</p>
               </div>
             </div>
@@ -404,11 +404,11 @@ function DonutGraph({ title, data }: any) {
   const circumference = 100
 
   return (
-    <div className="card p-6">
-      <h3 className="text-xl font-bold text-gray-900 mb-6">{title}</h3>
-      <div className="grid grid-cols-1 items-center gap-6 md:grid-cols-[180px_1fr]">
-        <div className="relative h-44 w-44">
-          <svg viewBox="0 0 42 42" className="h-44 w-44 -rotate-90">
+    <div className="card p-4 sm:p-5 lg:p-6">
+      <h3 className="mb-4 text-lg font-bold text-gray-900 sm:mb-6 sm:text-xl">{title}</h3>
+      <div className="grid grid-cols-1 items-center gap-4 sm:gap-6 md:grid-cols-[180px_1fr]">
+        <div className="relative mx-auto h-36 w-36 sm:h-44 sm:w-44 md:mx-0">
+          <svg viewBox="0 0 42 42" className="h-36 w-36 -rotate-90 sm:h-44 sm:w-44">
             <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#E5E7EB" strokeWidth="5" />
             {total > 0 && data.map((item: any) => {
               const value = Number(item.value || 0)
@@ -431,7 +431,7 @@ function DonutGraph({ title, data }: any) {
             })}
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <p className="text-3xl font-bold text-gray-900">{total}</p>
+            <p className="text-2xl font-bold text-gray-900 sm:text-3xl">{total}</p>
             <p className="text-xs font-semibold text-gray-600">Total</p>
           </div>
         </div>

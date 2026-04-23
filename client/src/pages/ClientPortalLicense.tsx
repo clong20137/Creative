@@ -34,8 +34,8 @@ export default function ClientPortalLicense() {
       {loading ? (
         <PageSkeleton />
       ) : (
-        <div className="space-y-8">
-          <section className={`rounded-2xl border p-8 ${
+        <div className="space-y-6 sm:space-y-8">
+          <section className={`rounded-2xl border p-4 sm:p-6 lg:p-8 ${
             hasActiveLicense ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'
           }`}>
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -43,7 +43,7 @@ export default function ClientPortalLicense() {
                 <p className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
                   <FiKey /> License Status
                 </p>
-                <h2 className="mt-2 text-3xl font-bold text-gray-900">
+                <h2 className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">
                   {hasActiveLicense ? 'Monthly CMS license is active' : 'A CMS license is required'}
                 </h2>
                 <p className="mt-3 max-w-2xl text-gray-600">
@@ -63,23 +63,23 @@ export default function ClientPortalLicense() {
             </div>
           </section>
 
-          <section className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
             {[
               { label: 'Status', value: hasActiveLicense ? 'Active' : (license?.status || 'Inactive') },
               { label: 'Plan', value: license?.planName || 'No license assigned' },
               { label: 'Update Channel', value: license?.updateChannel === 'early-access' ? 'Early Access' : 'Stable' },
               { label: 'Renewal', value: license?.renewalDate ? new Date(license.renewalDate).toLocaleDateString() : 'Not scheduled' }
             ].map((item) => (
-              <div key={item.label} className="card p-6">
+              <div key={item.label} className="card p-4 sm:p-6">
                 <p className="text-sm text-gray-500">{item.label}</p>
                 <p className="mt-2 text-xl font-bold text-gray-900">{item.value}</p>
               </div>
             ))}
           </section>
 
-          <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr,1fr]">
-            <div className="card p-8">
-              <h3 className="text-2xl font-bold text-gray-900">License Details</h3>
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr,1fr] xl:gap-6">
+            <div className="card p-4 sm:p-6 lg:p-8">
+              <h3 className="text-xl font-bold text-gray-900 sm:text-2xl">License Details</h3>
               {license ? (
                 <div className="mt-6 space-y-4 text-gray-700">
                   <div className="rounded-xl bg-gray-50 p-4">
@@ -121,7 +121,7 @@ export default function ClientPortalLicense() {
             </div>
 
             <div className="space-y-6">
-              <div className="card p-8">
+              <div className="card p-4 sm:p-6 lg:p-8">
                 <h3 className="text-xl font-bold text-gray-900">How updates work</h3>
                 <div className="mt-4 space-y-3 text-gray-600">
                   <p>Active licenses stay on your selected update channel.</p>
@@ -130,7 +130,7 @@ export default function ClientPortalLicense() {
                 </div>
               </div>
 
-              <div className="card p-8">
+              <div className="card p-4 sm:p-6 lg:p-8">
                 <h3 className="text-xl font-bold text-gray-900">Need to renew or upgrade?</h3>
                 <p className="mt-4 text-gray-600">
                   We can assign a new monthly CMS plan, switch your update channel, or update the licensed domain.

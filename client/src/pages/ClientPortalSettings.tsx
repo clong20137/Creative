@@ -161,12 +161,12 @@ export default function ClientPortalSettings() {
         )}
 
         {/* Profile Section */}
-        <div className="bg-white rounded-lg shadow mb-6 p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Profile Information</h2>
+        <div className="mb-6 rounded-lg bg-white p-4 shadow sm:p-6">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Profile Information</h2>
             <button
               onClick={() => setEditing(!editing)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
             >
               <FiEdit2 /> {editing ? 'Cancel' : 'Edit'}
             </button>
@@ -264,10 +264,10 @@ export default function ClientPortalSettings() {
           </div>
 
           {editing && (
-            <div className="flex gap-3 mt-6">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={handleSaveProfile}
-                className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-6 py-2 text-white transition hover:bg-green-700"
               >
                 <FiSave /> Save Changes
               </button>
@@ -275,12 +275,12 @@ export default function ClientPortalSettings() {
           )}
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Two-Factor Authentication</h2>
+        <div className="mb-6 rounded-lg bg-white p-4 shadow sm:p-6">
+          <h2 className="mb-2 text-xl font-bold text-gray-900 sm:text-2xl">Two-Factor Authentication</h2>
           <p className="text-gray-600 mb-6">
             Add an extra sign-in check with email codes or an authenticator app on your phone.
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <button type="button" onClick={handleTwoFactorToggle} className={profile?.twoFactorEnabled ? 'btn-secondary' : 'btn-primary'}>
               {profile?.twoFactorEnabled ? 'Disable 2FA' : 'Enable Email 2FA'}
             </button>
@@ -304,9 +304,9 @@ export default function ClientPortalSettings() {
         </div>
 
         {/* Email & Password Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
           {/* Email */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="rounded-lg bg-white p-4 shadow sm:p-6">
             <div className="flex items-center gap-3 mb-4">
               <FiMail className="text-blue-600 text-xl" />
               <h3 className="text-xl font-bold text-gray-900">Email Address</h3>
@@ -321,7 +321,7 @@ export default function ClientPortalSettings() {
           </div>
 
           {/* Password */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="rounded-lg bg-white p-4 shadow sm:p-6">
             <div className="flex items-center gap-3 mb-4">
               <FiLock className="text-blue-600 text-xl" />
               <h3 className="text-xl font-bold text-gray-900">Password</h3>
@@ -337,11 +337,11 @@ export default function ClientPortalSettings() {
         </div>
 
         {/* Preferences Section */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Notification Preferences</h2>
+        <div className="mb-6 rounded-lg bg-white p-4 shadow sm:p-6">
+          <h2 className="mb-6 text-xl font-bold text-gray-900 sm:text-2xl">Notification Preferences</h2>
           
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 p-4">
               <div>
                 <h4 className="font-semibold text-gray-900">Email Notifications</h4>
                 <p className="text-sm text-gray-600">Receive updates about your account</p>
@@ -354,7 +354,7 @@ export default function ClientPortalSettings() {
               />
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 p-4">
               <div>
                 <h4 className="font-semibold text-gray-900">Invoice Reminders</h4>
                 <p className="text-sm text-gray-600">Reminders for upcoming invoice due dates</p>
@@ -367,7 +367,7 @@ export default function ClientPortalSettings() {
               />
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 p-4">
               <div>
                 <h4 className="font-semibold text-gray-900">Marketing Emails</h4>
                 <p className="text-sm text-gray-600">Promotional offers and news</p>
@@ -384,8 +384,8 @@ export default function ClientPortalSettings() {
 
       {/* Password Change Modal */}
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-gray-900">Change Password</h3>
               <button onClick={() => setShowPasswordModal(false)} className="text-gray-600 hover:text-gray-900">
@@ -423,7 +423,7 @@ export default function ClientPortalSettings() {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={handlePasswordChange}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
@@ -443,8 +443,8 @@ export default function ClientPortalSettings() {
 
       {/* Email Change Modal */}
       {showEmailModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-gray-900">Change Email</h3>
               <button onClick={() => setShowEmailModal(false)} className="text-gray-600 hover:text-gray-900">
@@ -473,7 +473,7 @@ export default function ClientPortalSettings() {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={handleEmailChange}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"

@@ -362,19 +362,19 @@ export default function AdminSettings() {
       {message && <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">{message}</div>}
       {error && <div className="mb-6 p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">{error}</div>}
       {loading ? <PageSkeleton /> : (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="flex gap-2 overflow-x-auto pb-2">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          <div className="sticky top-[4.5rem] z-10 -mx-1 flex gap-2 overflow-x-auto bg-gray-50 px-1 pb-2 pt-1 sm:static sm:bg-transparent sm:px-0 sm:pt-0">
             {tabs.map(tab => (
-              <button key={tab} type="button" onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border'}`}>
+              <button key={tab} type="button" onClick={() => setActiveTab(tab)} className={`rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap sm:px-4 ${activeTab === tab ? 'bg-blue-600 text-white' : 'border bg-white text-gray-700'}`}>
                 {tab}
               </button>
             ))}
           </div>
 
-          <div className="card p-6 space-y-6">
+          <div className="card space-y-5 p-4 sm:space-y-6 sm:p-6">
             {activeTab === 'General' && (
               <section className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-900">Branding</h2>
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Branding</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input value={settings.siteName} onChange={(e) => handleChange('siteName', e.target.value)} placeholder="Site name / text logo" className="px-4 py-2 border rounded-lg" />
                   <input value={settings.faviconUrl || ''} onChange={(e) => handleChange('faviconUrl', e.target.value)} placeholder="Favicon URL" className="px-4 py-2 border rounded-lg" />
@@ -444,7 +444,7 @@ export default function AdminSettings() {
 
             {activeTab === 'Contact' && (
               <section className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-900">Contact and Social Links</h2>
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Contact and Social Links</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input value={settings.contactEmail} onChange={(e) => handleChange('contactEmail', e.target.value)} placeholder="Contact email" className="px-4 py-2 border rounded-lg" />
                   <input value={settings.phone} onChange={(e) => handleChange('phone', e.target.value)} placeholder="Phone number" className="px-4 py-2 border rounded-lg" />
@@ -498,7 +498,7 @@ export default function AdminSettings() {
             {activeTab === 'Page Headers' && (
               <section className="space-y-4">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Public Page Headers</h2>
+                  <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Public Page Headers</h2>
                   <p className="text-gray-600">Edit the main title and subtitle shown at the top of each public page.</p>
                 </div>
                 <div className="grid grid-cols-1 gap-4">
@@ -561,7 +561,7 @@ export default function AdminSettings() {
             {activeTab === 'SEO' && (
               <section className="space-y-4">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Google Search Console and PageSpeed</h2>
+                  <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Google Search Console and PageSpeed</h2>
                   <p className="text-gray-600">Connect Search Console with a Google service account. Add that service account email as a user on your Search Console property.</p>
                 </div>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -602,7 +602,7 @@ export default function AdminSettings() {
 
             {activeTab === 'Payments' && (
               <section className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-900">Stripe and Payout Info</h2>
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Stripe and Payout Info</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input value={settings.stripePublishableKey || ''} onChange={(e) => handleChange('stripePublishableKey', e.target.value)} placeholder="Stripe publishable key" className="px-4 py-2 border rounded-lg" />
                   <input value={settings.stripeSecretKey || ''} onChange={(e) => handleChange('stripeSecretKey', e.target.value)} placeholder="Stripe secret key" className="px-4 py-2 border rounded-lg" />
@@ -617,12 +617,12 @@ export default function AdminSettings() {
             {activeTab === 'Security' && (
               <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Two-Factor Authentication</h2>
+                  <h2 className="mb-4 text-xl font-bold text-gray-900 sm:text-2xl">Two-Factor Authentication</h2>
                   <p className="text-gray-600 mb-6">Use email codes or an authenticator app on your phone.</p>
                   <button type="button" onClick={handleTwoFactorToggle} className={twoFactorEnabled ? 'btn-secondary' : 'btn-primary'}>
                     {twoFactorEnabled ? 'Disable 2FA' : 'Enable Email 2FA'}
                   </button>
-                  <button type="button" onClick={startAuthenticatorSetup} className="btn-secondary ml-3">Set Up Authenticator App</button>
+                  <button type="button" onClick={startAuthenticatorSetup} className="btn-secondary mt-3 sm:ml-3 sm:mt-0">Set Up Authenticator App</button>
                 </div>
                 {twoFactorSetup && (
                   <div className="space-y-3">
@@ -633,7 +633,7 @@ export default function AdminSettings() {
                   </div>
                 )}
                 <div className="space-y-4 lg:col-span-2">
-                  <h2 className="text-2xl font-bold text-gray-900">Cloudflare Turnstile</h2>
+                  <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Cloudflare Turnstile</h2>
                   <p className="text-gray-600">Protect login, account creation, password reset, and contact forms from bots.</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input value={settings.turnstileSiteKey || ''} onChange={(e) => handleChange('turnstileSiteKey', e.target.value)} placeholder="Turnstile site key" className="px-4 py-2 border rounded-lg" />
@@ -644,7 +644,7 @@ export default function AdminSettings() {
             )}
           </div>
 
-          <button type="submit" className="btn-primary">Save Settings</button>
+          <button type="submit" className="w-full btn-primary sm:w-auto">Save Settings</button>
         </form>
       )}
     </AdminLayout>
@@ -686,10 +686,10 @@ function ListEditor({ title, listKey, items, fields, updateListItem, addListItem
 
   return (
     <section>
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">{title}</h2>
+      <h2 className="mb-4 text-xl font-bold text-gray-900 sm:text-2xl">{title}</h2>
       <div className="space-y-3">
         {(items || []).map((item: any, index: number) => (
-          <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-2 border rounded-lg p-3">
+          <div key={index} className="grid grid-cols-1 gap-3 rounded-lg border p-3 md:grid-cols-2">
             {fields.map((field: string) => (
               <div key={field}>
                 {field === 'features' ? (
@@ -706,7 +706,7 @@ function ListEditor({ title, listKey, items, fields, updateListItem, addListItem
                         <button
                           type="button"
                           onClick={() => removeFeature(index, featureIndex)}
-                          className="px-3 py-2 border rounded-lg text-red-600 hover:bg-red-50"
+                          className="shrink-0 rounded-lg border px-3 py-2 text-red-600 hover:bg-red-50"
                         >
                           Remove
                         </button>
@@ -730,10 +730,10 @@ function ListEditor({ title, listKey, items, fields, updateListItem, addListItem
                 )}
               </div>
             ))}
-            <button type="button" onClick={() => removeListItem(listKey, index)} className="btn-secondary">Remove</button>
+            <button type="button" onClick={() => removeListItem(listKey, index)} className="btn-secondary w-full md:w-auto">Remove</button>
           </div>
         ))}
-        <button type="button" onClick={() => addListItem(listKey, {})} className="btn-secondary">Add {title}</button>
+        <button type="button" onClick={() => addListItem(listKey, {})} className="btn-secondary w-full sm:w-auto">Add {title}</button>
       </div>
     </section>
   )

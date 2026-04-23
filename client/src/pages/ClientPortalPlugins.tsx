@@ -52,22 +52,22 @@ export default function ClientPortalPlugins() {
         </div>
       )}
 
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">Available Website Plugins</h2>
+      <div className="mb-6 sm:mb-8">
+        <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Available Website Plugins</h2>
         <p className="mt-2 text-gray-600">Add optional features to your website without mixing them into billing history.</p>
       </div>
 
       {loading ? (
         <PageSkeleton />
       ) : plugins.length > 0 ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
           {plugins.map((plugin) => {
             const purchase = plugin.clientPurchase
             const isPurchased = purchase?.status === 'active'
             const isPending = purchase?.status === 'pending'
 
             return (
-              <div key={plugin.id} className="card p-6">
+              <div key={plugin.id} className="card p-4 sm:p-6">
                 <div className="mb-3 flex flex-wrap items-center gap-3">
                   <h3 className="text-xl font-bold text-gray-900">{plugin.name}</h3>
                   <span className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold ${isPurchased ? 'bg-green-100 text-green-800' : isPending ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-700'}`}>
@@ -77,13 +77,13 @@ export default function ClientPortalPlugins() {
                 </div>
                 <p className="mb-5 text-gray-600">{plugin.description}</p>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p className="text-xl font-bold text-blue-600 sm:text-2xl">
                     {Number(plugin.price || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
                   </p>
                   {isPurchased ? (
                     <span className="font-semibold text-green-700">Installed on your account</span>
                   ) : (
-                    <button onClick={() => handlePurchasePlugin(plugin.slug)} className="btn-primary">
+                    <button onClick={() => handlePurchasePlugin(plugin.slug)} className="w-full btn-primary sm:w-auto">
                       Purchase Plugin
                     </button>
                   )}

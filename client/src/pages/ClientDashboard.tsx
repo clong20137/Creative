@@ -67,15 +67,15 @@ export default function ClientDashboard() {
 
   return (
     <ClientLayout title="Client Dashboard">
-        <p className="text-gray-600 mb-8">Welcome back! Manage your projects here.</p>
+        <p className="mb-6 text-sm text-gray-600 sm:mb-8 sm:text-base">Welcome back! Manage your projects here.</p>
 
         {/* User Info */}
-        <div className="card p-6 mb-8">
+        <div className="card mb-6 p-4 sm:mb-8 sm:p-6">
           <p className="text-gray-600">Logged in as: <span className="font-bold text-gray-900">{userEmail}</span></p>
         </div>
 
         {licenseStatus && (
-          <div className={`mb-8 rounded-2xl border p-6 ${
+          <div className={`mb-6 rounded-2xl border p-4 sm:mb-8 sm:p-6 ${
             licenseStatus.hasActiveLicense ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'
           }`}>
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -83,7 +83,7 @@ export default function ClientDashboard() {
                 <p className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
                   <FiKey /> CMS License
                 </p>
-                <h2 className="mt-2 text-2xl font-bold text-gray-900">
+                <h2 className="mt-2 text-xl font-bold text-gray-900 sm:text-2xl">
                   {licenseStatus.hasActiveLicense ? 'Your CMS access is active' : 'Your CMS license needs attention'}
                 </h2>
                 <p className="mt-2 text-gray-600">
@@ -99,7 +99,7 @@ export default function ClientDashboard() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:mb-8">
           <Link to="/client-dashboard/billing" className="card p-4 font-semibold text-blue-600 hover:shadow-lg transition">
             Billing
           </Link>
@@ -113,7 +113,7 @@ export default function ClientDashboard() {
 
         {/* Projects */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Projects</h2>
+          <h2 className="mb-4 text-xl font-bold text-gray-900 sm:mb-6 sm:text-2xl">Your Projects</h2>
           {error && (
             <div className="mb-6 p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">
               {error}
@@ -124,13 +124,13 @@ export default function ClientDashboard() {
           ) : projects.length > 0 ? (
             <div className="grid grid-cols-1 gap-6">
             {projects.map((project) => (
-              <div key={project.id} className="card p-6 hover:shadow-lg transition">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">{project.title}</h3>
+              <div key={project.id} className="card p-4 transition hover:shadow-lg sm:p-6">
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-bold text-gray-900 sm:text-xl">{project.title}</h3>
                     <p className="text-gray-600 mt-1">{project.description}</p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(project.status)}`}>
+                  <span className={`inline-flex w-fit px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(project.status)}`}>
                     {getStatusIcon(project.status)}
                     {(project.status || 'pending').replace('-', ' ').charAt(0).toUpperCase() + (project.status || 'pending').replace('-', ' ').slice(1)}
                   </span>
@@ -151,15 +151,15 @@ export default function ClientDashboard() {
                 </div>
 
                 {/* Details */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center pt-4 border-t">
-                  <div className="text-sm text-gray-600 mb-4 md:mb-0">
+                <div className="flex flex-col gap-4 border-t pt-4 md:flex-row md:items-center md:justify-between">
+                  <div className="text-sm text-gray-600">
                     Due: <span className="font-bold text-gray-900">{project.dueDate ? new Date(project.dueDate).toLocaleDateString() : 'Not scheduled'}</span>
                   </div>
-                  <div className="flex gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition">
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <button className="flex items-center justify-center gap-2 rounded-lg border border-blue-600 px-4 py-2 text-blue-600 transition hover:bg-blue-50">
                       <FiDownload size={18} /> Download
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    <button className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700">
                       <FiMessageSquare size={18} /> Message
                     </button>
                   </div>
@@ -175,13 +175,13 @@ export default function ClientDashboard() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6 lg:mt-12">
           {[
             { label: 'Total Projects', value: projects.length },
             { label: 'Completed', value: projects.filter(p => p.status === 'completed').length },
             { label: 'In Progress', value: projects.filter(p => p.status === 'in-progress').length }
           ].map((stat, i) => (
-            <div key={i} className="card p-6 text-center">
+            <div key={i} className="card p-4 text-center sm:p-6">
               <p className="text-gray-600 text-sm">{stat.label}</p>
               <p className="text-3xl font-bold text-blue-600 mt-2">{stat.value}</p>
             </div>
@@ -189,14 +189,14 @@ export default function ClientDashboard() {
         </div>
 
         {/* Support */}
-        <div className="card p-6 mt-8 bg-gradient-to-r from-blue-50 to-blue-100">
+        <div className="card mt-8 p-4 bg-gradient-to-r from-blue-50 to-blue-100 sm:p-6">
           <h3 className="text-lg font-bold text-gray-900 mb-2">Need Help?</h3>
           <p className="text-gray-600 mb-4">Have questions about your projects? Our team is here to help.</p>
-          <div className="flex gap-4">
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+            <button className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700">
               Contact Support
             </button>
-            <button className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition">
+            <button className="rounded-lg border border-blue-600 px-4 py-2 text-blue-600 transition hover:bg-blue-50">
               View FAQ
             </button>
           </div>
