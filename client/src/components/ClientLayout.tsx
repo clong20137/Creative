@@ -22,11 +22,6 @@ export default function ClientLayout({ title, children }: { title: string; child
     license: null
   })
   const currentPath = location.pathname
-  const inactiveAllowedPaths = useMemo(() => new Set([
-    '/client-dashboard/license',
-    '/client-dashboard/billing',
-    '/client-dashboard/settings'
-  ]), [])
 
   useEffect(() => {
     const token = localStorage.getItem('authToken')
@@ -45,20 +40,16 @@ export default function ClientLayout({ title, children }: { title: string; child
           hasActiveLicense: Boolean(data?.hasActiveLicense),
           license: data?.license || null
         })
-        if (!data?.hasActiveLicense && !inactiveAllowedPaths.has(currentPath)) {
-          navigate('/client-dashboard/license')
-        }
       })
       .catch(() => {
         if (cancelled) return
         setLicenseState({ loading: false, hasActiveLicense: false, license: null })
-        if (!inactiveAllowedPaths.has(currentPath)) navigate('/client-dashboard/license')
       })
 
     return () => {
       cancelled = true
     }
-  }, [currentPath, inactiveAllowedPaths, navigate])
+  }, [currentPath, navigate])
 
   const handleLogout = () => {
     localStorage.removeItem('authToken')
@@ -133,9 +124,9 @@ export default function ClientLayout({ title, children }: { title: string; child
       </div>
 
       <div className="container py-8">
-        {!licenseState.loading && !licenseState.hasActiveLicense && !inactiveAllowedPaths.has(currentPath) && (
+        {!licenseState.loading && !licenseState.hasActiveLicense && (
           <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-            Your CMS license is inactive. Billing, license management, and account settings are still available while you renew access.
+            Your CMS license is inactive. You can still navigate the client portal, and you can renew anytime from the license page.
           </div>
         )}
         {children}

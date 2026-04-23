@@ -108,7 +108,7 @@ export default function RestaurantSiteDemo() {
         path="/site-demos/restaurant"
       />
 
-      <section className="relative min-h-screen overflow-hidden text-white">
+      <section className="demo-hero relative min-h-screen overflow-hidden text-white">
         <img src={resolveAssetUrl(demoImages.hero)} alt="" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-black/60"></div>
         <div className="container relative">

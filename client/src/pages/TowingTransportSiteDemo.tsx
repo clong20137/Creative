@@ -62,7 +62,7 @@ export default function TowingTransportSiteDemo() {
         path="/site-demos/towing-transport"
       />
 
-      <section className="relative min-h-screen overflow-hidden text-white">
+      <section className="demo-hero relative min-h-screen overflow-hidden text-white">
         <img src={resolveAssetUrl(images.hero)} alt="" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-black/70"></div>
         <div className="container relative">

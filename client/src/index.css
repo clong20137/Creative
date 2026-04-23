@@ -369,6 +369,27 @@ html.dark-mode .demo-page .text-green-800 {
   color: var(--theme-heading);
 }
 
+.site-theme .demo-page .demo-hero,
+.site-theme .demo-page .demo-hero h1,
+.site-theme .demo-page .demo-hero h2,
+.site-theme .demo-page .demo-hero h3,
+.site-theme .demo-page .demo-hero h4,
+.site-theme .demo-page .demo-hero h5,
+.site-theme .demo-page .demo-hero h6 {
+  color: #f9fafb !important;
+}
+
+.site-theme .demo-page .demo-hero p,
+.site-theme .demo-page .demo-hero .text-gray-100,
+.site-theme .demo-page .demo-hero .text-gray-300,
+.site-theme .demo-page .demo-hero .text-white {
+  color: #e5e7eb !important;
+}
+
+.site-theme .demo-page .demo-hero a:not(.btn-primary):not(.btn-secondary):not(.section-button):not(.section-secondary-button):not([class*="text-gray-950"]):not([class*="text-gray-900"]) {
+  color: #f9fafb !important;
+}
+
 .site-theme p,
 .site-theme li,
 .site-theme label,
