@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FiDownload, FiMessageSquare, FiCheckCircle, FiClock, FiKey } from 'react-icons/fi'
-import { projectsAPI, subscriptionsAPI } from '../services/api'
+import { licensesAPI, projectsAPI } from '../services/api'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import ClientLayout from '../components/ClientLayout'
 
@@ -25,7 +25,7 @@ export default function ClientDashboard() {
 
     setUserEmail(email || '')
     fetchProjects(userId)
-    subscriptionsAPI.getClientLicense(userId).then(setLicenseStatus).catch(() => setLicenseStatus(null))
+    licensesAPI.getClientLicense(userId).then(setLicenseStatus).catch(() => setLicenseStatus(null))
   }, [navigate])
 
   const fetchProjects = async (userId: string) => {

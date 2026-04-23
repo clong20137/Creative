@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { FiArrowRight, FiCheckCircle, FiClock, FiGlobe, FiKey, FiRefreshCw } from 'react-icons/fi'
 import ClientLayout from '../components/ClientLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
-import { subscriptionsAPI } from '../services/api'
+import { licensesAPI } from '../services/api'
 
 export default function ClientPortalLicense() {
   const clientId = localStorage.getItem('userId') || ''
@@ -13,7 +13,7 @@ export default function ClientPortalLicense() {
   const fetchLicense = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await subscriptionsAPI.getClientLicense(clientId)
+      const data = await licensesAPI.getClientLicense(clientId)
       setLicenseStatus(data)
     } catch (error) {
       setLicenseStatus(null)

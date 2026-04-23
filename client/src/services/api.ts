@@ -113,12 +113,15 @@ export const invoicesAPI = {
 // Subscriptions API
 export const subscriptionsAPI = {
   getClientSubscription: (clientId: string) => unwrap(api.get(`/subscriptions/client/${clientId}`)),
-  getClientLicense: (clientId: string) => unwrap(api.get(`/subscriptions/client/${clientId}/license`)),
   getSubscription: (id: string) => unwrap(api.get(`/subscriptions/${id}`)),
   createSubscription: (data: any) => unwrap(api.post('/subscriptions', data)),
   updateSubscription: (id: string, data: any) => unwrap(api.put(`/subscriptions/${id}`, data)),
   cancelSubscription: (id: string) => unwrap(api.put(`/subscriptions/${id}/cancel`)),
   deleteSubscription: (id: string) => unwrap(api.delete(`/subscriptions/${id}`))
+}
+
+export const licensesAPI = {
+  getClientLicense: (clientId: string) => unwrap(api.get(`/subscriptions/client/${clientId}/license`))
 }
 
 // Portfolio API
@@ -175,6 +178,7 @@ export const adminAPI = {
   getProjects: () => unwrap<any[]>(api.get('/admin/projects')),
   getInvoices: () => unwrap<any[]>(api.get('/admin/invoices')),
   getSubscriptions: () => unwrap<any[]>(api.get('/admin/subscriptions')),
+  getLicenses: () => unwrap<any[]>(api.get('/admin/licenses')),
   getSubscriptionPlans: () => unwrap<any[]>(api.get('/admin/subscription-plans')),
   getMonthlyRevenue: () => unwrap(api.get('/admin/revenue/monthly')),
   createUser: (data: any) => unwrap(api.post('/admin/users', data)),
@@ -184,6 +188,7 @@ export const adminAPI = {
   updateSubscriptionPlan: (id: string, data: any) => unwrap(api.put(`/admin/subscription-plans/${id}`, data)),
   deleteSubscriptionPlan: (id: string) => unwrap(api.delete(`/admin/subscription-plans/${id}`)),
   assignSubscription: (data: any) => unwrap(api.post('/admin/subscriptions/assign', data)),
+  cancelLicense: (id: string) => unwrap(api.put(`/admin/licenses/${id}/cancel`)),
   getServicePackages: () => unwrap<any[]>(api.get('/admin/service-packages')),
   createServicePackage: (data: any) => unwrap(api.post('/admin/service-packages', data)),
   updateServicePackage: (id: string, data: any) => unwrap(api.put(`/admin/service-packages/${id}`, data)),

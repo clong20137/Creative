@@ -1,9 +1,12 @@
 import express from 'express'
 import Subscription from '../models/Subscription.js'
+import SubscriptionPlan from '../models/SubscriptionPlan.js'
+import CMSLicense from '../models/CMSLicense.js'
 import { DataTypes } from 'sequelize'
 
 const router = express.Router()
 let subscriptionSchemaReady = false
+let cmsLicenseSchemaReady = false
 
 async function ensureSubscriptionSchema() {
   if (subscriptionSchemaReady) return
@@ -71,6 +74,136 @@ async function ensureSubscriptionSchema() {
   subscriptionSchemaReady = true
 }
 
+async function ensureCmsLicenseSchema() {
+  if (cmsLicenseSchemaReady) return
+
+  const queryInterface = CMSLicense.sequelize.getQueryInterface()
+  const table = await queryInterface.describeTable('CMSLicenses').catch(() => null)
+  if (!table) {
+    cmsLicenseSchemaReady = true
+    return
+  }
+
+  const addColumn = async (name, config) => {
+    if (table[name]) return
+    await queryInterface.addColumn('CMSLicenses', name, config).catch((error) => {
+      if (!String(error?.message || '').includes('Duplicate column')) throw error
+    })
+  }
+
+  await addColumn('planId', {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  })
+  await addColumn('planName', {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'CMS License'
+  })
+  await addColumn('tier', {
+    type: DataTypes.ENUM('starter', 'professional', 'enterprise'),
+    allowNull: false,
+    defaultValue: 'starter'
+  })
+  await addColumn('status', {
+    type: DataTypes.ENUM('active', 'inactive', 'suspended', 'expired', 'cancelled'),
+    allowNull: false,
+    defaultValue: 'active'
+  })
+  await addColumn('price', {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0
+  })
+  await addColumn('billingCycle', {
+    type: DataTypes.ENUM('monthly', 'quarterly', 'annually'),
+    allowNull: false,
+    defaultValue: 'monthly'
+  })
+  await addColumn('licenseKey', {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'TEMP-LICENSE'
+  })
+  await addColumn('licensedDomain', {
+    type: DataTypes.STRING,
+    allowNull: true
+  })
+  await addColumn('updateChannel', {
+    type: DataTypes.ENUM('stable', 'early-access'),
+    allowNull: false,
+    defaultValue: 'stable'
+  })
+  await addColumn('includedUpdates', {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  })
+  await addColumn('startDate', {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: new Date()
+  })
+  await addColumn('renewalDate', {
+    type: DataTypes.DATE,
+    allowNull: true
+  })
+  await addColumn('endDate', {
+    type: DataTypes.DATE,
+    allowNull: true
+  })
+  await addColumn('lastValidatedAt', {
+    type: DataTypes.DATE,
+    allowNull: true
+  })
+  await addColumn('features', {
+    type: DataTypes.JSON,
+    allowNull: true
+  })
+  await addColumn('notes', {
+    type: DataTypes.TEXT,
+    allowNull: true
+  })
+
+  cmsLicenseSchemaReady = true
+}
+
+async function migrateLegacySubscriptionLicense(clientId) {
+  await ensureSubscriptionSchema()
+  await ensureCmsLicenseSchema()
+
+  const existingLicense = await CMSLicense.findOne({
+    where: { clientId },
+    order: [['createdAt', 'DESC']]
+  })
+  if (existingLicense) return existingLicense
+
+  const legacyLicense = await Subscription.findOne({
+    where: { clientId, productType: 'cms-license' },
+    order: [['createdAt', 'DESC']]
+  })
+  if (!legacyLicense) return null
+
+  return CMSLicense.create({
+    clientId: legacyLicense.clientId,
+    planId: legacyLicense.planId,
+    planName: legacyLicense.planName || 'CMS License',
+    tier: legacyLicense.tier || 'starter',
+    status: legacyLicense.status === 'active' ? 'active' : (legacyLicense.status || 'inactive'),
+    price: legacyLicense.price || 0,
+    billingCycle: legacyLicense.billingCycle || 'monthly',
+    licenseKey: legacyLicense.licenseKey || `LEGACY-${legacyLicense.id}`,
+    licensedDomain: legacyLicense.licensedDomain || null,
+    updateChannel: legacyLicense.updateChannel || 'stable',
+    includedUpdates: legacyLicense.includedUpdates !== false,
+    startDate: legacyLicense.startDate || legacyLicense.createdAt || new Date(),
+    renewalDate: legacyLicense.renewalDate || null,
+    endDate: legacyLicense.endDate || null,
+    lastValidatedAt: legacyLicense.lastValidatedAt || new Date(),
+    features: Array.isArray(legacyLicense.features) ? legacyLicense.features : []
+  })
+}
+
 // Get subscription for a client
 router.get('/client/:clientId', async (req, res) => {
   try {
@@ -79,13 +212,7 @@ router.get('/client/:clientId', async (req, res) => {
       where: { clientId: req.params.clientId, status: 'active', productType: 'service' },
       order: [['createdAt', 'DESC']]
     })
-    if (subscription) return res.json(subscription)
-
-    const fallbackSubscription = await Subscription.findOne({
-      where: { clientId: req.params.clientId, status: 'active' },
-      order: [['createdAt', 'DESC']]
-    })
-    res.json(fallbackSubscription)
+    res.json(subscription)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -93,9 +220,11 @@ router.get('/client/:clientId', async (req, res) => {
 
 router.get('/client/:clientId/license', async (req, res) => {
   try {
-    await ensureSubscriptionSchema()
-    const activeLicense = await Subscription.findOne({
-      where: { clientId: req.params.clientId, productType: 'cms-license', status: 'active' },
+    await ensureCmsLicenseSchema()
+    await migrateLegacySubscriptionLicense(req.params.clientId)
+
+    const activeLicense = await CMSLicense.findOne({
+      where: { clientId: req.params.clientId, status: 'active' },
       order: [['createdAt', 'DESC']]
     })
 
@@ -106,8 +235,8 @@ router.get('/client/:clientId/license', async (req, res) => {
       return res.json({ hasActiveLicense: true, license: activeLicense })
     }
 
-    const latestLicense = await Subscription.findOne({
-      where: { clientId: req.params.clientId, productType: 'cms-license' },
+    const latestLicense = await CMSLicense.findOne({
+      where: { clientId: req.params.clientId },
       order: [['createdAt', 'DESC']]
     })
 

@@ -9,6 +9,7 @@ import Project from './models/Project.js'
 import Invoice from './models/Invoice.js'
 import Subscription from './models/Subscription.js'
 import SubscriptionPlan from './models/SubscriptionPlan.js'
+import CMSLicense from './models/CMSLicense.js'
 import ServicePackage from './models/ServicePackage.js'
 import PortfolioItem from './models/PortfolioItem.js'
 import SiteSetting from './models/SiteSetting.js'
@@ -73,12 +74,16 @@ Invoice.belongsTo(Project, { foreignKey: 'projectId' })
 
 User.hasMany(Subscription, { foreignKey: 'clientId' })
 Subscription.belongsTo(User, { foreignKey: 'clientId' })
+User.hasMany(CMSLicense, { foreignKey: 'clientId' })
+CMSLicense.belongsTo(User, { foreignKey: 'clientId' })
 
 User.hasMany(Ticket, { foreignKey: 'clientId' })
 Ticket.belongsTo(User, { foreignKey: 'clientId' })
 
 SubscriptionPlan.hasMany(Subscription, { foreignKey: 'planId' })
 Subscription.belongsTo(SubscriptionPlan, { foreignKey: 'planId' })
+SubscriptionPlan.hasMany(CMSLicense, { foreignKey: 'planId' })
+CMSLicense.belongsTo(SubscriptionPlan, { foreignKey: 'planId' })
 
 User.hasMany(ClientPluginPurchase, { foreignKey: 'clientId' })
 ClientPluginPurchase.belongsTo(User, { foreignKey: 'clientId' })

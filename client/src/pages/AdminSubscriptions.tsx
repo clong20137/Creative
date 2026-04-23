@@ -21,6 +21,7 @@ export default function AdminSubscriptions() {
   const [clients, setClients] = useState<any[]>([])
   const [plans, setPlans] = useState<any[]>([])
   const [subscriptions, setSubscriptions] = useState<any[]>([])
+  const [licenses, setLicenses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -32,14 +33,16 @@ export default function AdminSubscriptions() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [clientsData, plansData, subscriptionsData] = await Promise.all([
+      const [clientsData, plansData, subscriptionsData, licensesData] = await Promise.all([
         adminAPI.getClients(),
         adminAPI.getSubscriptionPlans(),
-        adminAPI.getSubscriptions()
+        adminAPI.getSubscriptions(),
+        adminAPI.getLicenses()
       ])
       setClients(clientsData)
       setPlans(plansData)
       setSubscriptions(subscriptionsData)
+      setLicenses(licensesData)
     } catch (err: any) {
       setError(err.error || 'Failed to load subscriptions')
     } finally {
@@ -113,8 +116,8 @@ export default function AdminSubscriptions() {
   const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await adminAPI.assignSubscription(assignment)
-      setMessage('Subscription assigned to client')
+      const result = await adminAPI.assignSubscription(assignment)
+      setMessage(result?.type === 'license' ? 'CMS license assigned to client' : 'Subscription assigned to client')
       setAssignment({ clientId: '', planId: '', renewalDate: '', licensedDomain: '' })
       fetchData()
     } catch (err: any) {
@@ -133,6 +136,22 @@ export default function AdminSubscriptions() {
       setError(err.error || 'Failed to cancel subscription')
     }
   }
+
+  const handleCancelLicense = async (id: string) => {
+    if (!confirm('Cancel this CMS license?')) return
+
+    try {
+      await adminAPI.cancelLicense(id)
+      setMessage('CMS license cancelled')
+      fetchData()
+    } catch (err: any) {
+      setError(err.error || 'Failed to cancel license')
+    }
+  }
+
+  const servicePlans = plans.filter((plan) => plan.productType !== 'cms-license')
+  const licensePlans = plans.filter((plan) => plan.productType === 'cms-license')
+  const selectedPlan = plans.find((plan) => String(plan.id) === assignment.planId)
 
   return (
     <AdminLayout title="Subscriptions">
@@ -323,7 +342,7 @@ export default function AdminSubscriptions() {
                   <option key={plan.id} value={plan.id}>{plan.name} - ${Number(plan.price || 0).toLocaleString()} ({plan.productType === 'cms-license' ? 'CMS License' : 'Service'})</option>
                 ))}
               </select>
-              {plans.find((plan) => String(plan.id) === assignment.planId)?.productType === 'cms-license' && (
+              {selectedPlan?.productType === 'cms-license' && (
                 <input
                   type="text"
                   value={assignment.licensedDomain}
@@ -339,7 +358,7 @@ export default function AdminSubscriptions() {
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
               <button type="submit" className="inline-flex items-center justify-center gap-2 w-full btn-primary">
-                <FiUserPlus /> Assign Subscription
+                <FiUserPlus /> {selectedPlan?.productType === 'cms-license' ? 'Assign CMS License' : 'Assign Subscription'}
               </button>
             </form>
 
@@ -387,6 +406,105 @@ export default function AdminSubscriptions() {
                   {subscriptions.length === 0 && (
                     <tr>
                       <td colSpan={6} className="px-6 py-10 text-center text-gray-600">No client subscriptions yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div className="card p-6">
+              <h2 className="text-2xl font-bold text-gray-900">Service Plans</h2>
+              <p className="mt-2 text-sm text-gray-600">These plans power normal recurring services and do not control CMS access.</p>
+              <div className="mt-4 space-y-3">
+                {servicePlans.map((plan) => (
+                  <div key={plan.id} className="rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-gray-900">{plan.name}</p>
+                        <p className="text-sm text-gray-600">{plan.billingCycle} / ${Number(plan.price || 0).toLocaleString()}</p>
+                      </div>
+                      <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">Service</span>
+                    </div>
+                  </div>
+                ))}
+                {servicePlans.length === 0 && (
+                  <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">No service plans yet.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="card p-6">
+              <h2 className="text-2xl font-bold text-gray-900">CMS License Plans</h2>
+              <p className="mt-2 text-sm text-gray-600">These unlock the CMS itself and are tracked separately from service subscriptions.</p>
+              <div className="mt-4 space-y-3">
+                {licensePlans.map((plan) => (
+                  <div key={plan.id} className="rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-gray-900">{plan.name}</p>
+                        <p className="text-sm text-gray-600">{plan.billingCycle} / ${Number(plan.price || 0).toLocaleString()}</p>
+                      </div>
+                      <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">CMS License</span>
+                    </div>
+                  </div>
+                ))}
+                {licensePlans.length === 0 && (
+                  <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">No CMS license plans yet.</p>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr,1.6fr]">
+            <div className="card p-6 space-y-4">
+              <h2 className="text-2xl font-bold text-gray-900">CMS Licenses</h2>
+              <p className="text-sm text-gray-600">
+                Active CMS licenses unlock the full client-side CMS experience, separately from service subscriptions.
+              </p>
+              <div className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">
+                Assigning a CMS license now creates a dedicated license record for the account. Service subscriptions stay separate.
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-lg bg-white shadow">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Client</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">License</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Domain</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Renewal</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {licenses.map((license) => (
+                    <tr key={license.id} className="border-b hover:bg-gray-50">
+                      <td className="px-6 py-3 text-sm text-gray-700">{license.User?.name || 'Unknown'}</td>
+                      <td className="px-6 py-3">
+                        <p className="font-semibold text-gray-900">{license.planName}</p>
+                        <p className="font-mono text-xs text-gray-500">{license.licenseKey}</p>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-700">{license.licensedDomain || '-'}</td>
+                      <td className="px-6 py-3 text-sm capitalize text-gray-700">{license.status}</td>
+                      <td className="px-6 py-3 text-sm text-gray-700">
+                        {license.renewalDate ? new Date(license.renewalDate).toLocaleDateString() : '-'}
+                      </td>
+                      <td className="px-6 py-3 text-sm">
+                        {license.status === 'active' && (
+                          <button onClick={() => handleCancelLicense(String(license.id))} className="rounded bg-red-100 px-3 py-1 text-red-700 hover:bg-red-200">
+                            Cancel
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {licenses.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-10 text-center text-gray-600">No CMS licenses assigned yet.</td>
                     </tr>
                   )}
                 </tbody>

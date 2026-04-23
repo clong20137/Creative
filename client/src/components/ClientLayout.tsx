@@ -2,7 +2,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { FiFileText, FiGrid, FiHelpCircle, FiHome, FiKey, FiLogOut, FiSettings } from 'react-icons/fi'
 import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
-import { subscriptionsAPI } from '../services/api'
+import { licensesAPI } from '../services/api'
 
 const clientLinks = [
   { label: 'Dashboard', path: '/client-dashboard', icon: FiHome },
@@ -37,7 +37,7 @@ export default function ClientLayout({ title, children }: { title: string; child
     }
 
     let cancelled = false
-    subscriptionsAPI.getClientLicense(userId)
+    licensesAPI.getClientLicense(userId)
       .then((data: any) => {
         if (cancelled) return
         setLicenseState({

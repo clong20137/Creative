@@ -10,6 +10,7 @@ import Project from '../models/Project.js'
 import Invoice from '../models/Invoice.js'
 import Subscription from '../models/Subscription.js'
 import SubscriptionPlan from '../models/SubscriptionPlan.js'
+import CMSLicense from '../models/CMSLicense.js'
 import ServicePackage from '../models/ServicePackage.js'
 import PortfolioItem from '../models/PortfolioItem.js'
 import ContactMessage from '../models/ContactMessage.js'
@@ -42,6 +43,7 @@ let mediaAssetsSchemaReady = false
 let protectedContentSchemaReady = false
 let customPagesSchemaReady = false
 let subscriptionSchemaReady = false
+let cmsLicenseSchemaReady = false
 let googleAccessTokenCache = { token: '', expiresAt: 0 }
 const seoDashboardCache = new Map()
 const mediaMimeExtensions = {
@@ -217,8 +219,109 @@ async function ensureSubscriptionSchema() {
   subscriptionSchemaReady = true
 }
 
+async function ensureCmsLicenseSchema() {
+  if (cmsLicenseSchemaReady) return
+
+  const queryInterface = CMSLicense.sequelize.getQueryInterface()
+  const table = await queryInterface.describeTable('CMSLicenses').catch(() => null)
+  if (!table) {
+    cmsLicenseSchemaReady = true
+    return
+  }
+
+  const addColumn = async (name, config) => {
+    if (table[name]) return
+    await queryInterface.addColumn('CMSLicenses', name, config).catch((error) => {
+      if (!String(error?.message || '').includes('Duplicate column')) throw error
+    })
+  }
+
+  await addColumn('planId', { type: DataTypes.INTEGER, allowNull: true })
+  await addColumn('planName', { type: DataTypes.STRING, allowNull: false, defaultValue: 'CMS License' })
+  await addColumn('tier', {
+    type: DataTypes.ENUM('starter', 'professional', 'enterprise'),
+    allowNull: false,
+    defaultValue: 'starter'
+  })
+  await addColumn('status', {
+    type: DataTypes.ENUM('active', 'inactive', 'suspended', 'expired', 'cancelled'),
+    allowNull: false,
+    defaultValue: 'active'
+  })
+  await addColumn('price', {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0
+  })
+  await addColumn('billingCycle', {
+    type: DataTypes.ENUM('monthly', 'quarterly', 'annually'),
+    allowNull: false,
+    defaultValue: 'monthly'
+  })
+  await addColumn('licenseKey', {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'TEMP-LICENSE'
+  })
+  await addColumn('licensedDomain', { type: DataTypes.STRING, allowNull: true })
+  await addColumn('updateChannel', {
+    type: DataTypes.ENUM('stable', 'early-access'),
+    allowNull: false,
+    defaultValue: 'stable'
+  })
+  await addColumn('includedUpdates', {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  })
+  await addColumn('startDate', { type: DataTypes.DATE, allowNull: false, defaultValue: new Date() })
+  await addColumn('renewalDate', { type: DataTypes.DATE, allowNull: true })
+  await addColumn('endDate', { type: DataTypes.DATE, allowNull: true })
+  await addColumn('lastValidatedAt', { type: DataTypes.DATE, allowNull: true })
+  await addColumn('features', { type: DataTypes.JSON, allowNull: true })
+  await addColumn('notes', { type: DataTypes.TEXT, allowNull: true })
+
+  cmsLicenseSchemaReady = true
+}
+
 function generateLicenseKey() {
   return `CBCMS-${randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}-${randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}`
+}
+
+async function migrateLegacySubscriptionLicense(clientId) {
+  await ensureSubscriptionSchema()
+  await ensureCmsLicenseSchema()
+
+  const existingLicense = await CMSLicense.findOne({
+    where: { clientId },
+    order: [['createdAt', 'DESC']]
+  })
+  if (existingLicense) return existingLicense
+
+  const legacyLicense = await Subscription.findOne({
+    where: { clientId, productType: 'cms-license' },
+    order: [['createdAt', 'DESC']]
+  })
+  if (!legacyLicense) return null
+
+  return CMSLicense.create({
+    clientId: legacyLicense.clientId,
+    planId: legacyLicense.planId,
+    planName: legacyLicense.planName || 'CMS License',
+    tier: legacyLicense.tier || 'starter',
+    status: legacyLicense.status === 'active' ? 'active' : (legacyLicense.status || 'inactive'),
+    price: legacyLicense.price || 0,
+    billingCycle: legacyLicense.billingCycle || 'monthly',
+    licenseKey: legacyLicense.licenseKey || generateLicenseKey(),
+    licensedDomain: legacyLicense.licensedDomain || null,
+    updateChannel: legacyLicense.updateChannel || 'stable',
+    includedUpdates: legacyLicense.includedUpdates !== false,
+    startDate: legacyLicense.startDate || legacyLicense.createdAt || new Date(),
+    renewalDate: legacyLicense.renewalDate || null,
+    endDate: legacyLicense.endDate || null,
+    lastValidatedAt: legacyLicense.lastValidatedAt || new Date(),
+    features: Array.isArray(legacyLicense.features) ? legacyLicense.features : []
+  })
 }
 
 async function getGoogleAccessToken(settings) {
@@ -595,6 +698,7 @@ router.get('/subscriptions', async (req, res) => {
   try {
     await ensureSubscriptionSchema()
     const subscriptions = await Subscription.findAll({
+      where: { productType: 'service' },
       include: [
         { model: User, attributes: ['id', 'name', 'email', 'company'] },
         { model: SubscriptionPlan, attributes: ['id', 'name', 'price', 'billingCycle'] }
@@ -619,6 +723,25 @@ router.get('/notifications', async (req, res) => {
       newTickets,
       total: newMessages + newTickets
     })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/licenses', async (req, res) => {
+  try {
+    await ensureCmsLicenseSchema()
+    const clients = await User.findAll({ where: { role: 'client' }, attributes: ['id'] })
+    await Promise.all(clients.map((client) => migrateLegacySubscriptionLicense(client.id)))
+
+    const licenses = await CMSLicense.findAll({
+      include: [
+        { model: User, attributes: ['id', 'name', 'email', 'company'] },
+        { model: SubscriptionPlan, attributes: ['id', 'name', 'price', 'billingCycle'] }
+      ],
+      order: [['createdAt', 'DESC']]
+    })
+    res.json(licenses)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -1641,6 +1764,7 @@ router.put('/contact-messages/:id', async (req, res) => {
 router.post('/subscriptions/assign', async (req, res) => {
   try {
     await ensureSubscriptionSchema()
+    await ensureCmsLicenseSchema()
     const { clientId, planId, renewalDate, licensedDomain } = req.body
     const client = await User.findByPk(clientId)
     if (!client || client.role !== 'client') return res.status(404).json({ error: 'Client not found' })
@@ -1649,6 +1773,32 @@ router.post('/subscriptions/assign', async (req, res) => {
     if (!plan) return res.status(404).json({ error: 'Subscription plan not found' })
 
     const nextRenewalDate = renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    if (plan.productType === 'cms-license') {
+      await CMSLicense.update(
+        { status: 'cancelled', endDate: new Date() },
+        { where: { clientId, status: 'active' } }
+      )
+
+      const license = await CMSLicense.create({
+        clientId,
+        planId,
+        planName: plan.name,
+        tier: plan.tier,
+        status: 'active',
+        price: plan.price,
+        billingCycle: plan.billingCycle,
+        licenseKey: generateLicenseKey(),
+        licensedDomain: String(licensedDomain || '').trim() || null,
+        updateChannel: plan.updateChannel || 'stable',
+        includedUpdates: plan.includedUpdates !== false,
+        lastValidatedAt: new Date(),
+        renewalDate: nextRenewalDate,
+        features: plan.features
+      })
+
+      return res.status(201).json({ type: 'license', license })
+    }
+
     const subscription = await Subscription.create({
       clientId,
       planId,
@@ -1657,17 +1807,29 @@ router.post('/subscriptions/assign', async (req, res) => {
       status: 'active',
       price: plan.price,
       billingCycle: plan.billingCycle,
-      productType: plan.productType || 'service',
-      licenseKey: plan.productType === 'cms-license' ? generateLicenseKey() : null,
-      licensedDomain: plan.productType === 'cms-license' ? String(licensedDomain || '').trim() || null : null,
+      productType: 'service',
+      licenseKey: null,
+      licensedDomain: null,
       updateChannel: plan.updateChannel || 'stable',
       includedUpdates: plan.includedUpdates !== false,
-      lastValidatedAt: plan.productType === 'cms-license' ? new Date() : null,
+      lastValidatedAt: null,
       renewalDate: nextRenewalDate,
       features: plan.features
     })
 
-    res.status(201).json(subscription)
+    res.status(201).json({ type: 'subscription', subscription })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.put('/licenses/:id/cancel', async (req, res) => {
+  try {
+    await ensureCmsLicenseSchema()
+    const license = await CMSLicense.findByPk(req.params.id)
+    if (!license) return res.status(404).json({ error: 'License not found' })
+    await license.update({ status: 'cancelled', endDate: new Date() })
+    res.json(license)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

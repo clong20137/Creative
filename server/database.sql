@@ -223,6 +223,32 @@ CREATE TABLE IF NOT EXISTS EventItems (
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- CMS Licenses Table
+CREATE TABLE IF NOT EXISTS CMSLicenses (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  clientId INT NOT NULL,
+  planId INT NULL,
+  planName VARCHAR(255) NOT NULL,
+  tier ENUM('starter', 'professional', 'enterprise') DEFAULT 'starter',
+  status ENUM('active', 'inactive', 'suspended', 'expired', 'cancelled') DEFAULT 'active',
+  price DECIMAL(10, 2) DEFAULT 0,
+  billingCycle ENUM('monthly', 'quarterly', 'annually') DEFAULT 'monthly',
+  licenseKey VARCHAR(255) NOT NULL,
+  licensedDomain VARCHAR(255),
+  updateChannel ENUM('stable', 'early-access') DEFAULT 'stable',
+  includedUpdates BOOLEAN DEFAULT true,
+  startDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+  renewalDate DATETIME NULL,
+  endDate DATETIME NULL,
+  lastValidatedAt DATETIME NULL,
+  features JSON,
+  notes LONGTEXT,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (clientId) REFERENCES Users(id) ON DELETE CASCADE,
+  FOREIGN KEY (planId) REFERENCES SubscriptionPlans(id) ON DELETE SET NULL
+);
+
 -- Protected Content Plugin Items Table
 CREATE TABLE IF NOT EXISTS ProtectedContentItems (
   id INT AUTO_INCREMENT PRIMARY KEY,
