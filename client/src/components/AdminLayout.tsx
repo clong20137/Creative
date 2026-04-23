@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { FiArrowLeft, FiArrowRight, FiBarChart, FiBell, FiChevronDown, FiChevronRight, FiCreditCard, FiFileText, FiGrid, FiHelpCircle, FiHome, FiImage, FiInbox, FiLogOut, FiMenu, FiMonitor, FiMoon, FiSearch, FiSettings, FiSun, FiUsers, FiX } from 'react-icons/fi'
+import { FiAlertCircle, FiArrowLeft, FiArrowRight, FiBarChart, FiBell, FiCheckCircle, FiChevronDown, FiChevronRight, FiCreditCard, FiFileText, FiGrid, FiHelpCircle, FiHome, FiImage, FiInbox, FiLogOut, FiMenu, FiMonitor, FiMoon, FiSearch, FiSettings, FiSun, FiUsers, FiX } from 'react-icons/fi'
 import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { adminAPI, ticketsAPI } from '../services/api'
@@ -73,6 +73,171 @@ type PageNavLink = {
   path: string
   active: boolean
   isAction?: boolean
+  isPublished?: boolean
+  seoScore?: number
+}
+
+function stripHtml(value: string) {
+  return String(value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function countWords(value: string) {
+  const text = stripHtml(value)
+  return text ? text.split(/\s+/).length : 0
+}
+
+function collectPageText(section: any): string[] {
+  if (!section || typeof section !== 'object') return []
+  const values: string[] = []
+  const maybePush = (value: any) => {
+    const text = stripHtml(String(value || ''))
+    if (text) values.push(text)
+  }
+
+  maybePush(section.title)
+  maybePush(section.body)
+  maybePush(section.description)
+  maybePush(section.headerTitle)
+  maybePush(section.headerSubtitle)
+  maybePush(section.content)
+
+  if (Array.isArray(section.items)) {
+    section.items.forEach((item: any) => {
+      maybePush(item?.title)
+      maybePush(item?.body)
+      maybePush(item?.description)
+      maybePush(item?.desc)
+      maybePush(item?.q)
+      maybePush(item?.a)
+      if (Array.isArray(item?.sections)) {
+        item.sections.forEach((nested: any) => values.push(...collectPageText(nested)))
+      }
+    })
+  }
+
+  return values
+}
+
+function collectImageStats(section: any) {
+  let total = 0
+  let missingAlt = 0
+  const inspect = (imageUrl: any, alt: any) => {
+    if (!String(imageUrl || '').trim()) return
+    total += 1
+    if (!String(alt || '').trim()) missingAlt += 1
+  }
+
+  inspect(section?.imageUrl, section?.alt)
+  if (Array.isArray(section?.items)) {
+    section.items.forEach((item: any) => {
+      inspect(item?.image || item?.imageUrl, item?.alt || item?.title)
+      if (Array.isArray(item?.sections)) {
+        const nested = collectImageStats({ items: item.sections })
+        total += nested.total
+        missingAlt += nested.missingAlt
+      }
+    })
+  }
+
+  return { total, missingAlt }
+}
+
+function collectLinks(section: any): string[] {
+  if (!section || typeof section !== 'object') return []
+  const html = [section.body, section.description, section.content].map(value => String(value || '')).join(' ')
+  const links = [...html.matchAll(/href\s*=\s*["']([^"']+)["']/gi)].map(match => String(match[1] || '').trim())
+  if (section.buttonUrl) links.push(String(section.buttonUrl))
+  if (section.secondaryButtonUrl) links.push(String(section.secondaryButtonUrl))
+  if (section.url) links.push(String(section.url))
+  if (Array.isArray(section.items)) {
+    section.items.forEach((item: any) => {
+      if (item?.buttonUrl) links.push(String(item.buttonUrl))
+      if (item?.url) links.push(String(item.url))
+      if (Array.isArray(item?.sections)) item.sections.forEach((nested: any) => links.push(...collectLinks(nested)))
+    })
+  }
+  return links.filter(Boolean)
+}
+
+function looksBrokenInternalLink(value: string) {
+  const link = String(value || '').trim()
+  if (!link || link.startsWith('http://') || link.startsWith('https://') || link.startsWith('mailto:') || link.startsWith('tel:') || link.startsWith('#')) return false
+  return !link.startsWith('/')
+}
+
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)))
+}
+
+function computeNavSeoScore(page: any, sections: any[] = []) {
+  let score = 100
+  const title = String(page?.title || page?.pageTitle || '').trim()
+  const metaTitle = String(page?.metaTitle || '').trim()
+  const metaDescription = String(page?.metaDescription || '').trim()
+  const slug = String(page?.slug || page?.pageUrl || '').trim()
+  const headerTitle = String(page?.headerTitle || '').trim()
+  const bodyText = sections.flatMap(section => collectPageText(section)).join(' ').trim()
+  const wordCount = countWords(bodyText)
+  const imageStats = sections.reduce((totals, section) => {
+    const next = collectImageStats(section)
+    totals.total += next.total
+    totals.missingAlt += next.missingAlt
+    return totals
+  }, { total: 0, missingAlt: 0 })
+  const brokenLinks = sections.flatMap(section => collectLinks(section)).filter(looksBrokenInternalLink)
+  const h1Sections = sections.filter(section => (
+    ['hero', 'banner'].includes(section?.type) || (section?.type === 'header' && (section?.headingTag || 'h2') === 'h1')
+  ) && String(section?.title || '').trim())
+
+  if (!title || title.length < 4) score -= 18
+  if (!metaTitle || metaTitle.length < 20 || metaTitle.length > 60) score -= 14
+  if (!metaDescription || metaDescription.length < 70 || metaDescription.length > 160) score -= 12
+  if (!slug || !(slug.startsWith('/') || /^[a-z0-9-]+(?:\/[a-z0-9-]+)*$/i.test(slug))) score -= 8
+  if (!headerTitle && h1Sections.length === 0) score -= 10
+  if (h1Sections.length > 1) score -= 6
+  if (bodyText.length < 140 || wordCount < 60) score -= 10
+  if (imageStats.missingAlt > 0) score -= Math.min(12, imageStats.missingAlt * 4)
+  if (brokenLinks.length > 0) score -= Math.min(10, brokenLinks.length * 3)
+
+  return clampScore(score)
+}
+
+function scoreTone(score: number) {
+  return score >= 85 ? 'good' : score >= 65 ? 'medium' : 'bad'
+}
+
+function scoreStroke(score: number) {
+  const tone = scoreTone(score)
+  return tone === 'good' ? '#16a34a' : tone === 'medium' ? '#ea580c' : '#dc2626'
+}
+
+function PageScoreBadge({ score, inverse = false }: { score: number; inverse?: boolean }) {
+  const normalized = clampScore(score)
+  const radius = 12
+  const circumference = 2 * Math.PI * radius
+  const dashOffset = circumference * (1 - normalized / 100)
+
+  return (
+    <div className="relative h-8 w-8 shrink-0" title={`SEO score ${normalized}`}>
+      <svg viewBox="0 0 32 32" className="h-8 w-8 -rotate-90">
+        <circle cx="16" cy="16" r={radius} fill="none" stroke="currentColor" strokeWidth="3" className={inverse ? 'text-white/30' : 'text-gray-200 dark:text-gray-700'} />
+        <circle
+          cx="16"
+          cy="16"
+          r={radius}
+          fill="none"
+          stroke={scoreStroke(normalized)}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+        />
+      </svg>
+      <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${inverse ? 'text-white' : 'text-gray-700 dark:text-gray-200'}`}>
+        {normalized}
+      </span>
+    </div>
+  )
 }
 
 export default function AdminLayout({ title, children }: { title: string; children: ReactNode }) {
@@ -81,6 +246,7 @@ export default function AdminLayout({ title, children }: { title: string; childr
   const isPageEditor = location.pathname === '/admin/pages'
   const [notifications, setNotifications] = useState({ newMessages: 0, newTickets: 0, total: 0 })
   const [customPages, setCustomPages] = useState<any[]>([])
+  const [siteSettings, setSiteSettings] = useState<any>({})
   const [theme, setTheme] = useState(() => localStorage.getItem('siteTheme') || 'light')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
@@ -116,13 +282,15 @@ export default function AdminLayout({ title, children }: { title: string; childr
 
     const fetchAdminChrome = async () => {
       try {
-        const [notificationData, pagesData] = await Promise.all([
+        const [notificationData, pagesData, settingsData] = await Promise.all([
           adminAPI.getNotifications(),
-          adminAPI.getPages()
+          adminAPI.getPages(),
+          adminAPI.getSiteSettings()
         ])
         if (isMounted) {
           setNotifications(notificationData)
           setCustomPages(Array.isArray(pagesData) ? pagesData : [])
+          setSiteSettings(settingsData || {})
         }
       } catch (error) {
         console.error('Error loading admin navigation:', error)
@@ -187,6 +355,30 @@ export default function AdminLayout({ title, children }: { title: string; childr
     if (path.startsWith('/admin/pages')) return location.pathname === '/admin/pages'
     return location.pathname === path || location.pathname.startsWith(`${path}/`)
   }
+  const builtInPageNavLinks: PageNavLink[] = builtInPageLinks.map((link) => {
+    const metadata = siteSettings?.pageMetadata?.[link.page] || {}
+    const sections = Array.isArray(siteSettings?.pageSections?.[link.page]) ? siteSettings.pageSections[link.page] : []
+    return {
+      title: metadata.pageTitle || link.label,
+      path: `/admin/pages?page=${link.page}`,
+      active: isPageLinkActive(link.page),
+      isPublished: true,
+      seoScore: computeNavSeoScore({
+        title: metadata.pageTitle || link.label,
+        metaTitle: metadata.metaTitle || '',
+        metaDescription: metadata.metaDescription || '',
+        pageUrl: metadata.pageUrl || `/${link.page === 'home' ? '' : link.page}`,
+        headerTitle: metadata.headerTitle || ''
+      }, sections)
+    }
+  })
+  const customPageNavLinks: PageNavLink[] = customPages.map((page) => ({
+    title: page.title || 'Custom Page',
+    path: `/admin/pages?custom=${page.id}`,
+    active: isCustomPageLinkActive(String(page.id)),
+    isPublished: page.isPublished !== false,
+    seoScore: computeNavSeoScore(page, Array.isArray(page.sections) ? page.sections : [])
+  }))
 
   const sidebarLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ease-in-out ${
@@ -313,8 +505,8 @@ export default function AdminLayout({ title, children }: { title: string; childr
               const pageLinks: PageNavLink[] = group.label === 'Pages'
                 ? [
                     { title: 'Add New Page', path: '/admin/pages?page=new', active: isPageLinkActive('new'), isAction: true },
-                    ...builtInPageLinks.map(link => ({ title: link.label, path: `/admin/pages?page=${link.page}`, active: isPageLinkActive(link.page) })),
-                    ...customPages.map(page => ({ title: page.title || 'Custom Page', path: `/admin/pages?custom=${page.id}`, active: isCustomPageLinkActive(String(page.id)) })),
+                    ...builtInPageNavLinks,
+                    ...customPageNavLinks,
                   ]
                 : []
               const filteredPageLinks = pageLinks.filter(link => matchesSearch(link.title))
@@ -366,8 +558,9 @@ export default function AdminLayout({ title, children }: { title: string; childr
                                 link.active ? 'bg-blue-600 text-white' : link.isAction ? 'border border-dashed border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-gray-50 text-gray-700 hover:bg-blue-50 hover:text-blue-700'
                               }`}
                             >
-                              <FiFileText size={16} />
-                              <span className="truncate">{link.title}</span>
+                              {link.isAction ? <FiFileText size={16} /> : link.isPublished === false ? <FiAlertCircle size={16} className="shrink-0 text-red-500" /> : <FiCheckCircle size={16} className="shrink-0 text-green-500" />}
+                              <span className="min-w-0 flex-1 truncate">{link.title}</span>
+                              {!link.isAction && typeof link.seoScore === 'number' && <PageScoreBadge score={link.seoScore} inverse={link.active} />}
                             </Link>
                           ))}
                         </div>
@@ -486,8 +679,8 @@ export default function AdminLayout({ title, children }: { title: string; childr
               const pageLinks: PageNavLink[] = group.label === 'Pages'
                 ? [
                     { title: 'Add New Page', path: '/admin/pages?page=new', active: isPageLinkActive('new'), isAction: true },
-                    ...builtInPageLinks.map(link => ({ title: link.label, path: `/admin/pages?page=${link.page}`, active: isPageLinkActive(link.page) })),
-                    ...customPages.map(page => ({ title: page.title || 'Custom Page', path: `/admin/pages?custom=${page.id}`, active: isCustomPageLinkActive(String(page.id)) })),
+                    ...builtInPageNavLinks,
+                    ...customPageNavLinks,
                   ]
                 : []
               const filteredPageLinks = pageLinks.filter(link => matchesSearch(link.title))
@@ -552,8 +745,9 @@ export default function AdminLayout({ title, children }: { title: string; childr
                               : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
                           }`}
                         >
-                          <FiFileText size={16} />
-                          {link.title}
+                          {link.isPublished === false ? <FiAlertCircle size={16} className={`shrink-0 ${link.active ? 'text-white' : 'text-red-500'}`} /> : <FiCheckCircle size={16} className={`shrink-0 ${link.active ? 'text-white' : 'text-green-500'}`} />}
+                          <span className="min-w-0 flex-1 truncate">{link.title}</span>
+                          {typeof link.seoScore === 'number' && <PageScoreBadge score={link.seoScore} inverse={link.active} />}
                         </Link>
                       ))}
                       </div>
