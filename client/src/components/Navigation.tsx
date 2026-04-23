@@ -194,12 +194,12 @@ export default function Navigation() {
                 </div>
               )
             })}
-            <Link
-              to={userRole ? dashboardPath : '/login'}
-              className="btn-primary site-nav-action-button inline-flex items-center justify-center text-sm"
-            >
-              {userRole ? 'Dashboard' : 'Client Login'}
-            </Link>
+              <Link
+                to={userRole ? dashboardPath : '/login'}
+                className="btn-primary site-nav-action-button inline-flex items-center justify-center whitespace-nowrap px-5 py-3 text-sm font-bold"
+              >
+                {userRole ? 'Dashboard' : 'Client Login'}
+              </Link>
             <button
               onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}
               className="site-nav-icon-button inline-flex h-10 w-10 items-center justify-center transition"
@@ -287,7 +287,7 @@ export default function Navigation() {
               )
             })}
             <div className="site-nav-mobile-actions grid grid-cols-2 gap-3 pt-2">
-              <Link to={userRole ? dashboardPath : '/login'} className="btn-primary site-nav-action-button inline-flex w-full items-center justify-center text-sm font-semibold">
+              <Link to={userRole ? dashboardPath : '/login'} className="btn-primary site-nav-action-button inline-flex w-full items-center justify-center whitespace-nowrap px-5 py-3 text-sm font-bold">
                 {userRole ? 'Dashboard' : 'Client Login'}
               </Link>
               <button

@@ -44,13 +44,13 @@ export default function ClientDashboard() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800'
+        return 'client-project-status client-project-status-completed'
       case 'in-progress':
-        return 'bg-blue-100 text-blue-800'
+        return 'client-project-status client-project-status-progress'
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'client-project-status client-project-status-pending'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'client-project-status client-project-status-default'
     }
   }
 
@@ -67,32 +67,32 @@ export default function ClientDashboard() {
 
   return (
     <ClientLayout title="Client Dashboard">
-        <p className="mb-6 text-sm text-gray-600 sm:mb-8 sm:text-base">Welcome back! Manage your projects here.</p>
+        <p className="client-dashboard-intro mb-6 text-sm sm:mb-8 sm:text-base">Welcome back! Manage your projects here.</p>
 
         {/* User Info */}
-        <div className="card mb-6 p-4 sm:mb-8 sm:p-6">
-          <p className="text-gray-600">Logged in as: <span className="font-bold text-gray-900">{userEmail}</span></p>
+        <div className="client-dashboard-card card mb-6 p-4 sm:mb-8 sm:p-6">
+          <p className="client-dashboard-copy">Logged in as: <span className="client-dashboard-strong font-bold">{userEmail}</span></p>
         </div>
 
         {licenseStatus && (
-          <div className={`mb-6 rounded-2xl border p-4 sm:mb-8 sm:p-6 ${
-            licenseStatus.hasActiveLicense ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'
+          <div className={`client-dashboard-license-card mb-6 rounded-2xl border p-4 sm:mb-8 sm:p-6 ${
+            licenseStatus.hasActiveLicense ? 'client-dashboard-license-card-active' : 'client-dashboard-license-card-inactive'
           }`}>
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <p className="client-dashboard-license-eyebrow inline-flex items-center gap-2 text-sm font-semibold">
                   <FiKey /> CMS License
                 </p>
-                <h2 className="mt-2 text-xl font-bold text-gray-900 sm:text-2xl">
+                <h2 className="client-dashboard-license-heading mt-2 text-xl font-bold sm:text-2xl">
                   {licenseStatus.hasActiveLicense ? 'Your CMS access is active' : 'Your CMS license needs attention'}
                 </h2>
-                <p className="mt-2 text-gray-600">
+                <p className="client-dashboard-license-copy mt-2">
                   {licenseStatus.hasActiveLicense
                     ? 'Your monthly license is active, and new updates will roll out automatically when we deploy them.'
                     : 'Renew or assign a CMS license to keep using the CMS and receiving updates.'}
                 </p>
               </div>
-              <Link to="/client-dashboard/license" className="btn-primary">
+              <Link to="/client-dashboard/license" className="btn-primary client-dashboard-license-button">
                 Manage License
               </Link>
             </div>
@@ -100,20 +100,20 @@ export default function ClientDashboard() {
         )}
 
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:mb-8">
-          <Link to="/client-dashboard/billing" className="card p-4 font-semibold text-blue-600 hover:shadow-lg transition">
+          <Link to="/client-dashboard/billing" className="client-dashboard-shortcut card p-4 font-semibold transition hover:shadow-lg">
             Billing
           </Link>
-          <Link to="/client-dashboard/settings" className="card p-4 font-semibold text-blue-600 hover:shadow-lg transition">
+          <Link to="/client-dashboard/settings" className="client-dashboard-shortcut card p-4 font-semibold transition hover:shadow-lg">
             Account Settings
           </Link>
-          <Link to="/client-dashboard/tickets" className="card p-4 font-semibold text-blue-600 hover:shadow-lg transition">
+          <Link to="/client-dashboard/tickets" className="client-dashboard-shortcut card p-4 font-semibold transition hover:shadow-lg">
             Support Tickets
           </Link>
         </div>
 
         {/* Projects */}
         <div>
-          <h2 className="mb-4 text-xl font-bold text-gray-900 sm:mb-6 sm:text-2xl">Your Projects</h2>
+          <h2 className="client-dashboard-heading mb-4 text-xl font-bold sm:mb-6 sm:text-2xl">Your Projects</h2>
           {error && (
             <div className="mb-6 p-4 bg-red-100 border border-red-400 rounded-lg text-red-700">
               {error}
@@ -124,11 +124,11 @@ export default function ClientDashboard() {
           ) : projects.length > 0 ? (
             <div className="grid grid-cols-1 gap-6">
             {projects.map((project) => (
-              <div key={project.id} className="card p-4 transition hover:shadow-lg sm:p-6">
+              <div key={project.id} className="client-dashboard-card card p-4 transition hover:shadow-lg sm:p-6">
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <h3 className="text-lg font-bold text-gray-900 sm:text-xl">{project.title}</h3>
-                    <p className="text-gray-600 mt-1">{project.description}</p>
+                    <h3 className="client-dashboard-strong text-lg font-bold sm:text-xl">{project.title}</h3>
+                    <p className="client-dashboard-copy mt-1">{project.description}</p>
                   </div>
                   <span className={`inline-flex w-fit px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(project.status)}`}>
                     {getStatusIcon(project.status)}
@@ -139,27 +139,27 @@ export default function ClientDashboard() {
                 {/* Progress Bar */}
                 <div className="mb-4">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-600">Progress</span>
-                    <span className="text-sm font-bold text-gray-900">{project.progress}%</span>
+                    <span className="client-dashboard-copy text-sm">Progress</span>
+                    <span className="client-dashboard-strong text-sm font-bold">{project.progress}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="client-project-progress-track h-2 w-full rounded-full">
                     <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      className="client-project-progress-fill h-2 rounded-full transition-all duration-300"
                       style={{ width: `${project.progress}%` }}
                     ></div>
                   </div>
                 </div>
 
                 {/* Details */}
-                <div className="flex flex-col gap-4 border-t pt-4 md:flex-row md:items-center md:justify-between">
-                  <div className="text-sm text-gray-600">
-                    Due: <span className="font-bold text-gray-900">{project.dueDate ? new Date(project.dueDate).toLocaleDateString() : 'Not scheduled'}</span>
+                <div className="client-dashboard-border flex flex-col gap-4 border-t pt-4 md:flex-row md:items-center md:justify-between">
+                  <div className="client-dashboard-copy text-sm">
+                    Due: <span className="client-dashboard-strong font-bold">{project.dueDate ? new Date(project.dueDate).toLocaleDateString() : 'Not scheduled'}</span>
                   </div>
                   <div className="flex flex-col gap-3 sm:flex-row">
-                    <button className="flex items-center justify-center gap-2 rounded-lg border border-blue-600 px-4 py-2 text-blue-600 transition hover:bg-blue-50">
+                    <button className="btn-secondary flex items-center justify-center gap-2 px-4 py-2">
                       <FiDownload size={18} /> Download
                     </button>
-                    <button className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700">
+                    <button className="btn-primary flex items-center justify-center gap-2 px-4 py-2">
                       <FiMessageSquare size={18} /> Message
                     </button>
                   </div>
@@ -168,7 +168,7 @@ export default function ClientDashboard() {
             ))}
             </div>
           ) : (
-            <div className="card p-8 text-center text-gray-600">
+            <div className="client-dashboard-card card p-8 text-center client-dashboard-copy">
               No projects have been assigned to your account yet.
             </div>
           )}
@@ -181,22 +181,22 @@ export default function ClientDashboard() {
             { label: 'Completed', value: projects.filter(p => p.status === 'completed').length },
             { label: 'In Progress', value: projects.filter(p => p.status === 'in-progress').length }
           ].map((stat, i) => (
-            <div key={i} className="card p-4 text-center sm:p-6">
-              <p className="text-gray-600 text-sm">{stat.label}</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">{stat.value}</p>
+            <div key={i} className="client-dashboard-card card p-4 text-center sm:p-6">
+              <p className="client-dashboard-copy text-sm">{stat.label}</p>
+              <p className="client-dashboard-accent mt-2 text-3xl font-bold">{stat.value}</p>
             </div>
           ))}
         </div>
 
         {/* Support */}
-        <div className="card mt-8 p-4 bg-gradient-to-r from-blue-50 to-blue-100 sm:p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-2">Need Help?</h3>
-          <p className="text-gray-600 mb-4">Have questions about your projects? Our team is here to help.</p>
+        <div className="client-dashboard-support card mt-8 p-4 sm:p-6">
+          <h3 className="client-dashboard-strong mb-2 text-lg font-bold">Need Help?</h3>
+          <p className="client-dashboard-copy mb-4">Have questions about your projects? Our team is here to help.</p>
           <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-            <button className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700">
+            <button className="btn-primary px-4 py-2">
               Contact Support
             </button>
-            <button className="rounded-lg border border-blue-600 px-4 py-2 text-blue-600 transition hover:bg-blue-50">
+            <button className="btn-secondary px-4 py-2">
               View FAQ
             </button>
           </div>

@@ -476,8 +476,14 @@ html.dark-mode .demo-page .text-green-800 {
 .site-theme .site-nav .site-nav-action-button {
   padding: calc(0.75rem * var(--theme-spacing-scale)) calc(1.25rem * var(--theme-spacing-scale)) !important;
   min-height: 2.75rem;
+  background: var(--theme-primary) !important;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.18);
   border-radius: var(--theme-button-radius) !important;
   color: var(--theme-button-text) !important;
+}
+
+.site-theme .site-nav .site-nav-action-button:hover {
+  background: var(--theme-primary-hover) !important;
 }
 
 .site-theme .site-nav .site-nav-action-button *,
@@ -707,6 +713,123 @@ html.dark-mode .site-theme .site-nav .site-nav-mobile-actions {
   color: #92400e;
 }
 
+.client-dashboard-intro,
+.client-dashboard-copy {
+  color: color-mix(in srgb, var(--theme-body, #334155) 86%, white);
+}
+
+.client-dashboard-strong,
+.client-dashboard-heading {
+  color: var(--theme-heading, #0f172a);
+}
+
+.client-dashboard-accent {
+  color: var(--theme-link, #2563eb);
+}
+
+.client-dashboard-card {
+  background-color: color-mix(in srgb, var(--theme-surface, #ffffff) 92%, #e2e8f0);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.client-dashboard-shortcut {
+  color: var(--theme-link, #2563eb);
+  background-color: color-mix(in srgb, var(--theme-surface, #ffffff) 92%, #e2e8f0);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.client-dashboard-shortcut:hover {
+  background-color: color-mix(in srgb, var(--theme-link, #2563eb) 10%, var(--theme-surface, #ffffff));
+  color: var(--theme-primary-hover, #1d4ed8);
+}
+
+.client-dashboard-license-card {
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+}
+
+.client-dashboard-license-card-active {
+  border-color: rgba(34, 197, 94, 0.24);
+  background: linear-gradient(135deg, rgba(240, 253, 244, 0.98), rgba(220, 252, 231, 0.94));
+}
+
+.client-dashboard-license-card-inactive {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: linear-gradient(135deg, rgba(255, 251, 235, 0.98), rgba(254, 243, 199, 0.95));
+}
+
+.client-dashboard-license-eyebrow {
+  color: #166534;
+}
+
+.client-dashboard-license-card-inactive .client-dashboard-license-eyebrow {
+  color: #92400e;
+}
+
+.client-dashboard-license-heading {
+  color: #052e16;
+}
+
+.client-dashboard-license-card-inactive .client-dashboard-license-heading {
+  color: #78350f;
+}
+
+.client-dashboard-license-copy {
+  color: rgba(22, 101, 52, 0.86);
+}
+
+.client-dashboard-license-card-inactive .client-dashboard-license-copy {
+  color: rgba(146, 64, 14, 0.86);
+}
+
+.client-dashboard-license-button {
+  white-space: nowrap;
+}
+
+.client-dashboard-border {
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.client-project-status {
+  border: 1px solid transparent;
+}
+
+.client-project-status-completed {
+  background-color: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.18);
+  color: #166534;
+}
+
+.client-project-status-progress {
+  background-color: rgba(59, 130, 246, 0.14);
+  border-color: rgba(59, 130, 246, 0.18);
+  color: #1d4ed8;
+}
+
+.client-project-status-pending {
+  background-color: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.18);
+  color: #92400e;
+}
+
+.client-project-status-default {
+  background-color: rgba(148, 163, 184, 0.16);
+  border-color: rgba(148, 163, 184, 0.18);
+  color: #334155;
+}
+
+.client-project-progress-track {
+  background-color: rgba(148, 163, 184, 0.22);
+}
+
+.client-project-progress-fill {
+  background: linear-gradient(90deg, var(--theme-primary, #2563eb), var(--theme-primary-hover, #1d4ed8));
+}
+
+.client-dashboard-support {
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.92), rgba(219, 234, 254, 0.86));
+  border: 1px solid rgba(96, 165, 250, 0.22);
+}
+
 .login-page .btn-primary {
   width: 100%;
 }
@@ -763,6 +886,106 @@ html.dark-mode .client-license-banner {
   border-color: rgba(245, 158, 11, 0.4) !important;
   background-color: rgba(245, 158, 11, 0.14) !important;
   color: #fde68a !important;
+}
+
+html.dark-mode .client-dashboard-intro,
+html.dark-mode .client-dashboard-copy {
+  color: #cbd5e1;
+}
+
+html.dark-mode .client-dashboard-strong,
+html.dark-mode .client-dashboard-heading {
+  color: #f8fafc;
+}
+
+html.dark-mode .client-dashboard-accent {
+  color: #93c5fd;
+}
+
+html.dark-mode .client-dashboard-card,
+html.dark-mode .client-dashboard-shortcut {
+  background-color: rgba(31, 41, 55, 0.96) !important;
+  border-color: rgba(75, 85, 99, 0.65) !important;
+}
+
+html.dark-mode .client-dashboard-shortcut {
+  color: #93c5fd !important;
+}
+
+html.dark-mode .client-dashboard-shortcut:hover {
+  background-color: rgba(37, 99, 235, 0.18) !important;
+  color: #ffffff !important;
+}
+
+html.dark-mode .client-dashboard-license-card-active {
+  border-color: rgba(34, 197, 94, 0.22) !important;
+  background: linear-gradient(135deg, rgba(20, 83, 45, 0.34), rgba(22, 101, 52, 0.2)) !important;
+}
+
+html.dark-mode .client-dashboard-license-card-inactive {
+  border-color: rgba(245, 158, 11, 0.22) !important;
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.32), rgba(146, 64, 14, 0.18)) !important;
+}
+
+html.dark-mode .client-dashboard-license-eyebrow {
+  color: #bbf7d0 !important;
+}
+
+html.dark-mode .client-dashboard-license-card-inactive .client-dashboard-license-eyebrow {
+  color: #fde68a !important;
+}
+
+html.dark-mode .client-dashboard-license-heading {
+  color: #f0fdf4 !important;
+}
+
+html.dark-mode .client-dashboard-license-card-inactive .client-dashboard-license-heading {
+  color: #fffbeb !important;
+}
+
+html.dark-mode .client-dashboard-license-copy {
+  color: #dcfce7 !important;
+}
+
+html.dark-mode .client-dashboard-license-card-inactive .client-dashboard-license-copy {
+  color: #fef3c7 !important;
+}
+
+html.dark-mode .client-dashboard-border {
+  border-color: rgba(75, 85, 99, 0.72) !important;
+}
+
+html.dark-mode .client-project-status-completed {
+  background-color: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.25);
+  color: #bbf7d0;
+}
+
+html.dark-mode .client-project-status-progress {
+  background-color: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.25);
+  color: #bfdbfe;
+}
+
+html.dark-mode .client-project-status-pending {
+  background-color: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #fde68a;
+}
+
+html.dark-mode .client-project-status-default {
+  background-color: rgba(75, 85, 99, 0.72);
+  border-color: rgba(100, 116, 139, 0.4);
+  color: #e2e8f0;
+}
+
+html.dark-mode .client-project-progress-track {
+  background-color: rgba(71, 85, 105, 0.75);
+}
+
+html.dark-mode .client-dashboard-support {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.96), rgba(37, 99, 235, 0.12)) !important;
+  border-color: rgba(59, 130, 246, 0.24) !important;
 }
 
 html.dark-mode .login-page {
