@@ -2232,7 +2232,7 @@ function PageSettingsInspector({ title, editor, isOpen = true, setIsOpen = () =>
         <FiArrowRight className={`text-blue-600 transition-transform duration-300 ease-in-out ${isOpen ? '' : 'rotate-180'}`} />
       </button>
       <div className={`min-h-0 flex-1 overflow-hidden border-t transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[calc(100vh-12rem)] opacity-100' : 'max-h-0 opacity-0 border-t-0'}`}>
-        <div className="space-y-4 overflow-auto p-4 pb-8">
+        <div className="h-full min-h-0 space-y-4 overflow-y-auto p-4 pb-8">
           {editor}
         </div>
       </div>
