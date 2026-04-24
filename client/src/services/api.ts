@@ -178,6 +178,7 @@ export const adminAPI = {
   getStats: () => unwrap(api.get('/admin/stats')),
   getSeoDashboard: () => unwrap<any>(api.get('/admin/seo-dashboard')),
   getNotifications: () => unwrap<{ newMessages: number; newTickets: number; total: number }>(api.get('/admin/notifications')),
+  getAuditLogs: (params?: { action?: string; targetType?: string; q?: string; limit?: number }) => unwrap<any[]>(api.get('/admin/audit-logs', { params })),
   getClients: () => unwrap<any[]>(api.get('/admin/clients')),
   getProjects: () => unwrap<any[]>(api.get('/admin/projects')),
   getInvoices: () => unwrap<any[]>(api.get('/admin/invoices')),

@@ -51,7 +51,8 @@ const adminGroups = [
     icon: FiInbox,
     links: [
       { label: 'Messages', path: '/admin/messages', icon: FiInbox, badgeKey: 'newMessages' },
-      { label: 'Tickets', path: '/admin/tickets', icon: FiHelpCircle, badgeKey: 'newTickets' }
+      { label: 'Tickets', path: '/admin/tickets', icon: FiHelpCircle, badgeKey: 'newTickets' },
+      { label: 'Activity Log', path: '/admin/activity-log', icon: FiAlertCircle }
     ]
   }
 ]

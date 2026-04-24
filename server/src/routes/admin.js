@@ -1,6 +1,6 @@
 import express from 'express'
 import sequelize from '../database.js'
-import { DataTypes } from 'sequelize'
+import { DataTypes, Op } from 'sequelize'
 import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -26,6 +26,7 @@ import CustomPage from '../models/CustomPage.js'
 import SiteDemo from '../models/SiteDemo.js'
 import MediaAsset from '../models/MediaAsset.js'
 import CRMLead from '../models/CRMLead.js'
+import AuditLog from '../models/AuditLog.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
 import { ensureDemoPlugins, getOrCreateBookingPlugin, getOrCreateCrmPlugin, getOrCreateEventsPlugin, getOrCreateProtectedContentPlugin, getOrCreateRestaurantPlugin, getOrCreateRealEstatePlugin } from './plugins.js'
 import { ensureSiteDemos } from './site-demos.js'
@@ -34,6 +35,7 @@ import { base32Encode, verifyTotp } from './auth.js'
 import jwt from 'jsonwebtoken'
 import { ensureActiveUser, requireRole, verifyToken } from '../utils/auth.js'
 import { cleanString, sanitizeUserForResponse } from '../utils/validation.js'
+import { createAuditLog, ensureAuditLogSchema } from '../utils/audit.js'
 
 const router = express.Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -799,6 +801,15 @@ function stripModelMetadata(record, fieldsToKeep = []) {
   return data
 }
 
+function summarizeChangedKeys(previous = {}, next = {}, ignoredKeys = []) {
+  const ignored = new Set(['createdAt', 'updatedAt', ...ignoredKeys])
+  const keys = new Set([...Object.keys(previous || {}), ...Object.keys(next || {})])
+  return Array.from(keys).filter((key) => {
+    if (ignored.has(key)) return false
+    return JSON.stringify(previous?.[key]) !== JSON.stringify(next?.[key])
+  })
+}
+
 async function serializeMediaAssets(includeFiles = false) {
   await ensureMediaAssetsSchema()
   const assets = await MediaAsset.findAll({ order: [['createdAt', 'ASC'], ['id', 'ASC']] })
@@ -1032,6 +1043,38 @@ async function restoreCmsBackupPayload(payload) {
 }
 
 router.use(verifyToken, ensureActiveUser, requireRole('admin'))
+
+router.get('/audit-logs', async (req, res) => {
+  try {
+    await ensureAuditLogSchema()
+    const where = {}
+    const action = String(req.query.action || '').trim()
+    const targetType = String(req.query.targetType || '').trim()
+    const q = String(req.query.q || '').trim()
+    const limit = Math.max(1, Math.min(200, Number(req.query.limit || 100)))
+
+    if (action) where.action = action
+    if (targetType) where.targetType = targetType
+    if (q) {
+      where[Op.or] = [
+        { summary: { [Op.like]: `%${q}%` } },
+        { actorEmail: { [Op.like]: `%${q}%` } },
+        { targetId: { [Op.like]: `%${q}%` } },
+        { targetType: { [Op.like]: `%${q}%` } }
+      ]
+    }
+
+    const logs = await AuditLog.findAll({
+      where,
+      order: [['createdAt', 'DESC']],
+      limit
+    })
+
+    res.json(logs)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
 
 // Get dashboard stats
 router.get('/stats', async (req, res) => {
@@ -1274,11 +1317,21 @@ router.put('/plugins/:slug', async (req, res) => {
   try {
     const plugin = await Plugin.findOne({ where: { slug: req.params.slug } })
     if (!plugin) return res.status(404).json({ error: 'Plugin not found' })
+    const previous = plugin.toJSON()
 
     await plugin.update({
       price: req.body.price === undefined ? plugin.price : Number(req.body.price || 0),
       isEnabled: Boolean(req.body.isEnabled),
       isPurchased: req.body.isPurchased === undefined ? plugin.isPurchased : Boolean(req.body.isPurchased)
+    })
+    await createAuditLog(req, {
+      action: 'plugin.updated',
+      targetType: 'plugin',
+      targetId: plugin.slug,
+      summary: `Updated plugin "${plugin.name}"`,
+      details: {
+        changedKeys: summarizeChangedKeys(previous, plugin.toJSON())
+      }
     })
     res.json(plugin)
   } catch (error) {
@@ -1301,6 +1354,7 @@ router.put('/site-demos/:slug', async (req, res) => {
     await ensureSiteDemos()
     const demo = await SiteDemo.findOne({ where: { slug: req.params.slug } })
     if (!demo) return res.status(404).json({ error: 'Site demo not found' })
+    const previous = demo.toJSON()
 
     await demo.update({
       name: req.body.name || demo.name,
@@ -1310,6 +1364,15 @@ router.put('/site-demos/:slug', async (req, res) => {
       demoUrl: req.body.demoUrl || demo.demoUrl,
       isActive: req.body.isActive === undefined ? demo.isActive : Boolean(req.body.isActive),
       sortOrder: Number(req.body.sortOrder || 0)
+    })
+    await createAuditLog(req, {
+      action: 'site-demo.updated',
+      targetType: 'site-demo',
+      targetId: demo.slug,
+      summary: `Updated site demo "${demo.name}"`,
+      details: {
+        changedKeys: summarizeChangedKeys(previous, demo.toJSON())
+      }
     })
     res.json(demo)
   } catch (error) {
@@ -1738,6 +1801,16 @@ router.post('/media', async (req, res) => {
       visibility
     })
     if (visibility === 'private') await asset.update({ url: `/api/protected-media/${asset.id}` })
+    await createAuditLog(req, {
+      action: 'media.created',
+      targetType: 'media',
+      targetId: asset.id,
+      summary: `Added media asset "${asset.altText || asset.originalName}"`,
+      details: {
+        mediaType: asset.mediaType,
+        visibility: asset.visibility
+      }
+    })
     res.status(201).json(asset)
   } catch (error) {
     res.status(error.statusCode || 500).json({ error: error.message })
@@ -1773,6 +1846,18 @@ router.put('/media/bulk', async (req, res) => {
     }))
 
     const updatedAssets = await MediaAsset.findAll({ where: { id: ids }, order: [['createdAt', 'DESC']] })
+    await createAuditLog(req, {
+      action: 'media.bulk-updated',
+      targetType: 'media',
+      summary: `Updated ${ids.length} media asset${ids.length === 1 ? '' : 's'}`,
+      details: {
+        ids,
+        folder: req.body.folder,
+        tagAction: req.body.tagAction || null,
+        tags: tagUpdates,
+        visibility: req.body.visibility || null
+      }
+    })
     res.json(await enrichMediaAssetsWithUsage(updatedAssets))
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -1784,6 +1869,7 @@ router.put('/media/:id', async (req, res) => {
     await ensureMediaAssetsSchema()
     const asset = await MediaAsset.findByPk(req.params.id)
     if (!asset) return res.status(404).json({ error: 'Media asset not found' })
+    const previous = asset.toJSON()
     const visibilityUpdates = req.body.visibility === 'private' || req.body.visibility === 'public'
       ? await moveMediaAssetFile(asset, req.body.visibility)
       : {}
@@ -1793,6 +1879,15 @@ router.put('/media/:id', async (req, res) => {
       folder: req.body.folder ?? asset.folder,
       tags: Array.isArray(req.body.tags) ? req.body.tags : asset.tags,
       ...visibilityUpdates
+    })
+    await createAuditLog(req, {
+      action: 'media.updated',
+      targetType: 'media',
+      targetId: asset.id,
+      summary: `Updated media asset "${asset.altText || asset.originalName}"`,
+      details: {
+        changedKeys: summarizeChangedKeys(previous, asset.toJSON())
+      }
     })
     res.json((await enrichMediaAssetsWithUsage([asset]))[0])
   } catch (error) {
@@ -1807,12 +1902,21 @@ router.delete('/media/bulk', async (req, res) => {
     if (ids.length === 0) return res.status(400).json({ error: 'No media assets selected' })
 
     const assets = await MediaAsset.findAll({ where: { id: ids } })
+    const deletedAssets = assets.map((asset) => ({ id: asset.id, name: asset.altText || asset.originalName }))
     await Promise.all(assets.map(async asset => {
       const filePath = path.join(asset.visibility === 'private' ? privateUploadsDir : uploadsDir, asset.filename)
       await fs.unlink(filePath).catch(() => {})
       await asset.destroy()
     }))
 
+    await createAuditLog(req, {
+      action: 'media.bulk-deleted',
+      targetType: 'media',
+      summary: `Deleted ${deletedAssets.length} media asset${deletedAssets.length === 1 ? '' : 's'}`,
+      details: {
+        assets: deletedAssets
+      }
+    })
     res.json({ deleted: assets.length })
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -1824,9 +1928,19 @@ router.delete('/media/:id', async (req, res) => {
     await ensureMediaAssetsSchema()
     const asset = await MediaAsset.findByPk(req.params.id)
     if (!asset) return res.status(404).json({ error: 'Media asset not found' })
+    const assetLabel = asset.altText || asset.originalName
     const filePath = path.join(asset.visibility === 'private' ? privateUploadsDir : uploadsDir, asset.filename)
     await fs.unlink(filePath).catch(() => {})
     await asset.destroy()
+    await createAuditLog(req, {
+      action: 'media.deleted',
+      targetType: 'media',
+      targetId: req.params.id,
+      summary: `Deleted media asset "${assetLabel}"`,
+      details: {
+        filename: asset.filename
+      }
+    })
     res.json({ message: 'Media asset deleted' })
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -2002,7 +2116,18 @@ router.get('/site-settings', async (req, res) => {
 router.put('/site-settings', async (req, res) => {
   try {
     const settings = await getOrCreateSiteSettings()
+    const previous = settings.toJSON()
     await settings.update(req.body)
+    const changedKeys = summarizeChangedKeys(previous, settings.toJSON(), ['siteBackups'])
+    await createAuditLog(req, {
+      action: 'site-settings.updated',
+      targetType: 'site-settings',
+      targetId: settings.id,
+      summary: `Updated site settings${changedKeys.length ? ` (${changedKeys.slice(0, 4).join(', ')})` : ''}`,
+      details: {
+        changedKeys
+      }
+    })
     res.json(settings)
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -2022,6 +2147,15 @@ router.get('/backups', async (req, res) => {
 router.post('/backups', async (req, res) => {
   try {
     const backup = await createSiteBackupRecord(req.body?.name, { includeFiles: false })
+    await createAuditLog(req, {
+      action: 'backup.created',
+      targetType: 'backup',
+      targetId: backup.id,
+      summary: `Created backup "${backup.name}"`,
+      details: {
+        summary: backup.summary
+      }
+    })
     res.status(201).json({ backup: sanitizeBackupRecord(backup) })
   } catch (error) {
     res.status(error.statusCode || 500).json({ error: error.message })
@@ -2053,6 +2187,16 @@ router.post('/backups/import', async (req, res) => {
     const incoming = parseIncomingBackupPayload(req.body?.payload ?? req.body)
     const preImportBackup = await createSiteBackupRecord(`Auto backup before import ${new Date().toLocaleString('en-US')}`, { includeFiles: false })
     const summary = await restoreCmsBackupPayload(incoming)
+    await createAuditLog(req, {
+      action: 'backup.imported',
+      targetType: 'backup',
+      targetId: incoming?.metadata?.id || null,
+      summary: `Imported backup "${incoming?.metadata?.name || 'Imported backup'}"`,
+      details: {
+        importedSummary: summary,
+        restorePointId: preImportBackup.id
+      }
+    })
     res.json({
       message: 'Backup imported successfully',
       summary,
@@ -2071,6 +2215,16 @@ router.post('/backups/:id/restore', async (req, res) => {
 
     const preRestoreBackup = await createSiteBackupRecord(`Auto backup before restore ${new Date().toLocaleString('en-US')}`, { includeFiles: false })
     const summary = await restoreCmsBackupPayload(backup.payload)
+    await createAuditLog(req, {
+      action: 'backup.restored',
+      targetType: 'backup',
+      targetId: backup.id,
+      summary: `Restored backup "${backup.name}"`,
+      details: {
+        restoredSummary: summary,
+        restorePointId: preRestoreBackup.id
+      }
+    })
     res.json({
       message: 'Backup restored successfully',
       summary,
@@ -2085,8 +2239,20 @@ router.delete('/backups/:id', async (req, res) => {
   try {
     const settings = await getOrCreateSiteSettings()
     const backups = Array.isArray(settings.siteBackups) ? settings.siteBackups : []
+    const backup = backups.find((item) => String(item.id) === String(req.params.id))
     settings.siteBackups = backups.filter((item) => String(item.id) !== String(req.params.id))
     await settings.save()
+    if (backup) {
+      await createAuditLog(req, {
+        action: 'backup.deleted',
+        targetType: 'backup',
+        targetId: backup.id,
+        summary: `Deleted backup "${backup.name}"`,
+        details: {
+          summary: backup.summary || null
+        }
+      })
+    }
     res.json({ message: 'Backup deleted' })
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -2123,6 +2289,16 @@ router.post('/pages', async (req, res) => {
       isPublished: Boolean(req.body.isPublished),
       sortOrder: Number(req.body.sortOrder || 0)
     })
+    await createAuditLog(req, {
+      action: 'page.created',
+      targetType: 'page',
+      targetId: page.id,
+      summary: `Created page "${page.title}"`,
+      details: {
+        slug: page.slug,
+        isPublished: page.isPublished
+      }
+    })
     res.status(201).json(page)
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -2134,6 +2310,7 @@ router.put('/pages/:id', async (req, res) => {
     await ensureCustomPagesSchema()
     const page = await CustomPage.findByPk(req.params.id)
     if (!page) return res.status(404).json({ error: 'Page not found' })
+    const previous = page.toJSON()
 
     await page.update({
       title: req.body.title,
@@ -2152,6 +2329,15 @@ router.put('/pages/:id', async (req, res) => {
       isPublished: Boolean(req.body.isPublished),
       sortOrder: Number(req.body.sortOrder || 0)
     })
+    await createAuditLog(req, {
+      action: 'page.updated',
+      targetType: 'page',
+      targetId: page.id,
+      summary: `Updated page "${page.title}"`,
+      details: {
+        changedKeys: summarizeChangedKeys(previous, page.toJSON())
+      }
+    })
     res.json(page)
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -2165,6 +2351,15 @@ router.delete('/pages/:id', async (req, res) => {
     if (!page) return res.status(404).json({ error: 'Page not found' })
 
     await page.destroy()
+    await createAuditLog(req, {
+      action: 'page.deleted',
+      targetType: 'page',
+      targetId: req.params.id,
+      summary: `Deleted page "${page.title}"`,
+      details: {
+        slug: page.slug
+      }
+    })
     res.json({ message: 'Page deleted' })
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -2247,7 +2442,17 @@ router.put('/contact-messages/:id', async (req, res) => {
   try {
     const message = await ContactMessage.findByPk(req.params.id)
     if (!message) return res.status(404).json({ error: 'Message not found' })
+    const previous = message.toJSON()
     await message.update(req.body)
+    await createAuditLog(req, {
+      action: 'contact-message.updated',
+      targetType: 'contact-message',
+      targetId: message.id,
+      summary: `Updated contact message from "${message.name}"`,
+      details: {
+        changedKeys: summarizeChangedKeys(previous, message.toJSON())
+      }
+    })
     res.json(message)
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -2290,6 +2495,18 @@ router.post('/subscriptions/assign', async (req, res) => {
         features: plan.features
       })
 
+      await createAuditLog(req, {
+        action: 'license.assigned',
+        targetType: 'license',
+        targetId: license.id,
+        summary: `Assigned CMS license "${plan.name}" to ${client.email}`,
+        details: {
+          clientId: client.id,
+          planId: plan.id,
+          licensedDomain: license.licensedDomain
+        }
+      })
+
       return res.status(201).json({ type: 'license', license })
     }
 
@@ -2311,6 +2528,17 @@ router.post('/subscriptions/assign', async (req, res) => {
       features: plan.features
     })
 
+    await createAuditLog(req, {
+      action: 'subscription.assigned',
+      targetType: 'subscription',
+      targetId: subscription.id,
+      summary: `Assigned service subscription "${plan.name}" to ${client.email}`,
+      details: {
+        clientId: client.id,
+        planId: plan.id
+      }
+    })
+
     res.status(201).json({ type: 'subscription', subscription })
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -2323,6 +2551,15 @@ router.put('/licenses/:id/cancel', async (req, res) => {
     const license = await CMSLicense.findByPk(req.params.id)
     if (!license) return res.status(404).json({ error: 'License not found' })
     await license.update({ status: 'cancelled', endDate: new Date() })
+    await createAuditLog(req, {
+      action: 'license.cancelled',
+      targetType: 'license',
+      targetId: license.id,
+      summary: `Cancelled CMS license "${license.planName}"`,
+      details: {
+        clientId: license.clientId
+      }
+    })
     res.json(license)
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -2343,6 +2580,15 @@ router.post('/users', async (req, res) => {
       phone: cleanString(req.body.phone, 40)
     })
     const safeUser = sanitizeUserForResponse(user)
+    await createAuditLog(req, {
+      action: 'user.created',
+      targetType: 'user',
+      targetId: user.id,
+      summary: `Created ${user.role} user "${user.email}"`,
+      details: {
+        role: user.role
+      }
+    })
     res.status(201).json({ message: 'User created', user: safeUser })
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -2354,6 +2600,7 @@ router.put('/users/:id', async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id)
     if (!user) return res.status(404).json({ error: 'User not found' })
+    const previous = user.toJSON()
     await user.update({
       ...req.body,
       name: req.body.name !== undefined ? cleanString(req.body.name, 120) : user.name,
@@ -2362,6 +2609,15 @@ router.put('/users/:id', async (req, res) => {
       phone: req.body.phone !== undefined ? cleanString(req.body.phone, 40) : user.phone
     })
     const safeUser = sanitizeUserForResponse(user)
+    await createAuditLog(req, {
+      action: 'user.updated',
+      targetType: 'user',
+      targetId: user.id,
+      summary: `Updated user "${user.email}"`,
+      details: {
+        changedKeys: summarizeChangedKeys(previous, user.toJSON(), ['password', 'twoFactorSecret', 'twoFactorCode', 'twoFactorExpires'])
+      }
+    })
     res.json(safeUser)
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -2374,6 +2630,15 @@ router.delete('/users/:id', async (req, res) => {
     const user = await User.findByPk(req.params.id)
     if (!user) return res.status(404).json({ error: 'User not found' })
     await user.destroy()
+    await createAuditLog(req, {
+      action: 'user.deleted',
+      targetType: 'user',
+      targetId: req.params.id,
+      summary: `Deleted user "${user.email}"`,
+      details: {
+        role: user.role
+      }
+    })
     res.json({ message: 'User deleted' })
   } catch (error) {
     res.status(500).json({ error: error.message })

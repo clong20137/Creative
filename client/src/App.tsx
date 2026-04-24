@@ -47,6 +47,7 @@ const AdminNavigation = lazy(() => import('./pages/AdminNavigation'))
 const AdminSettings = lazy(() => import('./pages/AdminSettings'))
 const AdminTickets = lazy(() => import('./pages/AdminTickets'))
 const AdminMessages = lazy(() => import('./pages/AdminMessages'))
+const AdminActivityLog = lazy(() => import('./pages/AdminActivityLog'))
 const AdminPlugins = lazy(() => import('./pages/AdminPlugins'))
 const AdminPluginDetail = lazy(() => import('./pages/AdminPluginDetail'))
 const AdminSiteDemos = lazy(() => import('./pages/AdminSiteDemos'))
@@ -117,6 +118,7 @@ function AppRoutes() {
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/admin/tickets" element={<AdminTickets />} />
             <Route path="/admin/messages" element={<AdminMessages />} />
+            <Route path="/admin/activity-log" element={<AdminActivityLog />} />
             <Route path="/admin/plugins" element={<AdminPlugins />} />
             <Route path="/admin/plugins/:slug" element={<AdminPluginDetail />} />
             <Route path="/admin/site-demos" element={<AdminSiteDemos />} />
