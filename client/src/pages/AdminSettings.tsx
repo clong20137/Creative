@@ -8,6 +8,11 @@ const emptySettings = {
   faviconUrl: '',
   logoUrl: '',
   logoSize: 40,
+  clientPortalName: 'Client Portal',
+  adminPortalName: 'Admin Portal',
+  emailFromName: '',
+  showPoweredBy: true,
+  poweredByText: 'Powered by Creative CMS',
   themeFontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   themeBackgroundColor: '#ffffff',
   themeSurfaceColor: '#ffffff',
@@ -216,7 +221,7 @@ async function compactSettingsPayload(settings: Record<string, any>) {
 
 function getActiveTabPayload(settings: typeof emptySettings, activeTab: string) {
   const payloadMap: Record<string, string[]> = {
-    General: ['siteName', 'faviconUrl', 'logoUrl', 'logoSize'],
+    General: ['siteName', 'faviconUrl', 'logoUrl', 'logoSize', 'clientPortalName', 'adminPortalName', 'emailFromName', 'showPoweredBy', 'poweredByText'],
     Theme: [
       'themeFontFamily',
       'themeBackgroundColor',
@@ -654,6 +659,37 @@ export default function AdminSettings() {
                     <input type="file" accept="image/*" onChange={(e) => handleUpload('faviconUrl', e.target.files?.[0])} className="w-full px-4 py-2 border rounded-lg" />
                   </label>
                 </div>
+                <div className="rounded-lg border p-4 space-y-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">White-Label Portal Branding</h3>
+                    <p className="text-sm text-gray-600">Control the names shown in the admin portal, client portal, login page, and branded emails.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="block">
+                      <span className="block text-sm font-semibold text-gray-700 mb-2">Client portal name</span>
+                      <input value={settings.clientPortalName || ''} onChange={(e) => handleChange('clientPortalName', e.target.value)} placeholder="Client Portal" className="w-full px-4 py-2 border rounded-lg" />
+                    </label>
+                    <label className="block">
+                      <span className="block text-sm font-semibold text-gray-700 mb-2">Admin portal name</span>
+                      <input value={settings.adminPortalName || ''} onChange={(e) => handleChange('adminPortalName', e.target.value)} placeholder="Admin Portal" className="w-full px-4 py-2 border rounded-lg" />
+                    </label>
+                    <label className="block">
+                      <span className="block text-sm font-semibold text-gray-700 mb-2">Email from name</span>
+                      <input value={settings.emailFromName || ''} onChange={(e) => handleChange('emailFromName', e.target.value)} placeholder="Brand name used for auth and invoice emails" className="w-full px-4 py-2 border rounded-lg" />
+                    </label>
+                    <label className="flex items-center gap-3 rounded-lg border px-4 py-3">
+                      <input type="checkbox" checked={settings.showPoweredBy !== false} onChange={(e) => handleChange('showPoweredBy', e.target.checked)} />
+                      <span>
+                        <span className="block text-sm font-semibold text-gray-800">Show powered-by text</span>
+                        <span className="block text-xs text-gray-500">Keep a small product credit visible on login and portal screens.</span>
+                      </span>
+                    </label>
+                  </div>
+                  <label className="block">
+                    <span className="block text-sm font-semibold text-gray-700 mb-2">Powered-by text</span>
+                    <input value={settings.poweredByText || ''} onChange={(e) => handleChange('poweredByText', e.target.value)} placeholder="Powered by Creative CMS" className="w-full px-4 py-2 border rounded-lg" />
+                  </label>
+                </div>
                 {(settings.logoUrl || settings.faviconUrl) && (
                   <div className="grid grid-cols-1 gap-4 rounded-lg border p-4 md:grid-cols-2">
                     {settings.logoUrl && (
@@ -762,7 +798,7 @@ export default function AdminSettings() {
                         borderRadius: `${cardRadius}px`
                       }}
                     >
-                      <h3 style={{ color: settings.themeHeadingColor }} className="text-2xl font-bold">Creative by Caleb</h3>
+                      <h3 style={{ color: settings.themeHeadingColor }} className="text-2xl font-bold">{settings.siteName || 'Creative by Caleb'}</h3>
                       <p style={{ color: settings.themeBodyColor }} className="mt-2">Site-wide theme controls for buttons, cards, links, and shared page styles.</p>
                       <div className="mt-4 flex flex-wrap gap-3">
                         <button

@@ -23,6 +23,26 @@ const SiteSetting = sequelize.define('SiteSetting', {
     type: DataTypes.INTEGER,
     defaultValue: 40
   },
+  clientPortalName: {
+    type: DataTypes.STRING,
+    defaultValue: 'Client Portal'
+  },
+  adminPortalName: {
+    type: DataTypes.STRING,
+    defaultValue: 'Admin Portal'
+  },
+  emailFromName: {
+    type: DataTypes.STRING,
+    defaultValue: 'Creative by Caleb'
+  },
+  showPoweredBy: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
+  poweredByText: {
+    type: DataTypes.STRING,
+    defaultValue: 'Powered by Creative CMS'
+  },
   themeFontFamily: {
     type: DataTypes.STRING,
     defaultValue: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiMail, FiLock, FiEyeOff, FiEye, FiUser, FiBriefcase } from 'react-icons/fi'
-import { authAPI, siteSettingsAPI } from '../services/api'
+import { authAPI, resolveAssetUrl, siteSettingsAPI } from '../services/api'
 import TurnstileWidget from '../components/TurnstileWidget'
+import { applyThemeSettings } from '../utils/theme'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -20,6 +21,14 @@ export default function Login() {
   const [resetCode, setResetCode] = useState('')
   const [requiresResetAuthenticator, setRequiresResetAuthenticator] = useState(false)
   const [turnstileSiteKey, setTurnstileSiteKey] = useState('')
+  const [branding, setBranding] = useState({
+    siteName: 'Creative by Caleb',
+    clientPortalName: 'Client Portal',
+    logoUrl: '',
+    logoSize: 40,
+    showPoweredBy: true,
+    poweredByText: 'Powered by Creative CMS'
+  })
   const [turnstileToken, setTurnstileToken] = useState('')
   const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
@@ -35,7 +44,18 @@ export default function Login() {
     }
 
     siteSettingsAPI.getSettings()
-      .then(settings => setTurnstileSiteKey(settings.turnstileSiteKey || ''))
+      .then(settings => {
+        applyThemeSettings(settings)
+        setTurnstileSiteKey(settings.turnstileSiteKey || '')
+        setBranding({
+          siteName: settings.siteName || 'Creative by Caleb',
+          clientPortalName: settings.clientPortalName || 'Client Portal',
+          logoUrl: resolveAssetUrl(settings.logoUrl),
+          logoSize: Number(settings.logoSize) || 40,
+          showPoweredBy: settings.showPoweredBy !== false,
+          poweredByText: settings.poweredByText || 'Powered by Creative CMS'
+        })
+      })
       .catch(() => setTurnstileSiteKey(''))
   }, [navigate])
 
@@ -171,11 +191,19 @@ export default function Login() {
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
+          {branding.logoUrl ? (
+            <img
+              src={branding.logoUrl}
+              alt={branding.siteName}
+              className="mx-auto mb-4 w-auto object-contain"
+              style={{ height: `${Math.min(Math.max(branding.logoSize, 28), 88)}px` }}
+            />
+          ) : null}
           <h1 className="text-3xl font-bold text-blue-600 mb-2">
-            {isResettingPassword ? 'Reset Password' : isCreatingAccount ? 'Create Account' : 'Client Portal'}
+            {isResettingPassword ? 'Reset Password' : isCreatingAccount ? 'Create Account' : branding.clientPortalName}
           </h1>
           <p className="text-gray-600">
-            {isCreatingAccount ? 'Start your client portal access' : 'Sign in to access your project dashboard'}
+            {isCreatingAccount ? `Start your access to ${branding.siteName}` : `Sign in to access ${branding.siteName}`}
           </p>
         </div>
 
@@ -414,6 +442,9 @@ export default function Login() {
             </button>
           </p>
         </div>
+        {branding.showPoweredBy && (
+          <p className="mt-5 text-center text-xs text-gray-500">{branding.poweredByText}</p>
+        )}
       </div>
     </div>
   )

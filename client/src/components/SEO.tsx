@@ -9,8 +9,11 @@ type SEOProps = {
   structuredData?: Record<string, any> | Record<string, any>[]
 }
 
-const SITE_NAME = 'Creative by Caleb'
 const DEFAULT_IMAGE = '/og-image.jpg'
+
+function getSiteName() {
+  return document.documentElement.dataset.siteName || 'Creative by Caleb'
+}
 
 function getSiteUrl() {
   return (import.meta.env.VITE_SITE_URL || window.location.origin).replace(/\/$/, '')
@@ -56,7 +59,8 @@ export default function SEO({
     const normalizedPath = normalizeSeoPath(path)
     const canonicalUrl = `${siteUrl}${normalizedPath}`
     const imageUrl = image.startsWith('http') ? image : `${siteUrl}${image.startsWith('/') ? image : `/${image}`}`
-    const fullTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`
+    const siteName = getSiteName()
+    const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`
 
     document.title = fullTitle
     upsertMeta('meta[name="description"]', () => {
@@ -139,7 +143,7 @@ export function localBusinessSchema(path = '/') {
   return {
     '@context': 'https://schema.org',
     '@type': 'ProfessionalService',
-    name: SITE_NAME,
+    name: getSiteName(),
     url: `${siteUrl}${normalizedPath}`,
     areaServed: [
       { '@type': 'City', name: 'Indianapolis' },

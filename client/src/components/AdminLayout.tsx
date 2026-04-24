@@ -2,7 +2,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { FiAlertCircle, FiArrowLeft, FiArrowRight, FiBarChart, FiBell, FiCheckCircle, FiChevronDown, FiChevronRight, FiCreditCard, FiFileText, FiGrid, FiHelpCircle, FiHome, FiImage, FiInbox, FiLogOut, FiMenu, FiMonitor, FiMoon, FiSearch, FiSettings, FiSun, FiUsers, FiX } from 'react-icons/fi'
 import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
-import { adminAPI, ticketsAPI } from '../services/api'
+import { adminAPI, resolveAssetUrl, ticketsAPI } from '../services/api'
 
 const primaryLinks = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: FiHome },
@@ -260,6 +260,12 @@ export default function AdminLayout({ title, children }: { title: string; childr
     Website: true,
     Support: true
   })
+  const brandSiteName = siteSettings?.siteName || 'Creative by Caleb'
+  const adminPortalName = siteSettings?.adminPortalName || 'Admin Portal'
+  const brandLogoUrl = resolveAssetUrl(siteSettings?.logoUrl)
+  const brandLogoSize = Math.min(Math.max(Number(siteSettings?.logoSize) || 40, 24), 72)
+  const showPoweredBy = siteSettings?.showPoweredBy !== false
+  const poweredByText = siteSettings?.poweredByText || 'Powered by Creative CMS'
 
   useEffect(() => {
     if (localStorage.getItem('userRole') !== 'admin') {
@@ -439,9 +445,9 @@ export default function AdminLayout({ title, children }: { title: string; childr
         <div className="border-b border-gray-200 px-4 pb-4 pt-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">Admin Portal</p>
-              <h2 className="mt-1 text-xl font-bold text-gray-900">Studio Control</h2>
-              <p className="mt-1 text-sm text-gray-500">Quick access for pages, clients, revenue, and support.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">{adminPortalName}</p>
+              <h2 className="mt-1 text-xl font-bold text-gray-900">{adminPortalName}</h2>
+              <p className="mt-1 text-sm text-gray-500">{brandSiteName}</p>
             </div>
             <button
               type="button"
@@ -631,9 +637,13 @@ export default function AdminLayout({ title, children }: { title: string; childr
         <div className="hidden w-full flex-col border-b border-gray-200 lg:flex lg:h-full lg:border-b-0 lg:border-r">
           <div className={`border-b border-gray-200 ${sidebarOpen ? 'p-5' : 'p-3'}`}>
             <div className={`flex ${sidebarOpen ? 'items-center justify-between gap-3' : 'flex-col items-center gap-2'}`}>
-              <Link to="/admin/dashboard" className={`inline-flex min-w-0 items-center gap-2 text-lg font-black text-gray-900 ${sidebarOpen ? '' : 'justify-center'}`} title="Admin Portal">
-                <FiGrid className="shrink-0 text-blue-600" />
-                {sidebarOpen && <span className="truncate">Admin Portal</span>}
+              <Link to="/admin/dashboard" className={`inline-flex min-w-0 items-center gap-2 text-lg font-black text-gray-900 ${sidebarOpen ? '' : 'justify-center'}`} title={adminPortalName}>
+                {brandLogoUrl ? (
+                  <img src={brandLogoUrl} alt={brandSiteName} className="w-auto object-contain shrink-0" style={{ height: `${sidebarOpen ? brandLogoSize : 28}px` }} />
+                ) : (
+                  <FiGrid className="shrink-0 text-blue-600" />
+                )}
+                {sidebarOpen && <span className="truncate">{adminPortalName}</span>}
               </Link>
               <button
                 type="button"
@@ -793,6 +803,9 @@ export default function AdminLayout({ title, children }: { title: string; childr
           </nav>
 
           <div className={`mt-auto space-y-2 border-t border-gray-200 ${sidebarOpen ? 'p-4' : 'p-3'}`}>
+            {sidebarOpen && showPoweredBy && (
+              <p className="rounded-lg bg-gray-50 px-3 py-2 text-center text-xs text-gray-500">{poweredByText}</p>
+            )}
             <Link
               to="/"
               onClick={() => setMobileSidebarOpen(false)}
@@ -832,7 +845,7 @@ export default function AdminLayout({ title, children }: { title: string; childr
                 </button>
                 <div>
                   <Link to="/admin/dashboard" className="hidden text-sm font-semibold text-blue-600 hover:text-blue-800 sm:inline-flex">
-                    Admin Panel
+                    {adminPortalName}
                   </Link>
                   <h1 className="text-xl font-bold text-gray-900 sm:text-2xl md:text-3xl">{title}</h1>
                 </div>

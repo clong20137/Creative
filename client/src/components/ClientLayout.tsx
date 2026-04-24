@@ -2,7 +2,8 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { FiClock, FiFileText, FiGrid, FiHelpCircle, FiHome, FiKey, FiLogOut, FiSettings } from 'react-icons/fi'
 import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
-import { licensesAPI } from '../services/api'
+import { licensesAPI, resolveAssetUrl, siteSettingsAPI } from '../services/api'
+import { applyThemeSettings } from '../utils/theme'
 
 const clientLinks = [
   { label: 'Dashboard', path: '/client-dashboard', icon: FiHome },
@@ -21,6 +22,14 @@ export default function ClientLayout({ title, children }: { title: string; child
     loading: true,
     hasActiveLicense: false,
     license: null
+  })
+  const [branding, setBranding] = useState({
+    siteName: 'Creative by Caleb',
+    clientPortalName: 'Client Portal',
+    logoUrl: '',
+    logoSize: 40,
+    showPoweredBy: true,
+    poweredByText: 'Powered by Creative CMS'
   })
   const currentPath = location.pathname
 
@@ -52,6 +61,22 @@ export default function ClientLayout({ title, children }: { title: string; child
     }
   }, [currentPath, navigate])
 
+  useEffect(() => {
+    siteSettingsAPI.getSettings()
+      .then((settings) => {
+        applyThemeSettings(settings)
+        setBranding({
+          siteName: settings.siteName || 'Creative by Caleb',
+          clientPortalName: settings.clientPortalName || 'Client Portal',
+          logoUrl: resolveAssetUrl(settings.logoUrl),
+          logoSize: Number(settings.logoSize) || 40,
+          showPoweredBy: settings.showPoweredBy !== false,
+          poweredByText: settings.poweredByText || 'Powered by Creative CMS'
+        })
+      })
+      .catch(() => {})
+  }, [])
+
   const handleLogout = () => {
     localStorage.removeItem('authToken')
     localStorage.removeItem('userId')
@@ -67,7 +92,7 @@ export default function ClientLayout({ title, children }: { title: string; child
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <Link to="/client-dashboard" className="client-portal-link text-sm font-semibold">
-                Client Portal
+                {branding.clientPortalName}
               </Link>
               <h1 className="text-2xl font-bold md:text-3xl">{title}</h1>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
@@ -125,6 +150,25 @@ export default function ClientLayout({ title, children }: { title: string; child
       </div>
 
       <div className="container py-8">
+        {(branding.logoUrl || branding.showPoweredBy) && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3">
+            <div className="flex items-center gap-3">
+              {branding.logoUrl ? (
+                <img
+                  src={branding.logoUrl}
+                  alt={branding.siteName}
+                  className="w-auto object-contain"
+                  style={{ height: `${Math.min(Math.max(branding.logoSize, 24), 56)}px` }}
+                />
+              ) : (
+                <span className="text-sm font-bold">{branding.siteName}</span>
+              )}
+            </div>
+            {branding.showPoweredBy && (
+              <span className="client-portal-muted text-xs">{branding.poweredByText}</span>
+            )}
+          </div>
+        )}
         {!licenseState.loading && !licenseState.hasActiveLicense && (
           <div className="client-license-banner mb-6 rounded-lg border p-4">
             Your CMS license is inactive. You can still navigate the client portal, and you can renew anytime from the license page.

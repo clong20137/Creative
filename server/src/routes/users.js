@@ -4,6 +4,7 @@ import bcryptjs from 'bcryptjs'
 import crypto from 'crypto'
 import User from '../models/User.js'
 import { base32Encode, verifyTotp } from './auth.js'
+import { getOrCreateSiteSettings } from './site-settings.js'
 import { ensureActiveUser, verifyToken } from '../utils/auth.js'
 import { cleanString, sanitizeUserForResponse } from '../utils/validation.js'
 
@@ -99,8 +100,10 @@ router.post('/two-factor/setup', verifyToken, ensureActiveUser, async (req, res)
 
     const secret = base32Encode(crypto.randomBytes(20))
     await user.update({ twoFactorSecret: secret, twoFactorMethod: 'app' })
-    const label = encodeURIComponent(`Creative by Caleb:${user.email}`)
-    const issuer = encodeURIComponent('Creative by Caleb')
+    const settings = await getOrCreateSiteSettings().catch(() => null)
+    const siteName = settings?.siteName || 'Creative by Caleb'
+    const label = encodeURIComponent(`${siteName}:${user.email}`)
+    const issuer = encodeURIComponent(siteName)
     const otpauthUrl = `otpauth://totp/${label}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`
     res.json({ secret, otpauthUrl })
   } catch (error) {

@@ -4,6 +4,7 @@ import bcryptjs from 'bcryptjs'
 import nodemailer from 'nodemailer'
 import crypto from 'crypto'
 import User from '../models/User.js'
+import { getOrCreateSiteSettings } from './site-settings.js'
 import { verifyTurnstileToken } from '../utils/turnstile.js'
 import { cleanString, isValidEmail } from '../utils/validation.js'
 
@@ -79,14 +80,22 @@ function createTransporter() {
   })
 }
 
+async function getBrandSettings() {
+  const settings = await getOrCreateSiteSettings().catch(() => null)
+  const siteName = settings?.siteName || 'Creative by Caleb'
+  const emailFromName = settings?.emailFromName || siteName
+  return { siteName, emailFromName }
+}
+
 async function sendTwoFactorCode(user, code) {
   const transporter = createTransporter()
   if (!transporter) return false
+  const { siteName, emailFromName } = await getBrandSettings()
 
   await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+    from: `"${emailFromName}" <${process.env.EMAIL_USER}>`,
     to: user.email,
-    subject: 'Your Creative by Caleb sign-in code',
+    subject: `Your ${siteName} sign-in code`,
     text: `Your verification code is ${code}. It expires in 10 minutes.`,
     html: `<p>Your verification code is <strong>${code}</strong>.</p><p>It expires in 10 minutes.</p>`
   })
@@ -97,11 +106,12 @@ async function sendTwoFactorCode(user, code) {
 async function sendPasswordResetCode(user, code) {
   const transporter = createTransporter()
   if (!transporter) return false
+  const { siteName, emailFromName } = await getBrandSettings()
 
   await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+    from: `"${emailFromName}" <${process.env.EMAIL_USER}>`,
     to: user.email,
-    subject: 'Reset your Creative by Caleb password',
+    subject: `Reset your ${siteName} password`,
     text: `Your password reset code is ${code}. It expires in 15 minutes.`,
     html: `<p>Your password reset code is <strong>${code}</strong>.</p><p>It expires in 15 minutes.</p>`
   })

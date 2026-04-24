@@ -51,6 +51,7 @@ export default function Navigation() {
   const [desktopOpenDropdown, setDesktopOpenDropdown] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'))
   const [siteName, setSiteName] = useState('Creative by Caleb')
+  const [clientPortalName, setClientPortalName] = useState('Client Portal')
   const [logoUrl, setLogoUrl] = useState('')
   const [logoSize, setLogoSize] = useState(40)
   const [navigationItems, setNavigationItems] = useState<NavigationItem[]>(defaultNavigationItems)
@@ -75,6 +76,7 @@ export default function Navigation() {
         const settings = await siteSettingsAPI.getSettings()
         applyThemeSettings(settings)
         setSiteName(settings.siteName || 'Creative by Caleb')
+        setClientPortalName(settings.clientPortalName || 'Client Portal')
         setLogoUrl(resolveAssetUrl(settings.logoUrl))
         setLogoSize(Number(settings.logoSize) || 40)
         if (Array.isArray(settings.navigationItems) && settings.navigationItems.length) {
@@ -198,7 +200,7 @@ export default function Navigation() {
                 to={userRole ? dashboardPath : '/login'}
                 className="btn-primary site-nav-action-button inline-flex items-center justify-center whitespace-nowrap px-5 py-3 text-sm font-bold"
               >
-                {userRole ? 'Dashboard' : 'Client Login'}
+                {userRole ? 'Dashboard' : clientPortalName}
               </Link>
             <button
               onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}
@@ -288,7 +290,7 @@ export default function Navigation() {
             })}
             <div className="site-nav-mobile-actions grid grid-cols-2 gap-3 pt-2">
               <Link to={userRole ? dashboardPath : '/login'} className="btn-primary site-nav-action-button inline-flex w-full items-center justify-center whitespace-nowrap px-5 py-3 text-sm font-bold">
-                {userRole ? 'Dashboard' : 'Client Login'}
+                {userRole ? 'Dashboard' : clientPortalName}
               </Link>
               <button
                 onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}

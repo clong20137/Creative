@@ -33,7 +33,9 @@ function formatDate(value) {
   return value ? new Date(value).toLocaleDateString('en-US') : '-'
 }
 
-function buildInvoiceHtml(invoice, client) {
+async function buildInvoiceHtml(invoice, client) {
+  const settings = await getOrCreateSiteSettings().catch(() => null)
+  const siteName = settings?.siteName || 'Creative by Caleb'
   const items = Array.isArray(invoice.items) ? invoice.items : []
   const itemRows = items.map((item) => `
     <tr>
@@ -67,7 +69,7 @@ function buildInvoiceHtml(invoice, client) {
 <body>
   <div class="top">
     <div>
-      <h1>Creative by Caleb</h1>
+      <h1>${escapeHtml(siteName)}</h1>
       <p class="muted">Professional creative services</p>
     </div>
     <div>
@@ -174,7 +176,7 @@ router.get('/:id/download', verifyToken, ensureActiveUser, async (req, res) => {
       return res.status(403).json({ error: 'You do not have access to this invoice' })
     }
 
-    const html = buildInvoiceHtml(invoice, invoice.User)
+    const html = await buildInvoiceHtml(invoice, invoice.User)
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
     res.setHeader('Content-Disposition', `attachment; filename="${invoice.invoiceNumber}.html"`)
     res.send(html)
@@ -195,11 +197,14 @@ router.post('/:id/send', verifyToken, ensureActiveUser, requireRole('admin'), as
       return res.status(400).json({ error: 'Email is not configured on the server' })
     }
 
-    const html = buildInvoiceHtml(invoice, invoice.User)
+    const html = await buildInvoiceHtml(invoice, invoice.User)
+    const settings = await getOrCreateSiteSettings().catch(() => null)
+    const siteName = settings?.siteName || 'Creative by Caleb'
+    const emailFromName = settings?.emailFromName || siteName
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: `"${emailFromName}" <${process.env.EMAIL_USER}>`,
       to: invoice.User.email,
-      subject: `Invoice ${invoice.invoiceNumber} from Creative by Caleb`,
+      subject: `Invoice ${invoice.invoiceNumber} from ${siteName}`,
       html,
       attachments: [
         {

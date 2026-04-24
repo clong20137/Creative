@@ -28,7 +28,8 @@ export default function CustomPage() {
         }
         const data = await customPagesAPI.getPage(slug)
         setPage(data)
-        document.title = data.metaTitle || `${data.title} | Creative by Caleb`
+        const siteName = document.documentElement.dataset.siteName || 'Creative by Caleb'
+        document.title = data.metaTitle || `${data.title} | ${siteName}`
         const metaDescription = document.querySelector<HTMLMetaElement>("meta[name='description']")
         if (metaDescription && data.metaDescription) metaDescription.content = data.metaDescription
       } catch (error) {

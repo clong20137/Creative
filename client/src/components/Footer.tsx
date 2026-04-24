@@ -49,6 +49,8 @@ export default function Footer() {
     siteName: 'Creative by Caleb',
     logoUrl: '',
     logoSize: 40,
+    showPoweredBy: true,
+    poweredByText: 'Powered by Creative CMS',
     footerDescription: 'Transforming ideas into stunning visual experiences through web design, photography, and videography.',
     contactEmail: 'hello@creativestudio.com',
     footerNavigationItems: defaultFooterLinks,
@@ -175,6 +177,9 @@ export default function Footer() {
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 md:justify-end">
               <a href="#" className="transition hover:text-white">Privacy Policy</a>
               <a href="#" className="transition hover:text-white">Terms of Service</a>
+              {settings.showPoweredBy !== false && (
+                <span className="text-xs md:text-sm">{settings.poweredByText || 'Powered by Creative CMS'}</span>
+              )}
             </div>
           </div>
         </div>

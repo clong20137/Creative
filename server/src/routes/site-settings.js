@@ -509,6 +509,11 @@ async function ensureSiteSettingsSchema() {
 
   const columns = [
     ['themeFontFamily', { type: DataTypes.STRING, allowNull: true }],
+    ['clientPortalName', { type: DataTypes.STRING, allowNull: true }],
+    ['adminPortalName', { type: DataTypes.STRING, allowNull: true }],
+    ['emailFromName', { type: DataTypes.STRING, allowNull: true }],
+    ['showPoweredBy', { type: DataTypes.BOOLEAN, allowNull: true }],
+    ['poweredByText', { type: DataTypes.STRING, allowNull: true }],
     ['themeBackgroundColor', { type: DataTypes.STRING, allowNull: true }],
     ['themeSurfaceColor', { type: DataTypes.STRING, allowNull: true }],
     ['themeHeadingColor', { type: DataTypes.STRING, allowNull: true }],
@@ -581,6 +586,26 @@ export async function getOrCreateSiteSettings() {
     settings.siteBackups = []
     changed = true
   }
+  if (!settings.clientPortalName) {
+    settings.clientPortalName = 'Client Portal'
+    changed = true
+  }
+  if (!settings.adminPortalName) {
+    settings.adminPortalName = 'Admin Portal'
+    changed = true
+  }
+  if (!settings.emailFromName) {
+    settings.emailFromName = settings.siteName || 'Creative by Caleb'
+    changed = true
+  }
+  if (typeof settings.showPoweredBy !== 'boolean') {
+    settings.showPoweredBy = true
+    changed = true
+  }
+  if (!settings.poweredByText) {
+    settings.poweredByText = 'Powered by Creative CMS'
+    changed = true
+  }
   if (!Array.isArray(settings.footerNavigationColumns) || settings.footerNavigationColumns.length === 0) {
     settings.footerNavigationColumns = buildFooterColumns(settings)
     changed = true
@@ -597,6 +622,11 @@ function publicSiteSettings(settings) {
     'faviconUrl',
     'logoUrl',
     'logoSize',
+    'clientPortalName',
+    'adminPortalName',
+    'emailFromName',
+    'showPoweredBy',
+    'poweredByText',
     'logoText',
     'themeFontFamily',
     'themeBackgroundColor',

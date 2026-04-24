@@ -137,6 +137,9 @@ function App() {
       try {
         const settings = await siteSettingsAPI.getSettings()
         applyThemeSettings(settings)
+        document.documentElement.dataset.siteName = settings.siteName || 'Creative by Caleb'
+        document.documentElement.dataset.clientPortalName = settings.clientPortalName || 'Client Portal'
+        document.documentElement.dataset.adminPortalName = settings.adminPortalName || 'Admin Portal'
         if (settings.faviconUrl) {
           let favicon = document.querySelector<HTMLLinkElement>("link[rel='icon']")
           if (!favicon) {
