@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FiFileText, FiImage, FiSearch, FiUpload, FiVideo, FiX } from 'react-icons/fi'
 import { adminAPI, resolveAssetUrl } from '../services/api'
 
@@ -53,7 +53,7 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image',
   const [uploadTags, setUploadTags] = useState('')
   const [error, setError] = useState('')
 
-  const fetchAssets = async () => {
+  const fetchAssets = useCallback(async () => {
     try {
       setError('')
       setLoading(true)
@@ -63,7 +63,7 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image',
     } finally {
       setLoading(false)
     }
-  }
+  }, [typeFilter, visibilityFilter])
 
   useEffect(() => {
     if (!isOpen) return
@@ -73,7 +73,7 @@ export default function MediaPicker({ isOpen, onClose, onSelect, type = 'image',
 
   useEffect(() => {
     if (isOpen) fetchAssets()
-  }, [isOpen, typeFilter, visibilityFilter])
+  }, [fetchAssets, isOpen])
 
   const filteredAssets = useMemo(() => {
     const term = query.trim().toLowerCase()

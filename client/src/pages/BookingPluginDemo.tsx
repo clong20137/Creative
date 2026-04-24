@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import SEO from '../components/SEO'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import { pluginsAPI } from '../services/api'
@@ -33,7 +33,7 @@ export default function BookingPluginDemo() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
-  const fetchSlots = async () => {
+  const fetchSlots = useCallback(async () => {
     try {
       setLoading(true)
       const data = await pluginsAPI.getBookingSlots()
@@ -47,11 +47,11 @@ export default function BookingPluginDemo() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedSlot])
 
   useEffect(() => {
     fetchSlots()
-  }, [])
+  }, [fetchSlots])
 
   const handleSelectSlot = (slot: any) => {
     setSelectedSlot(slot)

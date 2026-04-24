@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import { adminAPI } from '../services/api'
@@ -60,7 +60,7 @@ export default function AdminActivityLog() {
   const [targetType, setTargetType] = useState('')
   const [query, setQuery] = useState('')
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true)
     try {
       const data = await adminAPI.getAuditLogs({
@@ -73,11 +73,11 @@ export default function AdminActivityLog() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [action, query, targetType])
 
   useEffect(() => {
     fetchLogs()
-  }, [action, targetType])
+  }, [fetchLogs])
 
   const visibleLogs = useMemo(() => {
     const search = query.trim().toLowerCase()

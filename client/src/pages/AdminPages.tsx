@@ -1,4 +1,4 @@
-import { Suspense, lazy, memo, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiCopy, FiEye, FiEyeOff, FiFileText, FiGrid, FiImage, FiLayout, FiMonitor, FiMove, FiRotateCcw, FiRotateCw, FiSave, FiSearch, FiSmartphone, FiSquare, FiTablet, FiTrash2, FiType } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
@@ -757,9 +757,17 @@ export default function AdminPages() {
   }, [])
 
   const activeBuiltInPageKey = publicPages.some(page => page.id === activeTab) ? activeTab : ''
-  const activeBuiltInMetadata: Record<string, any> = activeBuiltInPageKey ? (settings.pageMetadata?.[activeBuiltInPageKey] || {}) : {}
-  const activeBuiltInHeader: Record<string, any> = activeBuiltInPageKey ? (settings.pageHeaders?.[activeBuiltInPageKey] || {}) : {}
-  const activeBuiltInSections = activeBuiltInPageKey ? getBuiltInSections(activeBuiltInPageKey) : []
+  const activeBuiltInMetadata: Record<string, any> = useMemo(() => (
+    activeBuiltInPageKey ? (settings.pageMetadata?.[activeBuiltInPageKey] || {}) : {}
+  ), [activeBuiltInPageKey, settings.pageMetadata])
+  const activeBuiltInHeader: Record<string, any> = useMemo(() => (
+    activeBuiltInPageKey ? (settings.pageHeaders?.[activeBuiltInPageKey] || {}) : {}
+  ), [activeBuiltInPageKey, settings.pageHeaders])
+  const activeBuiltInSections = useMemo(() => (
+    activeBuiltInPageKey && Array.isArray(settings.pageSections?.[activeBuiltInPageKey])
+      ? settings.pageSections[activeBuiltInPageKey]
+      : []
+  ), [activeBuiltInPageKey, settings.pageSections])
   const pageInsights = useMemo(() => {
     if (activeTab === 'Custom Pages') return buildPageEditorInsights(pageDraft, pageDraft.sections || [])
 
@@ -868,7 +876,7 @@ export default function AdminPages() {
     }
   }
 
-  const startNewPage = (syncUrl = true, promptForTemplate = true) => {
+  const startNewPage = useCallback((syncUrl = true, promptForTemplate = true) => {
       if (syncUrl && !promptForTemplate) skipNextNewPagePromptRef.current = true
       setActiveTab('Custom Pages')
       setSelectedPageId('new')
@@ -887,7 +895,7 @@ export default function AdminPages() {
       })
       setNewPageTemplatePromptOpen(promptForTemplate)
       if (syncUrl) navigate('/admin/pages?page=new')
-    }
+    }, [navigate, pages.length])
 
   const applyTemplateToNewPage = (template: any) => {
     const sections = Array.isArray(template.sections) && template.sections.length > 0
@@ -952,7 +960,7 @@ export default function AdminPages() {
         setPageDraft({ ...customPage, showPageHeader: customPage.showPageHeader !== false, sections: Array.isArray(customPage.sections) ? customPage.sections : [] })
       }
     }
-  }, [location.search, loading, pages])
+  }, [location.search, loading, pages, startNewPage])
 
   const updatePageDraft = (field: string, value: any) => {
     recordHistory()
@@ -1031,9 +1039,9 @@ export default function AdminPages() {
     })
   }
 
-  function getBuiltInSections(pageKey: string) {
-    return Array.isArray(settings.pageSections?.[pageKey]) ? settings.pageSections[pageKey] : []
-  }
+  const getBuiltInSections = useCallback((pageKey: string) => (
+    Array.isArray(settings.pageSections?.[pageKey]) ? settings.pageSections[pageKey] : []
+  ), [settings.pageSections])
 
   function updateBuiltInSections(pageKey: string, sections: any[]) {
     recordHistory()
@@ -1223,7 +1231,7 @@ export default function AdminPages() {
       setUndoStack([])
       setRedoStack([])
     }
-  }, [loading, activeTab, selectedPageId])
+  }, [loading, activePageSnapshot, activeTab, selectedPageId])
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {

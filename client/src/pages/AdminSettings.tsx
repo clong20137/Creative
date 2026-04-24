@@ -322,7 +322,7 @@ export default function AdminSettings() {
     if (nextRequestedTab && tabs.includes(nextRequestedTab) && nextRequestedTab !== activeTab) {
       setActiveTab(nextRequestedTab)
     }
-  }, [location.search])
+  }, [activeTab, location.search])
 
   useEffect(() => {
     const fetchSettings = async () => {

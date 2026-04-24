@@ -8,6 +8,7 @@ export default function ClientPortalPlugins() {
   const [plugins, setPlugins] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
 
   const fetchPlugins = useCallback(async () => {
     try {
@@ -37,10 +38,11 @@ export default function ClientPortalPlugins() {
 
   const handlePurchasePlugin = async (slug: string) => {
     try {
+      setErrorMessage('')
       const session = await pluginsAPI.createPluginCheckoutSession(slug)
       window.location.href = session.url
     } catch (error: any) {
-      alert(error.error || 'Plugin checkout is not configured yet')
+      setErrorMessage(error.error || 'Plugin checkout is not configured yet')
     }
   }
 
@@ -49,6 +51,11 @@ export default function ClientPortalPlugins() {
       {message && (
         <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-800">
           {message}
+        </div>
+      )}
+      {errorMessage && (
+        <div className="mb-6 rounded-lg border border-red-300 bg-red-50 p-4 text-red-700">
+          {errorMessage}
         </div>
       )}
 

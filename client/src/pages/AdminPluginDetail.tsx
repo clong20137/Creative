@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FiEdit, FiImage, FiPlus, FiTrash2, FiX } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
@@ -137,7 +137,7 @@ export default function AdminPluginDetail() {
   const [error, setError] = useState('')
   const [mediaPicker, setMediaPicker] = useState<{ open: boolean; type: string; visibility: string; onSelect: null | ((url: string, asset?: any) => void) }>({ open: false, type: 'image', visibility: 'all', onSelect: null })
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true)
       const plugins = await adminAPI.getPlugins()
@@ -178,11 +178,11 @@ export default function AdminPluginDetail() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [navigate, slug])
 
   useEffect(() => {
     fetchData()
-  }, [slug])
+  }, [fetchData])
 
   const updatePlugin = async (updates: any) => {
     if (!plugin) return

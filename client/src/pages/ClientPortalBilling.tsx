@@ -10,6 +10,7 @@ export default function ClientPortalBilling() {
   const [loading, setLoading] = useState(true)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [paymentMessage, setPaymentMessage] = useState('')
+  const [paymentError, setPaymentError] = useState('')
   const clientId = localStorage.getItem('userId') || ''
 
   const fetchData = useCallback(async () => {
@@ -45,13 +46,14 @@ export default function ClientPortalBilling() {
 
   const handlePayInvoice = async (invoiceId: string) => {
     try {
+      setPaymentError('')
       const session = await invoicesAPI.createCheckoutSession(invoiceId)
       if (session.url) {
         window.location.href = session.url
       }
     } catch (error: any) {
       console.error('Error starting payment:', error)
-      alert(error.error || 'Payment processing is not configured yet')
+      setPaymentError(error.error || 'Payment processing is not configured yet')
     }
   }
 
@@ -94,6 +96,11 @@ export default function ClientPortalBilling() {
         {paymentMessage && (
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">
             {paymentMessage}
+          </div>
+        )}
+        {paymentError && (
+          <div className="mb-6 rounded-lg border border-red-300 bg-red-50 p-4 text-red-700">
+            {paymentError}
           </div>
         )}
 
@@ -245,7 +252,7 @@ export default function ClientPortalBilling() {
                   <p className="mb-4 text-xl font-bold text-blue-600 sm:text-2xl">${plan.price}</p>
                   <ul className="space-y-2 mb-4">
                     {plan.features.map((f, j) => (
-                      <li key={j} className="text-sm text-gray-600">✓ {f}</li>
+                      <li key={j} className="text-sm text-gray-600">- {f}</li>
                     ))}
                   </ul>
                   <button className="w-full btn-primary text-sm">Select</button>
@@ -265,3 +272,4 @@ export default function ClientPortalBilling() {
     </ClientLayout>
   )
 }
+

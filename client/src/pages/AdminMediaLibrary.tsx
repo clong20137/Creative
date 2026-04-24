@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FiCopy, FiDownload, FiFileText, FiImage, FiSearch, FiTrash2, FiUpload, FiVideo } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
@@ -67,7 +67,7 @@ export default function AdminMediaLibrary() {
   const [bulkFolder, setBulkFolder] = useState('')
   const [bulkTags, setBulkTags] = useState('')
 
-  const fetchAssets = async () => {
+  const fetchAssets = useCallback(async () => {
     try {
       setLoading(true)
       setAssets(await adminAPI.getMedia(typeFilter, visibilityFilter))
@@ -76,11 +76,11 @@ export default function AdminMediaLibrary() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [typeFilter, visibilityFilter])
 
   useEffect(() => {
     fetchAssets()
-  }, [typeFilter, visibilityFilter])
+  }, [fetchAssets])
 
   const filteredAssets = useMemo(() => {
     const term = query.trim().toLowerCase()
@@ -107,7 +107,8 @@ export default function AdminMediaLibrary() {
     const missingAlt = assets.filter(asset => asset.altStatus === 'missing').length
     const usedAssets = assets.filter(asset => Number(asset.usageCount || 0) > 0).length
     const unusedAssets = total - usedAssets
-    return { total, missingAlt, usedAssets, unusedAssets, folders: folders.length }
+    const folderCount = new Set(assets.map(asset => String(asset.folder || 'Uncategorized'))).size
+    return { total, missingAlt, usedAssets, unusedAssets, folders: folderCount }
   }, [assets])
 
   const sortedAssets = useMemo(() => {
