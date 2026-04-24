@@ -532,7 +532,8 @@ async function ensureSiteSettingsSchema() {
     ['cmsCurrentVersion', { type: DataTypes.STRING, allowNull: true }],
     ['cmsVersionName', { type: DataTypes.STRING, allowNull: true }],
     ['cmsReleaseChannel', { type: DataTypes.ENUM('stable', 'early-access'), allowNull: true }],
-    ['cmsReleaseNotes', { type: DataTypes.JSON, allowNull: true }]
+    ['cmsReleaseNotes', { type: DataTypes.JSON, allowNull: true }],
+    ['siteBackups', { type: DataTypes.JSON, allowNull: true }]
   ]
 
   for (const [name, definition] of columns) {
@@ -574,6 +575,10 @@ export async function getOrCreateSiteSettings() {
   }
   if (!Array.isArray(settings.cmsReleaseNotes)) {
     settings.cmsReleaseNotes = []
+    changed = true
+  }
+  if (!Array.isArray(settings.siteBackups)) {
+    settings.siteBackups = []
     changed = true
   }
   if (!Array.isArray(settings.footerNavigationColumns) || settings.footerNavigationColumns.length === 0) {

@@ -636,7 +636,7 @@ function buildSeoRecommendations(searchConsole, pageSpeed) {
   return { recommendations, opportunityQueries, lowCtrPages }
 }
 
-async function storeUpload(dataUrl, originalName = '', visibility = 'public') {
+function decodeUploadDataUrl(dataUrl) {
   const match = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/)
   if (!match) {
     const error = new Error('Unsupported upload format')
@@ -659,6 +659,12 @@ async function storeUpload(dataUrl, originalName = '', visibility = 'public') {
     throw error
   }
 
+  return { mimeType, extension, buffer }
+}
+
+async function storeUpload(dataUrl, originalName = '', visibility = 'public') {
+  const { mimeType, extension, buffer } = decodeUploadDataUrl(dataUrl)
+
   const isPrivate = visibility === 'private'
   const targetDir = isPrivate ? privateUploadsDir : uploadsDir
   await fs.mkdir(targetDir, { recursive: true })
@@ -675,6 +681,31 @@ async function storeUpload(dataUrl, originalName = '', visibility = 'public') {
     mediaType: getMediaType(mimeType),
     size: buffer.length,
     visibility: isPrivate ? 'private' : 'public'
+  }
+}
+
+async function writeBackupAssetFile(asset, dataUrl) {
+  const { mimeType, extension, buffer } = decodeUploadDataUrl(dataUrl)
+  const visibility = asset?.visibility === 'private' ? 'private' : 'public'
+  const targetDir = visibility === 'private' ? privateUploadsDir : uploadsDir
+  await fs.mkdir(targetDir, { recursive: true })
+
+  const safeFilename = String(asset?.filename || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  const filename = safeFilename || `${randomUUID()}.${extension}`
+  const filePath = path.join(targetDir, filename)
+  await fs.writeFile(filePath, buffer)
+
+  return {
+    filename,
+    originalName: asset?.originalName || filename,
+    url: visibility === 'private' ? '' : `/api/uploads/${filename}`,
+    mimeType,
+    mediaType: getMediaType(mimeType),
+    size: buffer.length,
+    visibility
   }
 }
 
@@ -753,6 +784,251 @@ async function moveMediaAssetFile(asset, nextVisibility) {
     visibility: nextVisibility,
     url: nextVisibility === 'private' ? `/api/protected-media/${asset.id}` : `/api/uploads/${asset.filename}`
   }
+}
+
+function stripModelMetadata(record, fieldsToKeep = []) {
+  const data = record?.toJSON ? record.toJSON() : { ...(record || {}) }
+  const preserved = new Set(['id', ...fieldsToKeep])
+  delete data.createdAt
+  delete data.updatedAt
+  Object.keys(data).forEach((key) => {
+    if ((data[key] === undefined || data[key] === null) && !preserved.has(key)) {
+      delete data[key]
+    }
+  })
+  return data
+}
+
+async function serializeMediaAssets(includeFiles = false) {
+  await ensureMediaAssetsSchema()
+  const assets = await MediaAsset.findAll({ order: [['createdAt', 'ASC'], ['id', 'ASC']] })
+
+  return Promise.all(assets.map(async (asset) => {
+    const data = stripModelMetadata(asset)
+    if (!includeFiles || !data.filename) return data
+
+    const sourceDir = data.visibility === 'private' ? privateUploadsDir : uploadsDir
+    const filePath = path.join(sourceDir, data.filename)
+    try {
+      const buffer = await fs.readFile(filePath)
+      data.fileDataUrl = `data:${data.mimeType};base64,${buffer.toString('base64')}`
+    } catch (error) {
+      data.fileDataUrl = null
+    }
+    return data
+  }))
+}
+
+function backupSummaryFromData(data = {}) {
+  return {
+    customPages: Array.isArray(data.customPages) ? data.customPages.length : 0,
+    mediaAssets: Array.isArray(data.mediaAssets) ? data.mediaAssets.length : 0,
+    reusableSections: Array.isArray(data.siteSettings?.reusableSections) ? data.siteSettings.reusableSections.length : 0,
+    servicePackages: Array.isArray(data.servicePackages) ? data.servicePackages.length : 0,
+    portfolioItems: Array.isArray(data.portfolioItems) ? data.portfolioItems.length : 0,
+    plugins: Array.isArray(data.plugins) ? data.plugins.length : 0,
+    siteDemos: Array.isArray(data.siteDemos) ? data.siteDemos.length : 0,
+    restaurantMenuItems: Array.isArray(data.restaurantMenuItems) ? data.restaurantMenuItems.length : 0,
+    realEstateListings: Array.isArray(data.realEstateListings) ? data.realEstateListings.length : 0,
+    bookingAvailabilitySlots: Array.isArray(data.bookingAvailabilitySlots) ? data.bookingAvailabilitySlots.length : 0,
+    eventItems: Array.isArray(data.eventItems) ? data.eventItems.length : 0,
+    protectedContentItems: Array.isArray(data.protectedContentItems) ? data.protectedContentItems.length : 0
+  }
+}
+
+async function buildCmsBackupPayload({ includeFiles = false } = {}) {
+  await Promise.all([
+    ensureCustomPagesSchema(),
+    ensureMediaAssetsSchema(),
+    ensureProtectedContentSchema(),
+    ensureDemoPlugins(),
+    ensureSiteDemos()
+  ])
+
+  const [
+    settings,
+    customPages,
+    servicePackages,
+    portfolioItems,
+    plugins,
+    siteDemos,
+    restaurantMenuItems,
+    realEstateListings,
+    bookingAvailabilitySlots,
+    eventItems,
+    protectedContentItems,
+    mediaAssets
+  ] = await Promise.all([
+    getOrCreateSiteSettings(),
+    CustomPage.findAll({ order: [['sortOrder', 'ASC'], ['title', 'ASC']] }),
+    ServicePackage.findAll({ order: [['createdAt', 'ASC'], ['id', 'ASC']] }),
+    PortfolioItem.findAll({ order: [['createdAt', 'ASC'], ['id', 'ASC']] }),
+    Plugin.findAll({ order: [['createdAt', 'ASC'], ['id', 'ASC']] }),
+    SiteDemo.findAll({ order: [['sortOrder', 'ASC'], ['name', 'ASC']] }),
+    RestaurantMenuItem.findAll({ order: [['createdAt', 'ASC'], ['id', 'ASC']] }),
+    RealEstateListing.findAll({ order: [['createdAt', 'ASC'], ['id', 'ASC']] }),
+    BookingAvailabilitySlot.findAll({ order: [['createdAt', 'ASC'], ['id', 'ASC']] }),
+    EventItem.findAll({ order: [['createdAt', 'ASC'], ['id', 'ASC']] }),
+    ProtectedContentItem.findAll({ order: [['createdAt', 'ASC'], ['id', 'ASC']] }),
+    serializeMediaAssets(includeFiles)
+  ])
+
+  const siteSettings = stripModelMetadata(settings)
+  delete siteSettings.id
+  delete siteSettings.siteBackups
+
+  const data = {
+    siteSettings,
+    customPages: customPages.map((item) => stripModelMetadata(item)),
+    servicePackages: servicePackages.map((item) => stripModelMetadata(item)),
+    portfolioItems: portfolioItems.map((item) => stripModelMetadata(item)),
+    plugins: plugins.map((item) => stripModelMetadata(item)),
+    siteDemos: siteDemos.map((item) => stripModelMetadata(item)),
+    mediaAssets,
+    restaurantMenuItems: restaurantMenuItems.map((item) => stripModelMetadata(item)),
+    realEstateListings: realEstateListings.map((item) => stripModelMetadata(item)),
+    bookingAvailabilitySlots: bookingAvailabilitySlots.map((item) => stripModelMetadata(item)),
+    eventItems: eventItems.map((item) => stripModelMetadata(item)),
+    protectedContentItems: protectedContentItems.map((item) => stripModelMetadata(item))
+  }
+
+  return {
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    includesFiles: includeFiles,
+    summary: backupSummaryFromData(data),
+    data
+  }
+}
+
+function sanitizeBackupRecord(backup) {
+  return {
+    id: backup.id,
+    name: backup.name,
+    createdAt: backup.createdAt,
+    summary: backup.summary || backupSummaryFromData(backup.payload?.data || {})
+  }
+}
+
+function parseIncomingBackupPayload(rawPayload) {
+  const payload = typeof rawPayload === 'string' ? JSON.parse(rawPayload) : rawPayload
+  if (!payload || typeof payload !== 'object' || !payload.data || typeof payload.data !== 'object') {
+    const error = new Error('Invalid backup payload')
+    error.statusCode = 400
+    throw error
+  }
+  return payload
+}
+
+async function appendSiteBackup(settings, backup) {
+  const currentBackups = Array.isArray(settings.siteBackups) ? settings.siteBackups : []
+  settings.siteBackups = [backup, ...currentBackups].slice(0, 10)
+  await settings.save()
+}
+
+async function createSiteBackupRecord(name, options = {}) {
+  const settings = await getOrCreateSiteSettings()
+  const payload = await buildCmsBackupPayload(options)
+  const backup = {
+    id: randomUUID(),
+    name: String(name || '').trim() || `Backup ${new Date().toLocaleString('en-US')}`,
+    createdAt: new Date().toISOString(),
+    summary: payload.summary,
+    payload
+  }
+  await appendSiteBackup(settings, backup)
+  return backup
+}
+
+async function replaceTableRecords(Model, rows = []) {
+  await Model.destroy({ where: {} })
+  if (!Array.isArray(rows) || rows.length === 0) return
+  await Model.bulkCreate(rows, { validate: false })
+}
+
+async function upsertTableRecords(Model, rows = [], { fallbackKeys = [], preserveMissing = true } = {}) {
+  if (!Array.isArray(rows) || rows.length === 0) return
+
+  const existingRecords = await Model.findAll()
+  const matchedIds = new Set()
+
+  for (const row of rows) {
+    const incoming = { ...row }
+    let existing = null
+
+    if (incoming.id !== undefined && incoming.id !== null) {
+      existing = existingRecords.find((item) => Number(item.id) === Number(incoming.id)) || null
+    }
+
+    if (!existing) {
+      existing = fallbackKeys
+        .map((key) => existingRecords.find((item) => String(item[key] || '') === String(incoming[key] || '')))
+        .find(Boolean) || null
+    }
+
+    if (existing) {
+      matchedIds.add(existing.id)
+      const updates = { ...incoming }
+      delete updates.id
+      await existing.update(updates)
+    } else {
+      const created = await Model.create(incoming)
+      matchedIds.add(created.id)
+    }
+  }
+
+  if (!preserveMissing) {
+    const idsToDelete = existingRecords
+      .filter((item) => !matchedIds.has(item.id))
+      .map((item) => item.id)
+    if (idsToDelete.length) {
+      await Model.destroy({ where: { id: idsToDelete } })
+    }
+  }
+}
+
+async function prepareImportedMediaAssets(rows = []) {
+  return Promise.all((Array.isArray(rows) ? rows : []).map(async (row) => {
+    const asset = { ...row }
+    const fileDataUrl = asset.fileDataUrl
+    delete asset.fileDataUrl
+    if (!fileDataUrl) return asset
+
+    const stored = await writeBackupAssetFile(asset, fileDataUrl)
+    return {
+      ...asset,
+      ...stored
+    }
+  }))
+}
+
+async function restoreCmsBackupPayload(payload) {
+  const backup = parseIncomingBackupPayload(payload)
+  const data = backup.data || {}
+  const settings = await getOrCreateSiteSettings()
+
+  const nextSettings = { ...(data.siteSettings || {}) }
+  delete nextSettings.id
+  delete nextSettings.siteBackups
+
+  await settings.update(nextSettings)
+
+  await replaceTableRecords(CustomPage, Array.isArray(data.customPages) ? data.customPages : [])
+  await replaceTableRecords(ServicePackage, Array.isArray(data.servicePackages) ? data.servicePackages : [])
+  await replaceTableRecords(PortfolioItem, Array.isArray(data.portfolioItems) ? data.portfolioItems : [])
+  await replaceTableRecords(RestaurantMenuItem, Array.isArray(data.restaurantMenuItems) ? data.restaurantMenuItems : [])
+  await replaceTableRecords(RealEstateListing, Array.isArray(data.realEstateListings) ? data.realEstateListings : [])
+  await replaceTableRecords(EventItem, Array.isArray(data.eventItems) ? data.eventItems : [])
+  await replaceTableRecords(SiteDemo, Array.isArray(data.siteDemos) ? data.siteDemos : [])
+
+  const preparedMediaAssets = await prepareImportedMediaAssets(data.mediaAssets)
+  await replaceTableRecords(MediaAsset, preparedMediaAssets)
+
+  await upsertTableRecords(Plugin, Array.isArray(data.plugins) ? data.plugins : [], { fallbackKeys: ['slug'], preserveMissing: true })
+  await upsertTableRecords(BookingAvailabilitySlot, Array.isArray(data.bookingAvailabilitySlots) ? data.bookingAvailabilitySlots : [], { preserveMissing: true })
+  await upsertTableRecords(ProtectedContentItem, Array.isArray(data.protectedContentItems) ? data.protectedContentItems : [], { preserveMissing: true })
+
+  return backupSummaryFromData(data)
 }
 
 router.use(verifyToken, ensureActiveUser, requireRole('admin'))
@@ -1728,6 +2004,90 @@ router.put('/site-settings', async (req, res) => {
     const settings = await getOrCreateSiteSettings()
     await settings.update(req.body)
     res.json(settings)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/backups', async (req, res) => {
+  try {
+    const settings = await getOrCreateSiteSettings()
+    const backups = Array.isArray(settings.siteBackups) ? settings.siteBackups.map(sanitizeBackupRecord) : []
+    res.json(backups)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/backups', async (req, res) => {
+  try {
+    const backup = await createSiteBackupRecord(req.body?.name, { includeFiles: false })
+    res.status(201).json({ backup: sanitizeBackupRecord(backup) })
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message })
+  }
+})
+
+router.get('/backups/export', async (req, res) => {
+  try {
+    const payload = await buildCmsBackupPayload({ includeFiles: true })
+    res.json(payload)
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message })
+  }
+})
+
+router.get('/backups/:id/export', async (req, res) => {
+  try {
+    const settings = await getOrCreateSiteSettings()
+    const backup = (Array.isArray(settings.siteBackups) ? settings.siteBackups : []).find((item) => String(item.id) === String(req.params.id))
+    if (!backup) return res.status(404).json({ error: 'Backup not found' })
+    res.json(backup.payload)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/backups/import', async (req, res) => {
+  try {
+    const incoming = parseIncomingBackupPayload(req.body?.payload ?? req.body)
+    const preImportBackup = await createSiteBackupRecord(`Auto backup before import ${new Date().toLocaleString('en-US')}`, { includeFiles: false })
+    const summary = await restoreCmsBackupPayload(incoming)
+    res.json({
+      message: 'Backup imported successfully',
+      summary,
+      restorePoint: sanitizeBackupRecord(preImportBackup)
+    })
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message })
+  }
+})
+
+router.post('/backups/:id/restore', async (req, res) => {
+  try {
+    const settings = await getOrCreateSiteSettings()
+    const backup = (Array.isArray(settings.siteBackups) ? settings.siteBackups : []).find((item) => String(item.id) === String(req.params.id))
+    if (!backup) return res.status(404).json({ error: 'Backup not found' })
+
+    const preRestoreBackup = await createSiteBackupRecord(`Auto backup before restore ${new Date().toLocaleString('en-US')}`, { includeFiles: false })
+    const summary = await restoreCmsBackupPayload(backup.payload)
+    res.json({
+      message: 'Backup restored successfully',
+      summary,
+      restorePoint: sanitizeBackupRecord(preRestoreBackup)
+    })
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message })
+  }
+})
+
+router.delete('/backups/:id', async (req, res) => {
+  try {
+    const settings = await getOrCreateSiteSettings()
+    const backups = Array.isArray(settings.siteBackups) ? settings.siteBackups : []
+    settings.siteBackups = backups.filter((item) => String(item.id) !== String(req.params.id))
+    await settings.save()
+    res.json({ message: 'Backup deleted' })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

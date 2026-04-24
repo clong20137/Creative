@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import { adminAPI, resolveAssetUrl, usersAPI } from '../services/api'
@@ -90,7 +90,7 @@ const emptySettings = {
   turnstileSecretKey: ''
 }
 
-const tabs = ['General', 'Theme', 'Releases', 'Contact', 'SEO', 'Payments', 'Security']
+const tabs = ['General', 'Theme', 'Releases', 'Backups', 'Contact', 'SEO', 'Payments', 'Security']
 const pageHeaderLabels: Record<string, string> = {
   portfolio: 'Portfolio',
   services: 'Services',
@@ -278,6 +278,10 @@ function getActiveTabPayload(settings: typeof emptySettings, activeTab: string) 
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState('General')
   const [settings, setSettings] = useState(emptySettings)
+  const [backups, setBackups] = useState<any[]>([])
+  const [backupName, setBackupName] = useState('')
+  const [importPayload, setImportPayload] = useState('')
+  const [importFilename, setImportFilename] = useState('')
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
   const [twoFactorSetup, setTwoFactorSetup] = useState<any>(null)
   const [twoFactorCode, setTwoFactorCode] = useState('')
@@ -290,9 +294,10 @@ export default function AdminSettings() {
     const fetchSettings = async () => {
       try {
         setLoading(true)
-        const [data, profile] = await Promise.all([adminAPI.getSiteSettings(), usersAPI.getProfile()])
+        const [data, profile, backupData] = await Promise.all([adminAPI.getSiteSettings(), usersAPI.getProfile(), adminAPI.getBackups()])
         setSettings({ ...emptySettings, ...data })
         setTwoFactorEnabled(Boolean(profile.twoFactorEnabled))
+        setBackups(Array.isArray(backupData) ? backupData : [])
       } catch (err: any) {
         setError(err.error || 'Failed to load settings')
       } finally {
@@ -307,6 +312,7 @@ export default function AdminSettings() {
   const buttonRadius = Math.min(Math.max(Number(settings.themeButtonRadius) || 8, 0), 32)
   const cardRadius = Math.min(Math.max(Number(settings.themeCardRadius) || 8, 0), 32)
   const spacingScale = Math.min(Math.max(Number(settings.themeSpacingScale) || 1, 0.8), 1.4)
+  const hasImportPayload = useMemo(() => Boolean(importPayload.trim()), [importPayload])
 
   const handleUpload = async (key: string, file: File | undefined) => {
     if (!file) return
@@ -456,6 +462,134 @@ export default function AdminSettings() {
       setMessage('Authenticator app two-factor authentication enabled')
     } catch (err: any) {
       setError(err.error || 'Invalid authenticator code')
+    }
+  }
+
+  const downloadBackupFile = (payload: any, filename: string) => {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  const refreshBackups = async () => {
+    const backupData = await adminAPI.getBackups()
+    setBackups(Array.isArray(backupData) ? backupData : [])
+  }
+
+  const handleCreateBackup = async () => {
+    try {
+      setError('')
+      setMessage('Creating backup...')
+      await adminAPI.createBackup({ name: backupName.trim() || undefined })
+      setBackupName('')
+      await refreshBackups()
+      setMessage('Backup created')
+    } catch (err: any) {
+      setMessage('')
+      setError(err.error || err.message || 'Failed to create backup')
+    }
+  }
+
+  const handleExportCurrentBackup = async () => {
+    try {
+      setError('')
+      setMessage('Preparing export...')
+      const payload = await adminAPI.exportCurrentBackup()
+      downloadBackupFile(payload, `creative-cms-export-${new Date().toISOString().slice(0, 10)}.json`)
+      setMessage('Export downloaded')
+    } catch (err: any) {
+      setMessage('')
+      setError(err.error || err.message || 'Failed to export backup')
+    }
+  }
+
+  const handleExportStoredBackup = async (backup: any) => {
+    try {
+      setError('')
+      setMessage('Preparing backup download...')
+      const payload = await adminAPI.exportStoredBackup(String(backup.id))
+      const safeName = String(backup.name || 'backup').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      downloadBackupFile(payload, `${safeName || 'backup'}.json`)
+      setMessage('Backup downloaded')
+    } catch (err: any) {
+      setMessage('')
+      setError(err.error || err.message || 'Failed to download backup')
+    }
+  }
+
+  const handleImportFile = async (file: File | undefined) => {
+    if (!file) return
+    try {
+      const text = await file.text()
+      setImportPayload(text)
+      setImportFilename(file.name)
+      setMessage('Backup file loaded. Review and import when ready.')
+      setError('')
+    } catch (err: any) {
+      setError(err.message || 'Failed to read backup file')
+    }
+  }
+
+  const handleImportBackup = async () => {
+    if (!hasImportPayload) return
+    const confirmed = window.confirm('Importing this backup will replace current site settings and content. We will create an automatic restore point first. Continue?')
+    if (!confirmed) return
+
+    try {
+      setError('')
+      setMessage('Importing backup...')
+      await adminAPI.importBackup(importPayload)
+      await Promise.all([
+        refreshBackups(),
+        adminAPI.getSiteSettings().then((data) => setSettings({ ...emptySettings, ...data }))
+      ])
+      setMessage('Backup imported successfully')
+      setImportPayload('')
+      setImportFilename('')
+    } catch (err: any) {
+      setMessage('')
+      setError(err.error || err.message || 'Failed to import backup')
+    }
+  }
+
+  const handleRestoreBackup = async (backupId: string) => {
+    const confirmed = window.confirm('Restore this backup? We will create an automatic restore point before replacing current site content.')
+    if (!confirmed) return
+
+    try {
+      setError('')
+      setMessage('Restoring backup...')
+      await adminAPI.restoreBackup(backupId)
+      await Promise.all([
+        refreshBackups(),
+        adminAPI.getSiteSettings().then((data) => setSettings({ ...emptySettings, ...data }))
+      ])
+      setMessage('Backup restored successfully')
+    } catch (err: any) {
+      setMessage('')
+      setError(err.error || err.message || 'Failed to restore backup')
+    }
+  }
+
+  const handleDeleteBackup = async (backupId: string) => {
+    const confirmed = window.confirm('Delete this backup permanently?')
+    if (!confirmed) return
+
+    try {
+      setError('')
+      setMessage('Deleting backup...')
+      await adminAPI.deleteBackup(backupId)
+      await refreshBackups()
+      setMessage('Backup deleted')
+    } catch (err: any) {
+      setMessage('')
+      setError(err.error || err.message || 'Failed to delete backup')
     }
   }
 
@@ -732,6 +866,104 @@ export default function AdminSettings() {
               </section>
             )}
 
+            {activeTab === 'Backups' && (
+              <section className="space-y-6">
+                <div className="space-y-2">
+                  <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Backups, Exports, and Imports</h2>
+                  <p className="text-gray-600">Create restore points on this server, download a full JSON export, or import a backup into this CMS. Imports replace site content and settings, but not users, invoices, subscriptions, tickets, or leads.</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="rounded-xl border p-4 space-y-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Create Server Backup</h3>
+                      <p className="text-sm text-gray-600">Stores a restore point in the CMS so we can roll back later.</p>
+                    </div>
+                    <input
+                      value={backupName}
+                      onChange={(e) => setBackupName(e.target.value)}
+                      placeholder="Optional backup name"
+                      className="w-full px-4 py-2 border rounded-lg"
+                    />
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <button type="button" onClick={handleCreateBackup} className="btn-primary w-full sm:w-auto">Create Backup</button>
+                      <button type="button" onClick={handleExportCurrentBackup} className="btn-secondary w-full sm:w-auto">Export Current Site</button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border p-4 space-y-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Import Backup</h3>
+                      <p className="text-sm text-gray-600">Upload or paste a backup JSON file. We create an automatic restore point before importing.</p>
+                    </div>
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-semibold text-gray-700">Import file</span>
+                      <input type="file" accept="application/json,.json" onChange={(e) => handleImportFile(e.target.files?.[0])} className="w-full px-4 py-2 border rounded-lg" />
+                    </label>
+                    {importFilename && (
+                      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                        Loaded file: <span className="font-semibold">{importFilename}</span>
+                      </div>
+                    )}
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-semibold text-gray-700">Backup JSON</span>
+                      <textarea
+                        value={importPayload}
+                        onChange={(e) => setImportPayload(e.target.value)}
+                        rows={8}
+                        placeholder="Paste backup JSON here if you are not uploading a file."
+                        className="w-full rounded-lg border px-4 py-3 font-mono text-sm"
+                      />
+                    </label>
+                    <button type="button" onClick={handleImportBackup} disabled={!hasImportPayload} className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60">
+                      Import Backup
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border p-4 space-y-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Saved Restore Points</h3>
+                      <p className="text-sm text-gray-600">The newest 10 backups are stored here for quick rollback.</p>
+                    </div>
+                    <button type="button" onClick={refreshBackups} className="btn-secondary w-full sm:w-auto">Refresh</button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {backups.length === 0 && (
+                      <div className="rounded-xl border border-dashed p-6 text-center text-sm text-gray-500">
+                        No backups yet. Create your first restore point before making major changes.
+                      </div>
+                    )}
+
+                    {backups.map((backup) => (
+                      <div key={backup.id} className="rounded-xl border bg-gray-50 p-4 space-y-3">
+                        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <h4 className="text-base font-bold text-gray-900">{backup.name || 'Untitled backup'}</h4>
+                            <p className="text-sm text-gray-500">{new Date(backup.createdAt).toLocaleString()}</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-xs font-semibold text-gray-600 sm:grid-cols-4">
+                            <span className="rounded-lg bg-white px-3 py-2">Pages {backup.summary?.customPages ?? 0}</span>
+                            <span className="rounded-lg bg-white px-3 py-2">Media {backup.summary?.mediaAssets ?? 0}</span>
+                            <span className="rounded-lg bg-white px-3 py-2">Plugins {backup.summary?.plugins ?? 0}</span>
+                            <span className="rounded-lg bg-white px-3 py-2">Blocks {backup.summary?.reusableSections ?? 0}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <button type="button" onClick={() => handleRestoreBackup(String(backup.id))} className="btn-primary w-full sm:w-auto">Restore</button>
+                          <button type="button" onClick={() => handleExportStoredBackup(backup)} className="btn-secondary w-full sm:w-auto">Download JSON</button>
+                          <button type="button" onClick={() => handleDeleteBackup(String(backup.id))} className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2 font-semibold text-red-700 hover:bg-red-100 sm:w-auto">Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
             {activeTab === 'Contact' && (
               <section className="space-y-4">
                 <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Contact and Social Links</h2>
@@ -934,7 +1166,9 @@ export default function AdminSettings() {
             )}
           </div>
 
-          <button type="submit" className="w-full btn-primary sm:w-auto">Save Settings</button>
+          {activeTab !== 'Backups' && (
+            <button type="submit" className="w-full btn-primary sm:w-auto">Save Settings</button>
+          )}
         </form>
       )}
     </AdminLayout>
