@@ -165,11 +165,117 @@ html.dark-mode .shadow-sm {
   background-color: rgba(255, 255, 255, 0.96);
 }
 
+.admin-shell {
+  background-color: #f8fafc;
+  color: #334155;
+}
+
+.admin-shell .bg-white,
+.admin-shell .bg-white\/95,
+.admin-shell .card {
+  background-color: #ffffff;
+}
+
+.admin-shell .bg-gray-50 {
+  background-color: #f8fafc;
+}
+
+.admin-shell .bg-gray-100,
+.admin-shell .bg-gray-200 {
+  background-color: #e5e7eb;
+}
+
+.admin-shell .text-gray-900,
+.admin-shell .text-gray-800,
+.admin-shell .text-gray-700 {
+  color: #0f172a;
+}
+
+.admin-shell .text-gray-600,
+.admin-shell .text-gray-500,
+.admin-shell .text-gray-400 {
+  color: #475569;
+}
+
+.admin-shell .border,
+.admin-shell .border-gray-200,
+.admin-shell .border-gray-300,
+.admin-shell .border-gray-400 {
+  border-color: rgba(148, 163, 184, 0.26) !important;
+}
+
+.admin-shell .hover\:bg-blue-50:hover,
+.admin-shell .hover\:bg-gray-50:hover,
+.admin-shell .hover\:bg-white:hover {
+  background-color: rgba(37, 99, 235, 0.08) !important;
+}
+
+.admin-shell .text-blue-600,
+.admin-shell .text-blue-700,
+.admin-shell .text-blue-800,
+.admin-shell .hover\:text-blue-700:hover,
+.admin-shell .hover\:text-blue-800:hover {
+  color: #2563eb !important;
+}
+
 html.dark-mode .admin-shell .admin-sidebar,
 html.dark-mode .admin-shell .admin-topbar,
 html.dark-mode .admin-shell .admin-mobile-footer {
   background-color: rgba(17, 24, 39, 0.96) !important;
   border-color: #374151 !important;
+}
+
+html.dark-mode .admin-shell {
+  background-color: #111827;
+  color: #d1d5db;
+}
+
+html.dark-mode .admin-shell .bg-white,
+html.dark-mode .admin-shell .bg-white\/95,
+html.dark-mode .admin-shell .card {
+  background-color: #1f2937 !important;
+}
+
+html.dark-mode .admin-shell .bg-gray-50 {
+  background-color: #111827 !important;
+}
+
+html.dark-mode .admin-shell .bg-gray-100,
+html.dark-mode .admin-shell .bg-gray-200 {
+  background-color: #374151 !important;
+}
+
+html.dark-mode .admin-shell .text-gray-900,
+html.dark-mode .admin-shell .text-gray-800,
+html.dark-mode .admin-shell .text-gray-700 {
+  color: #f9fafb !important;
+}
+
+html.dark-mode .admin-shell .text-gray-600,
+html.dark-mode .admin-shell .text-gray-500,
+html.dark-mode .admin-shell .text-gray-400 {
+  color: #cbd5e1 !important;
+}
+
+html.dark-mode .admin-shell .border,
+html.dark-mode .admin-shell .border-gray-200,
+html.dark-mode .admin-shell .border-gray-300,
+html.dark-mode .admin-shell .border-gray-400 {
+  border-color: #374151 !important;
+}
+
+html.dark-mode .admin-shell .hover\:bg-blue-50:hover,
+html.dark-mode .admin-shell .hover\:bg-gray-50:hover,
+html.dark-mode .admin-shell .hover\:bg-white:hover {
+  background-color: rgba(59, 130, 246, 0.18) !important;
+}
+
+html.dark-mode .admin-shell .text-blue-600,
+html.dark-mode .admin-shell .text-blue-700,
+html.dark-mode .admin-shell .text-blue-800,
+html.dark-mode .admin-shell .hover\:text-blue-700:hover,
+html.dark-mode .admin-shell .hover\:text-blue-800:hover {
+  color: #93c5fd !important;
 }
 
 html.dark-mode .admin-shell .admin-sidebar .bg-white,
@@ -192,6 +298,14 @@ html.dark-mode .admin-shell .admin-mobile-footer .bg-white\/95 {
   color: #4b5563 !important;
 }
 
+.site-footer a {
+  color: inherit;
+}
+
+.site-footer a:hover {
+  color: var(--theme-link, #2563eb);
+}
+
 .site-footer .border-gray-800 {
   border-color: rgba(17, 24, 39, 0.08) !important;
 }
@@ -204,6 +318,10 @@ html.dark-mode .site-footer {
 html.dark-mode .site-footer .text-gray-400,
 html.dark-mode .site-footer .text-gray-500 {
   color: #cbd5e1 !important;
+}
+
+html.dark-mode .site-footer a:hover {
+  color: #ffffff;
 }
 
 html.dark-mode .site-footer .border-gray-800 {
@@ -664,6 +782,54 @@ html.dark-mode .site-theme .site-nav .site-nav-mobile-actions {
   color: var(--theme-body, #334155);
 }
 
+.client-portal-shell .bg-white,
+.client-portal-shell .bg-white\/95,
+.client-portal-shell .card {
+  background-color: color-mix(in srgb, var(--theme-surface, #ffffff) 94%, #e2e8f0);
+}
+
+.client-portal-shell .bg-gray-50 {
+  background-color: color-mix(in srgb, var(--theme-background, #f8fafc) 90%, #cbd5e1);
+}
+
+.client-portal-shell .bg-gray-100,
+.client-portal-shell .bg-gray-200 {
+  background-color: color-mix(in srgb, var(--theme-surface, #ffffff) 86%, #cbd5e1);
+}
+
+.client-portal-shell .text-gray-900,
+.client-portal-shell .text-gray-800,
+.client-portal-shell .text-gray-700 {
+  color: var(--theme-heading, #0f172a);
+}
+
+.client-portal-shell .text-gray-600,
+.client-portal-shell .text-gray-500,
+.client-portal-shell .text-gray-400 {
+  color: color-mix(in srgb, var(--theme-body, #334155) 84%, white);
+}
+
+.client-portal-shell .border,
+.client-portal-shell .border-gray-200,
+.client-portal-shell .border-gray-300,
+.client-portal-shell .border-gray-400 {
+  border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+.client-portal-shell .hover\:bg-blue-50:hover,
+.client-portal-shell .hover\:bg-gray-50:hover,
+.client-portal-shell .hover\:bg-white:hover {
+  background-color: color-mix(in srgb, var(--theme-link, #2563eb) 10%, var(--theme-surface, #ffffff)) !important;
+}
+
+.client-portal-shell .text-blue-600,
+.client-portal-shell .text-blue-700,
+.client-portal-shell .text-blue-800,
+.client-portal-shell .hover\:text-blue-700:hover,
+.client-portal-shell .hover\:text-blue-800:hover {
+  color: var(--theme-link, #2563eb) !important;
+}
+
 .client-portal-topbar,
 .client-portal-mobile-nav {
   background-color: color-mix(in srgb, var(--theme-surface, #ffffff) 95%, transparent);
@@ -837,6 +1003,54 @@ html.dark-mode .site-theme .site-nav .site-nav-mobile-actions {
 html.dark-mode .client-portal-shell {
   background-color: #111827;
   color: #e5e7eb;
+}
+
+html.dark-mode .client-portal-shell .bg-white,
+html.dark-mode .client-portal-shell .bg-white\/95,
+html.dark-mode .client-portal-shell .card {
+  background-color: rgba(31, 41, 55, 0.96) !important;
+}
+
+html.dark-mode .client-portal-shell .bg-gray-50 {
+  background-color: #111827 !important;
+}
+
+html.dark-mode .client-portal-shell .bg-gray-100,
+html.dark-mode .client-portal-shell .bg-gray-200 {
+  background-color: #374151 !important;
+}
+
+html.dark-mode .client-portal-shell .text-gray-900,
+html.dark-mode .client-portal-shell .text-gray-800,
+html.dark-mode .client-portal-shell .text-gray-700 {
+  color: #f8fafc !important;
+}
+
+html.dark-mode .client-portal-shell .text-gray-600,
+html.dark-mode .client-portal-shell .text-gray-500,
+html.dark-mode .client-portal-shell .text-gray-400 {
+  color: #cbd5e1 !important;
+}
+
+html.dark-mode .client-portal-shell .border,
+html.dark-mode .client-portal-shell .border-gray-200,
+html.dark-mode .client-portal-shell .border-gray-300,
+html.dark-mode .client-portal-shell .border-gray-400 {
+  border-color: rgba(75, 85, 99, 0.72) !important;
+}
+
+html.dark-mode .client-portal-shell .hover\:bg-blue-50:hover,
+html.dark-mode .client-portal-shell .hover\:bg-gray-50:hover,
+html.dark-mode .client-portal-shell .hover\:bg-white:hover {
+  background-color: rgba(37, 99, 235, 0.18) !important;
+}
+
+html.dark-mode .client-portal-shell .text-blue-600,
+html.dark-mode .client-portal-shell .text-blue-700,
+html.dark-mode .client-portal-shell .text-blue-800,
+html.dark-mode .client-portal-shell .hover\:text-blue-700:hover,
+html.dark-mode .client-portal-shell .hover\:text-blue-800:hover {
+  color: #93c5fd !important;
 }
 
 html.dark-mode .client-portal-topbar,
