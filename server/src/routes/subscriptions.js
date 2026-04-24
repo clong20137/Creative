@@ -7,6 +7,7 @@ import User from '../models/User.js'
 import { DataTypes } from 'sequelize'
 import { ensureActiveUser, requireRole, requireSelfOrAdmin, verifyToken } from '../utils/auth.js'
 import { getOrCreateSiteSettings } from './site-settings.js'
+import { getClientEntitlements } from '../utils/entitlements.js'
 
 const router = express.Router()
 let subscriptionSchemaReady = false
@@ -91,6 +92,36 @@ async function ensureSubscriptionSchema() {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true
+    })
+    await addPlanColumn('maxPages', { type: DataTypes.INTEGER, allowNull: true })
+    await addPlanColumn('maxMediaItems', { type: DataTypes.INTEGER, allowNull: true })
+    await addPlanColumn('maxStorageMb', { type: DataTypes.INTEGER, allowNull: true })
+    await addPlanColumn('maxTeamMembers', { type: DataTypes.INTEGER, allowNull: true })
+    await addPlanColumn('allowAllPlugins', {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
+    })
+    await addPlanColumn('allowedPluginSlugs', { type: DataTypes.JSON, allowNull: true })
+    await addPlanColumn('whiteLabelEnabled', {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    })
+    await addPlanColumn('backupsEnabled', {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    })
+    await addPlanColumn('auditLogEnabled', {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    })
+    await addPlanColumn('customDomainEnabled', {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
     })
   }
 
@@ -282,6 +313,17 @@ router.get('/client/:clientId/license', verifyToken, ensureActiveUser, requireSe
     })
 
     res.json({ hasActiveLicense: false, license: latestLicense })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/client/:clientId/entitlements', verifyToken, ensureActiveUser, requireSelfOrAdmin((req) => req.params.clientId), async (req, res) => {
+  try {
+    await ensureSubscriptionSchema()
+    await ensureCmsLicenseSchema()
+    const entitlements = await getClientEntitlements(req.params.clientId)
+    res.json(entitlements)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

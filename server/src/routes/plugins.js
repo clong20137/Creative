@@ -16,6 +16,7 @@ import { getOrCreateSiteSettings } from './site-settings.js'
 import User from '../models/User.js'
 import { createRateLimiter } from '../utils/rate-limit.js'
 import { cleanMultiline, cleanString, isValidEmail } from '../utils/validation.js'
+import { getClientEntitlements, isPluginAllowed } from '../utils/entitlements.js'
 
 const router = express.Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -361,15 +362,17 @@ export async function ensureDemoPlugins() {
 router.get('/client', verifyClient, ensureActiveClient, async (req, res) => {
   try {
     await ensureDemoPlugins()
-    const [plugins, purchases] = await Promise.all([
+    const [plugins, purchases, entitlements] = await Promise.all([
       Plugin.findAll({ where: { isEnabled: true }, order: [['name', 'ASC']] }),
-      ClientPluginPurchase.findAll({ where: { clientId: req.userId } })
+      ClientPluginPurchase.findAll({ where: { clientId: req.userId } }),
+      getClientEntitlements(req.userId)
     ])
 
     const purchasesBySlug = new Map(purchases.map(purchase => [purchase.pluginSlug, purchase]))
     res.json(plugins.map(plugin => ({
       ...plugin.toJSON(),
-      clientPurchase: purchasesBySlug.get(plugin.slug) || null
+      clientPurchase: purchasesBySlug.get(plugin.slug) || null,
+      planAccess: isPluginAllowed(entitlements, plugin.slug)
     })))
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -394,6 +397,9 @@ router.post('/:slug/checkout-session', verifyClient, ensureActiveClient, async (
     await ensureDemoPlugins()
     const plugin = await Plugin.findOne({ where: { slug: req.params.slug } })
     if (!plugin) return res.status(404).json({ error: 'Plugin not found' })
+    const entitlements = await getClientEntitlements(req.userId)
+    const pluginAccess = isPluginAllowed(entitlements, plugin.slug)
+    if (!pluginAccess.allowed) return res.status(403).json({ error: pluginAccess.reason })
 
     const existingPurchase = await ClientPluginPurchase.findOne({
       where: { clientId: req.userId, pluginSlug: plugin.slug, status: 'active' }

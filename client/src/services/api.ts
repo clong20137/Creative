@@ -122,6 +122,7 @@ export const subscriptionsAPI = {
 
 export const licensesAPI = {
   getClientLicense: (clientId: string) => unwrap(api.get(`/subscriptions/client/${clientId}/license`)),
+  getClientEntitlements: (clientId: string) => unwrap(api.get(`/subscriptions/client/${clientId}/entitlements`)),
   getLicensePlans: () => unwrap<any[]>(api.get('/subscriptions/license-plans')),
   createLicenseCheckoutSession: (clientId: string, data: { planId: string; licensedDomain?: string }) => unwrap<{ url: string }>(api.post(`/subscriptions/client/${clientId}/license/checkout-session`, data)),
   cancelClientLicense: (clientId: string) => unwrap(api.put(`/subscriptions/client/${clientId}/license/cancel`)),

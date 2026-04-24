@@ -296,6 +296,42 @@ async function ensureSubscriptionSchema() {
         if (!String(error?.message || '').includes('Duplicate column')) throw error
       })
     }
+    const addPlanColumn = async (name, config) => {
+      if (planTable[name]) return
+      await queryInterface.addColumn('SubscriptionPlans', name, config).catch((error) => {
+        if (!String(error?.message || '').includes('Duplicate column')) throw error
+      })
+    }
+    await addPlanColumn('maxPages', { type: DataTypes.INTEGER, allowNull: true })
+    await addPlanColumn('maxMediaItems', { type: DataTypes.INTEGER, allowNull: true })
+    await addPlanColumn('maxStorageMb', { type: DataTypes.INTEGER, allowNull: true })
+    await addPlanColumn('maxTeamMembers', { type: DataTypes.INTEGER, allowNull: true })
+    await addPlanColumn('allowAllPlugins', {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
+    })
+    await addPlanColumn('allowedPluginSlugs', { type: DataTypes.JSON, allowNull: true })
+    await addPlanColumn('whiteLabelEnabled', {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    })
+    await addPlanColumn('backupsEnabled', {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    })
+    await addPlanColumn('auditLogEnabled', {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    })
+    await addPlanColumn('customDomainEnabled', {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    })
   }
 
   if (subscriptionTable) {
@@ -1968,12 +2004,28 @@ router.post('/subscription-plans', async (req, res) => {
         .split('\n')
         .map(feature => feature.trim())
         .filter(Boolean)
+    const allowedPluginSlugs = Array.isArray(req.body.allowedPluginSlugs)
+      ? req.body.allowedPluginSlugs
+      : String(req.body.allowedPluginSlugs || '')
+        .split('\n')
+        .map((slug) => slug.trim())
+        .filter(Boolean)
 
     const plan = await SubscriptionPlan.create({
       ...req.body,
       productType: req.body.productType === 'cms-license' ? 'cms-license' : 'service',
       updateChannel: req.body.updateChannel === 'early-access' ? 'early-access' : 'stable',
       includedUpdates: req.body.includedUpdates !== false,
+      maxPages: req.body.maxPages ? Number(req.body.maxPages) : null,
+      maxMediaItems: req.body.maxMediaItems ? Number(req.body.maxMediaItems) : null,
+      maxStorageMb: req.body.maxStorageMb ? Number(req.body.maxStorageMb) : null,
+      maxTeamMembers: req.body.maxTeamMembers ? Number(req.body.maxTeamMembers) : null,
+      allowAllPlugins: req.body.allowAllPlugins !== false,
+      allowedPluginSlugs,
+      whiteLabelEnabled: req.body.whiteLabelEnabled === true,
+      backupsEnabled: req.body.backupsEnabled === true,
+      auditLogEnabled: req.body.auditLogEnabled === true,
+      customDomainEnabled: req.body.customDomainEnabled === true,
       features
     })
     res.status(201).json(plan)
@@ -1995,12 +2047,28 @@ router.put('/subscription-plans/:id', async (req, res) => {
         .split('\n')
         .map(feature => feature.trim())
         .filter(Boolean)
+    const allowedPluginSlugs = Array.isArray(req.body.allowedPluginSlugs)
+      ? req.body.allowedPluginSlugs
+      : String(req.body.allowedPluginSlugs || '')
+        .split('\n')
+        .map((slug) => slug.trim())
+        .filter(Boolean)
 
     await plan.update({
       ...req.body,
       productType: req.body.productType === 'cms-license' ? 'cms-license' : 'service',
       updateChannel: req.body.updateChannel === 'early-access' ? 'early-access' : 'stable',
       includedUpdates: req.body.includedUpdates !== false,
+      maxPages: req.body.maxPages ? Number(req.body.maxPages) : null,
+      maxMediaItems: req.body.maxMediaItems ? Number(req.body.maxMediaItems) : null,
+      maxStorageMb: req.body.maxStorageMb ? Number(req.body.maxStorageMb) : null,
+      maxTeamMembers: req.body.maxTeamMembers ? Number(req.body.maxTeamMembers) : null,
+      allowAllPlugins: req.body.allowAllPlugins !== false,
+      allowedPluginSlugs,
+      whiteLabelEnabled: req.body.whiteLabelEnabled === true,
+      backupsEnabled: req.body.backupsEnabled === true,
+      auditLogEnabled: req.body.auditLogEnabled === true,
+      customDomainEnabled: req.body.customDomainEnabled === true,
       features
     })
     res.json(plan)

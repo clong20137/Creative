@@ -65,6 +65,8 @@ export default function ClientPortalPlugins() {
             const purchase = plugin.clientPurchase
             const isPurchased = purchase?.status === 'active'
             const isPending = purchase?.status === 'pending'
+            const isAllowedByPlan = plugin.planAccess?.allowed !== false
+            const restrictionReason = plugin.planAccess?.reason || ''
 
             return (
               <div key={plugin.id} className="card p-4 sm:p-6">
@@ -76,6 +78,11 @@ export default function ClientPortalPlugins() {
                   </span>
                 </div>
                 <p className="mb-5 text-gray-600">{plugin.description}</p>
+                {!isAllowedByPlan && (
+                  <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    {restrictionReason}
+                  </div>
+                )}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xl font-bold text-blue-600 sm:text-2xl">
                     {Number(plugin.price || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
@@ -83,8 +90,8 @@ export default function ClientPortalPlugins() {
                   {isPurchased ? (
                     <span className="font-semibold text-green-700">Installed on your account</span>
                   ) : (
-                    <button onClick={() => handlePurchasePlugin(plugin.slug)} className="w-full btn-primary sm:w-auto">
-                      Purchase Plugin
+                    <button onClick={() => handlePurchasePlugin(plugin.slug)} disabled={!isAllowedByPlan} className="w-full btn-primary disabled:opacity-50 sm:w-auto">
+                      {isAllowedByPlan ? 'Purchase Plugin' : 'Upgrade Required'}
                     </button>
                   )}
                 </div>

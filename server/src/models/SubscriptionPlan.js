@@ -42,6 +42,52 @@ const SubscriptionPlan = sequelize.define('SubscriptionPlan', {
     allowNull: false,
     defaultValue: true
   },
+  maxPages: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  maxMediaItems: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  maxStorageMb: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  maxTeamMembers: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  allowAllPlugins: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  allowedPluginSlugs: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: []
+  },
+  whiteLabelEnabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  backupsEnabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  auditLogEnabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  customDomainEnabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
   features: {
     type: DataTypes.JSON,
     defaultValue: [],

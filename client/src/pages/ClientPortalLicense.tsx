@@ -11,6 +11,7 @@ export default function ClientPortalLicense() {
   const [loading, setLoading] = useState(true)
   const [licenseStatus, setLicenseStatus] = useState<any>(null)
   const [plans, setPlans] = useState<any[]>([])
+  const [entitlements, setEntitlements] = useState<any>(null)
   const [licensedDomain, setLicensedDomain] = useState('')
   const [submittingPlanId, setSubmittingPlanId] = useState<string>('')
   const [actionLoading, setActionLoading] = useState<'cancel' | 'reactivate' | ''>('')
@@ -21,16 +22,19 @@ export default function ClientPortalLicense() {
     if (!clientId) return
     try {
       setLoading(true)
-      const [licenseData, plansData] = await Promise.all([
+      const [licenseData, plansData, entitlementsData] = await Promise.all([
         licensesAPI.getClientLicense(clientId),
-        licensesAPI.getLicensePlans()
+        licensesAPI.getLicensePlans(),
+        licensesAPI.getClientEntitlements(clientId)
       ])
       setLicenseStatus(licenseData)
       setPlans(plansData)
+      setEntitlements(entitlementsData)
       setLicensedDomain((current) => current || licenseData?.license?.licensedDomain || '')
     } catch (fetchError: any) {
       setLicenseStatus(null)
       setPlans([])
+      setEntitlements(null)
       setError(fetchError.error || 'Failed to load license information')
     } finally {
       setLoading(false)
@@ -153,6 +157,20 @@ export default function ClientPortalLicense() {
             ))}
           </section>
 
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-6">
+            {[
+              { label: 'Page Limit', value: entitlements?.maxPages || 'Unlimited' },
+              { label: 'Media Limit', value: entitlements?.maxMediaItems || 'Unlimited' },
+              { label: 'Storage', value: entitlements?.maxStorageMb ? `${entitlements.maxStorageMb} MB` : 'Unlimited' },
+              { label: 'Team Members', value: entitlements?.maxTeamMembers || 'Unlimited' }
+            ].map((item) => (
+              <div key={item.label} className="card p-4 sm:p-6">
+                <p className="text-sm text-gray-500">{item.label}</p>
+                <p className="mt-2 text-xl font-bold text-gray-900">{item.value}</p>
+              </div>
+            ))}
+          </section>
+
           <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr,1fr] xl:gap-6">
             <div className="card p-4 sm:p-6 lg:p-8">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -198,6 +216,26 @@ export default function ClientPortalLicense() {
                       {(!license.features || license.features.length === 0) && (
                         <li className="rounded-xl bg-gray-50 p-4 text-gray-500">No additional feature list has been added yet.</li>
                       )}
+                      <li className="inline-flex items-start gap-2 rounded-xl bg-blue-50 p-3 text-blue-900">
+                        <FiCheckCircle className="mt-0.5 shrink-0" />
+                        <span>Plugins: {entitlements?.allowAllPlugins ? 'All enabled plugins' : ((entitlements?.allowedPluginSlugs || []).join(', ') || 'No plugins included')}</span>
+                      </li>
+                      <li className={`inline-flex items-start gap-2 rounded-xl p-3 ${entitlements?.whiteLabelEnabled ? 'bg-blue-50 text-blue-900' : 'bg-gray-50 text-gray-600'}`}>
+                        <FiCheckCircle className="mt-0.5 shrink-0" />
+                        <span>White-label controls: {entitlements?.whiteLabelEnabled ? 'Included' : 'Not included'}</span>
+                      </li>
+                      <li className={`inline-flex items-start gap-2 rounded-xl p-3 ${entitlements?.backupsEnabled ? 'bg-blue-50 text-blue-900' : 'bg-gray-50 text-gray-600'}`}>
+                        <FiCheckCircle className="mt-0.5 shrink-0" />
+                        <span>Backups: {entitlements?.backupsEnabled ? 'Included' : 'Not included'}</span>
+                      </li>
+                      <li className={`inline-flex items-start gap-2 rounded-xl p-3 ${entitlements?.auditLogEnabled ? 'bg-blue-50 text-blue-900' : 'bg-gray-50 text-gray-600'}`}>
+                        <FiCheckCircle className="mt-0.5 shrink-0" />
+                        <span>Audit log: {entitlements?.auditLogEnabled ? 'Included' : 'Not included'}</span>
+                      </li>
+                      <li className={`inline-flex items-start gap-2 rounded-xl p-3 ${entitlements?.customDomainEnabled ? 'bg-blue-50 text-blue-900' : 'bg-gray-50 text-gray-600'}`}>
+                        <FiCheckCircle className="mt-0.5 shrink-0" />
+                        <span>Custom domains: {entitlements?.customDomainEnabled ? 'Included' : 'Not included'}</span>
+                      </li>
                     </ul>
                   </div>
                 </div>
@@ -251,6 +289,12 @@ export default function ClientPortalLicense() {
                       <span className="text-4xl font-bold text-gray-900">${Number(plan.price || 0).toLocaleString()}</span>
                       <span className="ml-2 text-gray-500">/{plan.billingCycle === 'annually' ? 'year' : plan.billingCycle === 'quarterly' ? 'quarter' : 'month'}</span>
                     </div>
+                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-gray-600">
+                      <div className="rounded-lg bg-gray-50 px-3 py-2">Pages: <span className="font-semibold text-gray-900">{plan.maxPages || 'Unlimited'}</span></div>
+                      <div className="rounded-lg bg-gray-50 px-3 py-2">Media: <span className="font-semibold text-gray-900">{plan.maxMediaItems || 'Unlimited'}</span></div>
+                      <div className="rounded-lg bg-gray-50 px-3 py-2">Storage: <span className="font-semibold text-gray-900">{plan.maxStorageMb ? `${plan.maxStorageMb} MB` : 'Unlimited'}</span></div>
+                      <div className="rounded-lg bg-gray-50 px-3 py-2">Team: <span className="font-semibold text-gray-900">{plan.maxTeamMembers || 'Unlimited'}</span></div>
+                    </div>
                     <ul className="mt-6 space-y-3">
                       {(Array.isArray(plan.features) ? plan.features : []).map((feature: string, index: number) => (
                         <li key={`${plan.id}-${index}`} className="flex items-start gap-2 text-sm text-gray-700">
@@ -261,6 +305,18 @@ export default function ClientPortalLicense() {
                       {(!Array.isArray(plan.features) || plan.features.length === 0) && (
                         <li className="text-sm text-gray-500">No extra feature list has been added for this plan yet.</li>
                       )}
+                      <li className="flex items-start gap-2 text-sm text-gray-700">
+                        <FiCheckCircle className="mt-0.5 shrink-0 text-green-600" />
+                        <span>Plugins: {plan.allowAllPlugins !== false ? 'All plugins allowed' : ((plan.allowedPluginSlugs || []).join(', ') || 'No plugins included')}</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-sm text-gray-700">
+                        <FiCheckCircle className="mt-0.5 shrink-0 text-green-600" />
+                        <span>White-label: {plan.whiteLabelEnabled ? 'Included' : 'Not included'}</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-sm text-gray-700">
+                        <FiCheckCircle className="mt-0.5 shrink-0 text-green-600" />
+                        <span>Backups: {plan.backupsEnabled ? 'Included' : 'Not included'}</span>
+                      </li>
                     </ul>
                     <button
                       type="button"

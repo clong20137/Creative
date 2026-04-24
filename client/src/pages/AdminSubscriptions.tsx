@@ -13,6 +13,16 @@ const emptyPlanForm = {
   productType: 'service',
   updateChannel: 'stable',
   includedUpdates: true,
+  maxPages: '',
+  maxMediaItems: '',
+  maxStorageMb: '',
+  maxTeamMembers: '',
+  allowAllPlugins: true,
+  allowedPluginSlugs: '',
+  whiteLabelEnabled: false,
+  backupsEnabled: false,
+  auditLogEnabled: false,
+  customDomainEnabled: false,
   features: '',
   isActive: true
 }
@@ -66,6 +76,10 @@ export default function AdminSubscriptions() {
       const payload = {
         ...planForm,
         price: Number(planForm.price),
+        maxPages: planForm.maxPages ? Number(planForm.maxPages) : null,
+        maxMediaItems: planForm.maxMediaItems ? Number(planForm.maxMediaItems) : null,
+        maxStorageMb: planForm.maxStorageMb ? Number(planForm.maxStorageMb) : null,
+        maxTeamMembers: planForm.maxTeamMembers ? Number(planForm.maxTeamMembers) : null,
         features: planForm.features
       }
 
@@ -95,6 +109,16 @@ export default function AdminSubscriptions() {
       productType: plan.productType || 'service',
       updateChannel: plan.updateChannel || 'stable',
       includedUpdates: plan.includedUpdates !== false,
+      maxPages: plan.maxPages ? String(plan.maxPages) : '',
+      maxMediaItems: plan.maxMediaItems ? String(plan.maxMediaItems) : '',
+      maxStorageMb: plan.maxStorageMb ? String(plan.maxStorageMb) : '',
+      maxTeamMembers: plan.maxTeamMembers ? String(plan.maxTeamMembers) : '',
+      allowAllPlugins: plan.allowAllPlugins !== false,
+      allowedPluginSlugs: Array.isArray(plan.allowedPluginSlugs) ? plan.allowedPluginSlugs.join('\n') : '',
+      whiteLabelEnabled: plan.whiteLabelEnabled === true,
+      backupsEnabled: plan.backupsEnabled === true,
+      auditLogEnabled: plan.auditLogEnabled === true,
+      customDomainEnabled: plan.customDomainEnabled === true,
       features: Array.isArray(plan.features) ? plan.features.join('\n') : '',
       isActive: plan.isActive !== false
     })
@@ -248,6 +272,77 @@ export default function AdminSubscriptions() {
                     Includes updates
                   </label>
                 </div>
+                <div className="rounded-xl border border-gray-200 p-4">
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-gray-700">Plan Limits</h3>
+                  <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Max pages"
+                      value={planForm.maxPages}
+                      onChange={(e) => setPlanForm({ ...planForm, maxPages: e.target.value })}
+                      className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Max media items"
+                      value={planForm.maxMediaItems}
+                      onChange={(e) => setPlanForm({ ...planForm, maxMediaItems: e.target.value })}
+                      className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Max storage (MB)"
+                      value={planForm.maxStorageMb}
+                      onChange={(e) => setPlanForm({ ...planForm, maxStorageMb: e.target.value })}
+                      className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Max team members"
+                      value={planForm.maxTeamMembers}
+                      onChange={(e) => setPlanForm({ ...planForm, maxTeamMembers: e.target.value })}
+                      className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    />
+                  </div>
+                </div>
+                <div className="rounded-xl border border-gray-200 p-4">
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-gray-700">Feature Gates</h3>
+                  <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <label className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm text-gray-700">
+                      <input type="checkbox" checked={planForm.allowAllPlugins} onChange={(e) => setPlanForm({ ...planForm, allowAllPlugins: e.target.checked })} />
+                      Allow all plugins
+                    </label>
+                    <label className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm text-gray-700">
+                      <input type="checkbox" checked={planForm.whiteLabelEnabled} onChange={(e) => setPlanForm({ ...planForm, whiteLabelEnabled: e.target.checked })} />
+                      White-label controls
+                    </label>
+                    <label className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm text-gray-700">
+                      <input type="checkbox" checked={planForm.backupsEnabled} onChange={(e) => setPlanForm({ ...planForm, backupsEnabled: e.target.checked })} />
+                      Backups and restore tools
+                    </label>
+                    <label className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm text-gray-700">
+                      <input type="checkbox" checked={planForm.auditLogEnabled} onChange={(e) => setPlanForm({ ...planForm, auditLogEnabled: e.target.checked })} />
+                      Audit logging access
+                    </label>
+                    <label className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm text-gray-700 md:col-span-2">
+                      <input type="checkbox" checked={planForm.customDomainEnabled} onChange={(e) => setPlanForm({ ...planForm, customDomainEnabled: e.target.checked })} />
+                      Custom domain support
+                    </label>
+                  </div>
+                  {!planForm.allowAllPlugins && (
+                    <textarea
+                      placeholder="Allowed plugin slugs, one per line"
+                      value={planForm.allowedPluginSlugs}
+                      onChange={(e) => setPlanForm({ ...planForm, allowedPluginSlugs: e.target.value })}
+                      className="mt-4 w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      rows={4}
+                    />
+                  )}
+                </div>
                 <textarea
                   placeholder="Description"
                   value={planForm.description}
@@ -298,10 +393,21 @@ export default function AdminSubscriptions() {
                   </div>
                   <p className="text-3xl font-bold text-blue-600 mb-3">${Number(plan.price || 0).toLocaleString()}</p>
                   <p className="text-sm text-gray-600 mb-4">{plan.description || 'No description'}</p>
+                  <div className="mb-4 grid grid-cols-2 gap-2 text-xs text-gray-600">
+                    <div className="rounded-lg bg-gray-50 px-3 py-2">Pages: <span className="font-semibold text-gray-900">{plan.maxPages || 'Unlimited'}</span></div>
+                    <div className="rounded-lg bg-gray-50 px-3 py-2">Media: <span className="font-semibold text-gray-900">{plan.maxMediaItems || 'Unlimited'}</span></div>
+                    <div className="rounded-lg bg-gray-50 px-3 py-2">Storage: <span className="font-semibold text-gray-900">{plan.maxStorageMb ? `${plan.maxStorageMb} MB` : 'Unlimited'}</span></div>
+                    <div className="rounded-lg bg-gray-50 px-3 py-2">Team: <span className="font-semibold text-gray-900">{plan.maxTeamMembers || 'Unlimited'}</span></div>
+                  </div>
                   <ul className="space-y-2 mb-6">
                     {(plan.features || []).map((feature: string, index: number) => (
                       <li key={index} className="text-sm text-gray-700">- {feature}</li>
                     ))}
+                    <li className="text-sm text-gray-700">- Plugins: {plan.allowAllPlugins !== false ? 'All plugins allowed' : ((plan.allowedPluginSlugs || []).join(', ') || 'No plugins included')}</li>
+                    <li className="text-sm text-gray-700">- White-label: {plan.whiteLabelEnabled ? 'Included' : 'Not included'}</li>
+                    <li className="text-sm text-gray-700">- Backups: {plan.backupsEnabled ? 'Included' : 'Not included'}</li>
+                    <li className="text-sm text-gray-700">- Audit log: {plan.auditLogEnabled ? 'Included' : 'Not included'}</li>
+                    <li className="text-sm text-gray-700">- Custom domains: {plan.customDomainEnabled ? 'Included' : 'Not included'}</li>
                   </ul>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <button onClick={() => handleEditPlan(plan)} className="inline-flex items-center justify-center gap-1 rounded-lg bg-blue-100 px-3 py-2 text-blue-700 hover:bg-blue-200">
