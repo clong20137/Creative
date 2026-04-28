@@ -1,5 +1,6 @@
 import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { FiAlignCenter, FiAlignLeft, FiAlignRight, FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiCopy, FiEye, FiEyeOff, FiFileText, FiGrid, FiImage, FiLayout, FiLink, FiMail, FiMapPin, FiMessageSquare, FiMonitor, FiMove, FiPhone, FiRotateCcw, FiRotateCw, FiSave, FiSearch, FiSmartphone, FiSquare, FiTablet, FiTrash2, FiType, FiVideo } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
@@ -4457,9 +4458,9 @@ function ColumnsEditor({ section, index, updateSection, uploadImageToField, open
         </div>
       </div>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/55 p-4">
-          <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      {isOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/60 p-4">
+          <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
             <div className="flex items-center justify-between gap-4 border-b px-6 py-4">
               <div>
                 <h3 className="text-xl font-bold text-gray-900">Edit Columns Grid</h3>
@@ -4511,7 +4512,8 @@ function ColumnsEditor({ section, index, updateSection, uploadImageToField, open
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )
@@ -4664,9 +4666,9 @@ function NestedColumnsEditor({ block, columnIndex, blockIndex, updateBlock, uplo
         <button type="button" onClick={() => setIsOpen(true)} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Edit Nested Grid</button>
       </div>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-[170] flex items-center justify-center bg-slate-950/55 p-4">
-          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      {isOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[230] flex items-center justify-center bg-slate-950/60 p-4">
+          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
             <div className="flex items-center justify-between gap-4 border-b px-6 py-4">
               <div>
                 <h3 className="text-xl font-bold text-gray-900">Edit Nested Grid</h3>
@@ -4715,7 +4717,8 @@ function NestedColumnsEditor({ block, columnIndex, blockIndex, updateBlock, uplo
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
