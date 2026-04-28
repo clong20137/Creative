@@ -464,6 +464,16 @@ function getSectionTitle(section: any, index: number) {
   return section.title || `${typeLabel} ${index + 1}`
 }
 
+function stripSyncedBlockMeta(section: any) {
+  if (!section || typeof section !== 'object') return section
+  const cloned = JSON.parse(JSON.stringify(section))
+  delete cloned.syncedBlockId
+  delete cloned.syncedBlockName
+  delete cloned.isSyncedBlockInstance
+  delete cloned.syncedBlockUpdatedAt
+  return cloned
+}
+
 function cloneSectionWithNewIds(section: any) {
   const cloned = JSON.parse(JSON.stringify(section || {}))
   const applyIds = (value: any) => {
@@ -478,6 +488,34 @@ function cloneSectionWithNewIds(section: any) {
   cloned.title = cloned.title ? `${cloned.title} Copy` : cloned.title
   applyIds(cloned)
   return cloned
+}
+
+function makeSyncedSectionInstance(template: any) {
+  const sourceSection = stripSyncedBlockMeta(template.section || {})
+  return {
+    id: crypto.randomUUID(),
+    type: sourceSection.type || template.type || 'section',
+    title: sourceSection.title || template.name || '',
+    syncedBlockId: template.id,
+    syncedBlockName: template.name || sourceSection.title || 'Synced Block',
+    isSyncedBlockInstance: true,
+    syncedBlockUpdatedAt: template.updatedAt || new Date().toISOString()
+  }
+}
+
+function resolveSyncedSection(section: any, reusableSections: any[] = []) {
+  if (!section?.syncedBlockId) return section
+  const template = reusableSections.find((item: any) => item.id === section.syncedBlockId && item.kind === 'synced')
+  if (!template?.section) return section
+  const sourceSection = stripSyncedBlockMeta(template.section)
+  return {
+    ...sourceSection,
+    id: section.id || sourceSection.id || crypto.randomUUID(),
+    syncedBlockId: template.id,
+    syncedBlockName: template.name || sourceSection.title || 'Synced Block',
+    isSyncedBlockInstance: true,
+    syncedBlockUpdatedAt: template.updatedAt || section.syncedBlockUpdatedAt || ''
+  }
 }
 
 function clampScore(value: number) {
@@ -1149,30 +1187,68 @@ export default function AdminPages() {
     updateBuiltInSections(pageKey, sections)
   }
 
-  const activeSections = activeTab === 'Custom Pages' ? (pageDraft.sections || []) : activeBuiltInPageKey ? getBuiltInSections(activeBuiltInPageKey) : []
+  const activeSectionsRaw = useMemo(
+    () => (activeTab === 'Custom Pages' ? (pageDraft.sections || []) : activeBuiltInPageKey ? getBuiltInSections(activeBuiltInPageKey) : []),
+    [activeTab, pageDraft.sections, activeBuiltInPageKey, getBuiltInSections]
+  )
+  const activeSections = useMemo(
+    () => activeSectionsRaw.map((section: any) => resolveSyncedSection(section, settings.reusableSections || [])),
+    [activeSectionsRaw, settings.reusableSections]
+  )
   const activePageLabel = activeTab === 'Custom Pages'
     ? (selectedPageId === 'new' ? 'New Custom Page' : pageDraft.title || 'Custom Page')
     : activeBuiltInPageKey === 'home'
       ? 'Homepage'
       : pageHeaderLabels[activeBuiltInPageKey] || 'Page'
   const addActiveSection = (type: string) => activeTab === 'Custom Pages' ? addPageSection(type) : addBuiltInSection(activeBuiltInPageKey, type)
-  const updateActiveSection = (index: number, field: string, value: any) => activeTab === 'Custom Pages'
-    ? updatePageSection(index, field, value)
-    : updateBuiltInSection(activeBuiltInPageKey, index, field, value)
+  const updateReusableSyncedBlock = (templateId: string, updater: (template: any) => any) => {
+    recordHistory()
+    setSettings((prev) => ({
+      ...prev,
+      reusableSections: (prev.reusableSections || []).map((template: any) => (
+        template.id === templateId
+          ? { ...updater(template), updatedAt: new Date().toISOString() }
+          : template
+      ))
+    }))
+    setMessage('Synced block updated everywhere. Save the page to keep it.')
+  }
+  const updateActiveSection = (index: number, field: string, value: any) => {
+    const rawSection = activeSectionsRaw[index]
+    if (rawSection?.syncedBlockId) {
+      updateReusableSyncedBlock(rawSection.syncedBlockId, (template: any) => ({
+        ...template,
+        type: field === 'type' ? value : template.type,
+        section: {
+          ...(template.section || {}),
+          [field]: value
+        }
+      }))
+      return
+    }
+
+    if (activeTab === 'Custom Pages') {
+      updatePageSection(index, field, value)
+    } else {
+      updateBuiltInSection(activeBuiltInPageKey, index, field, value)
+    }
+  }
   const removeActiveSection = (index: number) => activeTab === 'Custom Pages' ? removePageSection(index) : removeBuiltInSection(activeBuiltInPageKey, index)
   const duplicateActiveSection = (index: number) => activeTab === 'Custom Pages' ? duplicatePageSection(index) : duplicateBuiltInSection(activeBuiltInPageKey, index)
   const addReusableSection = (template: any) => {
     recordHistory()
-    const templateSections = Array.isArray(template.sections) && template.sections.length > 0
-      ? template.sections.map((section: any) => cloneSectionWithNewIds(section))
-      : [cloneSectionWithNewIds(template.section || template)]
+    const templateSections = template.kind === 'synced'
+      ? [makeSyncedSectionInstance(template)]
+      : Array.isArray(template.sections) && template.sections.length > 0
+        ? template.sections.map((section: any) => cloneSectionWithNewIds(section))
+        : [cloneSectionWithNewIds(template.section || template)]
     if (activeTab === 'Custom Pages') {
       setPageDraft((current: any) => ({ ...current, sections: [...(current.sections || []), ...templateSections] }))
     } else {
       updateBuiltInSections(activeBuiltInPageKey, [...getBuiltInSections(activeBuiltInPageKey), ...templateSections])
     }
     if (templateSections[0]?.id) markNewSection(templateSections[0].id)
-    setMessage(`${template.kind === 'layout' ? 'Layout template' : 'Reusable block'} added. Save the page to keep it.`)
+    setMessage(`${template.kind === 'layout' ? 'Layout template' : template.kind === 'synced' ? 'Synced block' : 'Reusable block'} added. Save the page to keep it.`)
   }
   const saveSelectedSectionAsTemplate = () => {
     if (!selectedSection) return
@@ -1186,13 +1262,31 @@ export default function AdminPages() {
       type: selectedSection.type || 'section',
       sectionCount: 1,
       sourcePage: activePageLabel,
-      section: cloneSectionWithNewIds(selectedSection)
+      section: cloneSectionWithNewIds(stripSyncedBlockMeta(selectedSection))
     }
     setSettings(prev => ({ ...prev, reusableSections: [...(prev.reusableSections || []), template] }))
     setMessage('Reusable block saved. Save the page to keep it.')
   }
+  const saveSelectedSectionAsSyncedBlock = () => {
+    if (!selectedSection) return
+    const name = window.prompt('Synced block name', getSectionTitle(selectedSection, selectedSectionIndex))
+    if (!name) return
+    recordHistory()
+    const template = {
+      id: crypto.randomUUID(),
+      name,
+      kind: 'synced',
+      type: selectedSection.type || 'section',
+      sectionCount: 1,
+      sourcePage: activePageLabel,
+      updatedAt: new Date().toISOString(),
+      section: cloneSectionWithNewIds(stripSyncedBlockMeta(selectedSection))
+    }
+    setSettings(prev => ({ ...prev, reusableSections: [...(prev.reusableSections || []), template] }))
+    setMessage('Synced block saved. Add it anywhere to keep every instance linked.')
+  }
   const saveCurrentPageAsTemplate = () => {
-    if (!activeSections.length) return
+    if (!activeSectionsRaw.length) return
     const name = window.prompt('Layout template name', `${activePageLabel} Layout`)
     if (!name) return
     recordHistory()
@@ -1201,9 +1295,9 @@ export default function AdminPages() {
       name,
       kind: 'layout',
       type: 'layout',
-      sectionCount: activeSections.length,
+      sectionCount: activeSectionsRaw.length,
       sourcePage: activePageLabel,
-      sections: activeSections.map((section: any) => cloneSectionWithNewIds(section))
+      sections: activeSectionsRaw.map((section: any) => cloneSectionWithNewIds(stripSyncedBlockMeta(section)))
     }
     setSettings(prev => ({ ...prev, reusableSections: [...(prev.reusableSections || []), template] }))
     setMessage('Layout template saved. Save the page to keep it.')
@@ -1230,6 +1324,7 @@ export default function AdminPages() {
   }
   const selectedSectionIndex = activeSections.findIndex((section: any, index: number) => (section.id || String(index)) === editingSectionId)
   const selectedSection = selectedSectionIndex >= 0 ? activeSections[selectedSectionIndex] : null
+  const selectedSectionRaw = selectedSectionIndex >= 0 ? activeSectionsRaw[selectedSectionIndex] : null
   const saveActivePage = () => activeTab === 'Custom Pages' ? saveCustomPageEdits() : saveBuiltInPageEdits()
   const editorGridColumns = `minmax(0, 1fr) ${sectionsPanelOpen ? '23rem' : '3.25rem'}`
   const activePageSnapshot = useMemo(() => JSON.stringify(activeTab === 'Custom Pages' ? pageDraft : getActivePayload(settings, activeTab)), [activeTab, pageDraft, settings])
@@ -1474,10 +1569,11 @@ export default function AdminPages() {
                 reusableSections={settings.reusableSections || []}
                 addReusableSection={addReusableSection}
                 saveSelectedSectionAsTemplate={saveSelectedSectionAsTemplate}
+                saveSelectedSectionAsSyncedBlock={saveSelectedSectionAsSyncedBlock}
                 saveCurrentPageAsTemplate={saveCurrentPageAsTemplate}
                 deleteReusableSection={deleteReusableSection}
                 hasSelectedSection={Boolean(selectedSection)}
-                hasSections={activeSections.length > 0}
+                hasSections={activeSectionsRaw.length > 0}
               />
             </section>
 
@@ -1919,6 +2015,7 @@ export default function AdminPages() {
               <SectionInspector
                 title="Section Settings"
                 section={selectedSection}
+                rawSection={selectedSectionRaw}
                 index={selectedSectionIndex}
                 updateSection={updateActiveSection}
                 removeSection={removeActiveSection}
@@ -2413,7 +2510,7 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
   )
 }
 
-function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSection, saveSelectedSectionAsTemplate, saveCurrentPageAsTemplate, deleteReusableSection, hasSelectedSection, hasSections }: any) {
+function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSection, saveSelectedSectionAsTemplate, saveSelectedSectionAsSyncedBlock, saveCurrentPageAsTemplate, deleteReusableSection, hasSelectedSection, hasSections }: any) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [sectionSearch, setSectionSearch] = useState('')
   const filteredSections = sectionTypeOptions.filter(option => option.label.toLowerCase().includes(sectionSearch.trim().toLowerCase()))
@@ -2443,6 +2540,14 @@ function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSec
             className="rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:opacity-40"
           >
             Save Block
+          </button>
+          <button
+            type="button"
+            onClick={saveSelectedSectionAsSyncedBlock}
+            disabled={!hasSelectedSection}
+            className="rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:opacity-40"
+          >
+            Save Synced
           </button>
           <button
             type="button"
@@ -2515,7 +2620,9 @@ function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSec
                     <span className="leading-tight">{template.name}</span>
                   </button>
                   <div className="mt-2 space-y-1 text-[11px] text-gray-500">
-                    <p className="font-semibold uppercase tracking-wide">{template.kind === 'layout' ? 'Layout Template' : 'Block Template'}</p>
+                    <p className="font-semibold uppercase tracking-wide">
+                      {template.kind === 'layout' ? 'Layout Template' : template.kind === 'synced' ? 'Synced Block' : 'Block Template'}
+                    </p>
                     <p>{template.sectionCount || 1} section{Number(template.sectionCount || 1) === 1 ? '' : 's'}</p>
                     {template.sourcePage && <p className="truncate">{template.sourcePage}</p>}
                   </div>
@@ -2556,7 +2663,7 @@ function PageSettingsInspector({ title, editor, isOpen = true, setIsOpen = () =>
   )
 }
 
-function SectionInspector({ title, section, index, updateSection, removeSection, duplicateSection, uploadImageToField, openMediaPicker, isOpen = true, setIsOpen = () => {} }: any) {
+function SectionInspector({ title, section, rawSection, index, updateSection, removeSection, duplicateSection, uploadImageToField, openMediaPicker, isOpen = true, setIsOpen = () => {} }: any) {
   if (!section || index < 0) {
     return (
       <section className="h-full bg-white">
@@ -2580,7 +2687,10 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
         {isOpen ? (
           <span>
             <span className="block text-xl font-bold text-gray-900">{title}</span>
-            <span className="block text-sm text-gray-600">{getSectionTitle(section, index)}</span>
+            <span className="block text-sm text-gray-600">
+              {getSectionTitle(section, index)}
+              {rawSection?.syncedBlockId ? ` · Synced Block` : ''}
+            </span>
           </span>
         ) : <span className="sr-only">{title}</span>}
         <FiArrowRight className={`text-blue-600 transition-transform duration-300 ease-in-out ${isOpen ? '' : 'rotate-180'}`} />
@@ -2594,6 +2704,12 @@ function SectionInspector({ title, section, index, updateSection, removeSection,
             {sectionTypeOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </div>
+
+        {rawSection?.syncedBlockId && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+            This section is linked to the synced block <strong>{rawSection.syncedBlockName || section.title || 'Synced Block'}</strong>. Changes here will update every page using it.
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-2">
           <button type="button" onClick={() => duplicateSection(index)} className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50">

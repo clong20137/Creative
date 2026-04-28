@@ -94,8 +94,33 @@ function isSectionVisible(section: any, mode: ResponsiveMode) {
   return true
 }
 
-export default function PageSections({ sections, previewMode }: { sections?: any[]; previewMode?: ResponsiveMode }) {
+function stripSyncedBlockMeta(section: any) {
+  if (!section || typeof section !== 'object') return section
+  const cloned = JSON.parse(JSON.stringify(section))
+  delete cloned.syncedBlockId
+  delete cloned.syncedBlockName
+  delete cloned.isSyncedBlockInstance
+  delete cloned.syncedBlockUpdatedAt
+  return cloned
+}
+
+function resolveSyncedSection(section: any, reusableSections: any[] = []) {
+  if (!section?.syncedBlockId) return section
+  const template = reusableSections.find((item: any) => item.id === section.syncedBlockId && item.kind === 'synced')
+  if (!template?.section) return section
+  return {
+    ...stripSyncedBlockMeta(template.section),
+    id: section.id || template.section.id,
+    syncedBlockId: template.id,
+    syncedBlockName: template.name || template.section.title || 'Synced Block',
+    isSyncedBlockInstance: true,
+    syncedBlockUpdatedAt: template.updatedAt || section.syncedBlockUpdatedAt || ''
+  }
+}
+
+export default function PageSections({ sections, previewMode, reusableSections: reusableSectionsProp }: { sections?: any[]; previewMode?: ResponsiveMode; reusableSections?: any[] }) {
   const [responsiveMode, setResponsiveMode] = useState<ResponsiveMode>(() => previewMode || (typeof window !== 'undefined' ? getResponsiveModeFromWidth(window.innerWidth) : 'desktop'))
+  const [reusableSections, setReusableSections] = useState<any[]>(() => Array.isArray(reusableSectionsProp) ? reusableSectionsProp : [])
 
   useEffect(() => {
     if (previewMode) {
@@ -109,12 +134,25 @@ export default function PageSections({ sections, previewMode }: { sections?: any
     return () => window.removeEventListener('resize', handleResize)
   }, [previewMode])
 
+  useEffect(() => {
+    if (Array.isArray(reusableSectionsProp)) {
+      setReusableSections(reusableSectionsProp)
+      return
+    }
+    const hasSyncedSections = Array.isArray(sections) && sections.some((section: any) => section?.syncedBlockId)
+    if (!hasSyncedSections) return
+    siteSettingsAPI.getSettings()
+      .then((settings) => setReusableSections(Array.isArray(settings?.reusableSections) ? settings.reusableSections : []))
+      .catch(() => setReusableSections([]))
+  }, [reusableSectionsProp, sections])
+
   const visibleSections = useMemo(() => {
     const list = Array.isArray(sections) ? sections : []
     return list
+      .map(section => resolveSyncedSection(section, reusableSections))
       .filter(section => isSectionVisible(section, responsiveMode))
       .map(section => resolveResponsiveSection(section, responsiveMode))
-  }, [sections, responsiveMode])
+  }, [sections, reusableSections, responsiveMode])
 
   if (visibleSections.length === 0) return null
 
