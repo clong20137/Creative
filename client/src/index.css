@@ -459,6 +459,67 @@ html.dark-mode .demo-page .text-green-800 {
   display: none;
 }
 
+.hero-media {
+  transform-origin: center;
+  will-change: transform;
+}
+
+.hero-media-video {
+  object-position: center;
+}
+
+.hero-media--ambient-pan {
+  animation: heroAmbientPan 18s ease-in-out infinite alternate;
+}
+
+.hero-media--slow-zoom {
+  animation: heroSlowZoom 14s ease-in-out infinite alternate;
+}
+
+.hero-media--zoom-pulse {
+  animation: heroZoomPulse 9s ease-in-out infinite;
+}
+
+.hero-media--float {
+  animation: heroFloat 10s ease-in-out infinite;
+}
+
+@keyframes heroAmbientPan {
+  0% {
+    transform: scale(1.04) translate3d(-1.5%, -1%, 0);
+  }
+  100% {
+    transform: scale(1.08) translate3d(1.5%, 1%, 0);
+  }
+}
+
+@keyframes heroSlowZoom {
+  0% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1.12);
+  }
+}
+
+@keyframes heroZoomPulse {
+  0%, 100% {
+    transform: scale(1.03);
+  }
+  50% {
+    transform: scale(1.09);
+  }
+}
+
+@keyframes heroFloat {
+  0%, 100% {
+    transform: scale(1.05) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale(1.07) translate3d(0, -1.5%, 0);
+  }
+}
+
 .site-theme {
   background: var(--theme-background);
   color: var(--theme-body);

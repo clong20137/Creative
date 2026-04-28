@@ -363,6 +363,7 @@ function makePageSection(type: string) {
     contentVerticalAlign: type === 'section' ? 'center' : '',
     heroFormEnabled: false,
     heroHeight: '',
+    heroMediaEffect: 'none',
     items: defaultItems(),
     overlayColor: '',
     overlayOpacity: 55,
@@ -2750,6 +2751,14 @@ function SectionPreviewToolbar({
     { label: 'Lift', value: '0 12px 24px rgba(15, 23, 42, 0.16)' },
     { label: 'Glow', value: '0 0 0 1px rgba(37, 99, 235, 0.08), 0 14px 30px rgba(37, 99, 235, 0.24)' }
   ]
+  const toolbarEventProps = {
+    draggable: false,
+    onPointerDown: (event: React.PointerEvent) => event.stopPropagation(),
+    onDragStart: (event: React.DragEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+  }
 
   const getActiveEditableElement = () => {
     const selection = window.getSelection()
@@ -2845,6 +2854,12 @@ function SectionPreviewToolbar({
     <div
       className="absolute left-1/2 top-0 z-20 w-[min(calc(100%-1.5rem),52rem)] -translate-x-1/2 -translate-y-[calc(100%+0.5rem)] rounded-xl border bg-white/96 p-2 shadow-2xl backdrop-blur"
       onClick={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+      onDragStartCapture={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+      }}
     >
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1 rounded-lg border bg-gray-50 p-1">
@@ -2856,6 +2871,7 @@ function SectionPreviewToolbar({
               title={label}
               aria-label={label}
               className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-sm transition ${section?.textAlign === value ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-white'}`}
+              {...toolbarEventProps}
             >
               <Icon />
             </button>
@@ -2864,20 +2880,20 @@ function SectionPreviewToolbar({
 
         {supportsInlineEditing && (
           <div className="flex items-center gap-1 rounded-lg border bg-gray-50 p-1">
-            <button type="button" title="Bold" aria-label="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => applyInlineCommand('bold')} className="rounded-md px-2.5 py-2 text-sm font-bold text-gray-700 transition hover:bg-white">B</button>
-            <button type="button" title="Italic" aria-label="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => applyInlineCommand('italic')} className="rounded-md px-2.5 py-2 text-sm italic text-gray-700 transition hover:bg-white">I</button>
-            <button type="button" title="Underline" aria-label="Underline" onMouseDown={(event) => event.preventDefault()} onClick={() => applyInlineCommand('underline')} className="rounded-md px-2.5 py-2 text-sm underline text-gray-700 transition hover:bg-white">U</button>
-            <button type="button" title="Add link" aria-label="Add link" onMouseDown={(event) => event.preventDefault()} onClick={openInlineLinkPopover} className="inline-flex items-center rounded-md px-2.5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white">
+            <button type="button" title="Bold" aria-label="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => applyInlineCommand('bold')} className="rounded-md px-2.5 py-2 text-sm font-bold text-gray-700 transition hover:bg-white" {...toolbarEventProps}>B</button>
+            <button type="button" title="Italic" aria-label="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => applyInlineCommand('italic')} className="rounded-md px-2.5 py-2 text-sm italic text-gray-700 transition hover:bg-white" {...toolbarEventProps}>I</button>
+            <button type="button" title="Underline" aria-label="Underline" onMouseDown={(event) => event.preventDefault()} onClick={() => applyInlineCommand('underline')} className="rounded-md px-2.5 py-2 text-sm underline text-gray-700 transition hover:bg-white" {...toolbarEventProps}>U</button>
+            <button type="button" title="Add link" aria-label="Add link" onMouseDown={(event) => event.preventDefault()} onClick={openInlineLinkPopover} className="inline-flex items-center rounded-md px-2.5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white" {...toolbarEventProps}>
               <FiLink />
             </button>
-            <button type="button" title="Remove link" aria-label="Remove link" onMouseDown={(event) => event.preventDefault()} onClick={() => applyInlineCommand('unlink')} className="rounded-md px-2.5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white">
+            <button type="button" title="Remove link" aria-label="Remove link" onMouseDown={(event) => event.preventDefault()} onClick={() => applyInlineCommand('unlink')} className="rounded-md px-2.5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white" {...toolbarEventProps}>
               <FiLink className="opacity-50" />
             </button>
             <label className="inline-flex items-center rounded-md px-2 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-white" title="Text highlight">
-              <input type="color" onChange={(event) => applyInlineCommand('hiliteColor', event.target.value)} className="h-7 w-7 cursor-pointer rounded border p-0" />
+              <input type="color" onChange={(event) => applyInlineCommand('hiliteColor', event.target.value)} className="h-7 w-7 cursor-pointer rounded border p-0" {...toolbarEventProps} />
             </label>
             <label className="inline-flex items-center rounded-md px-2 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-white" title="Text color">
-              <input type="color" onChange={(event) => applyInlineCommand('foreColor', event.target.value)} className="h-7 w-7 cursor-pointer rounded border p-0" />
+              <input type="color" onChange={(event) => applyInlineCommand('foreColor', event.target.value)} className="h-7 w-7 cursor-pointer rounded border p-0" {...toolbarEventProps} />
             </label>
           </div>
         )}
@@ -2888,13 +2904,14 @@ function SectionPreviewToolbar({
               <button
                 key={value}
                 type="button"
-                onClick={() => onUpdate('contentVerticalAlign', value)}
+              onClick={() => onUpdate('contentVerticalAlign', value)}
                 title={label}
                 aria-label={label}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-sm transition ${(section?.contentVerticalAlign || 'center') === value ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-white'}`}
-              >
-                <Icon />
-              </button>
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-sm transition ${(section?.contentVerticalAlign || 'center') === value ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-white'}`}
+              {...toolbarEventProps}
+            >
+              <Icon />
+            </button>
             ))}
           </div>
         )}
@@ -2906,6 +2923,7 @@ function SectionPreviewToolbar({
               value={section?.headingTag || (section?.type === 'hero' ? 'h1' : 'h2')}
               onChange={(event) => onUpdate('headingTag', event.target.value)}
               className="rounded-md border bg-white px-2 py-1 text-xs font-semibold text-gray-700"
+              {...toolbarEventProps}
             >
               <option value="h1">H1</option>
               <option value="h2">H2</option>
@@ -2920,10 +2938,10 @@ function SectionPreviewToolbar({
         {hasPrimaryButton && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-gray-50 px-2 py-2">
             <label className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-gray-700" title="Button text color">
-              <input type="color" value={section?.buttonTextColor || '#ffffff'} onChange={(event) => onUpdate('buttonTextColor', event.target.value)} className="h-8 w-9 rounded border p-1" />
+              <input type="color" value={section?.buttonTextColor || '#ffffff'} onChange={(event) => onUpdate('buttonTextColor', event.target.value)} className="h-8 w-9 rounded border p-1" {...toolbarEventProps} />
             </label>
             <label className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-gray-700" title="Button color">
-              <input type="color" value={section?.buttonBackgroundColor || '#2563eb'} onChange={(event) => onUpdate('buttonBackgroundColor', event.target.value)} className="h-8 w-9 rounded border p-1" />
+              <input type="color" value={section?.buttonBackgroundColor || '#2563eb'} onChange={(event) => onUpdate('buttonBackgroundColor', event.target.value)} className="h-8 w-9 rounded border p-1" {...toolbarEventProps} />
             </label>
             <label className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-gray-700" title="Button shadow">
               <select
@@ -2934,13 +2952,14 @@ function SectionPreviewToolbar({
                   onUpdate('buttonBoxShadow', nextValue)
                 }}
                 className="rounded-md border bg-white px-2 py-1 text-[11px] text-gray-700"
+                {...toolbarEventProps}
               >
                 {buttonShadowPresets.map((preset) => <option key={preset.label} value={preset.value}>{preset.label}</option>)}
                 <option value="__custom__">Custom</option>
               </select>
             </label>
             <label className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-gray-700" title="Button effect">
-              <select value={section?.buttonHoverEffect || 'lift'} onChange={(event) => onUpdate('buttonHoverEffect', event.target.value)} className="rounded-md border bg-white px-2 py-1 text-[11px] text-gray-700">
+              <select value={section?.buttonHoverEffect || 'lift'} onChange={(event) => onUpdate('buttonHoverEffect', event.target.value)} className="rounded-md border bg-white px-2 py-1 text-[11px] text-gray-700" {...toolbarEventProps}>
                 <option value="none">None</option>
                 <option value="lift">Lift</option>
                 <option value="grow">Grow</option>
@@ -2948,7 +2967,7 @@ function SectionPreviewToolbar({
               </select>
             </label>
             <label className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-gray-700" title="Button text shadow">
-              <select value={section?.buttonTextShadow || ''} onChange={(event) => onUpdate('buttonTextShadow', event.target.value)} className="rounded-md border bg-white px-2 py-1 text-[11px] text-gray-700">
+              <select value={section?.buttonTextShadow || ''} onChange={(event) => onUpdate('buttonTextShadow', event.target.value)} className="rounded-md border bg-white px-2 py-1 text-[11px] text-gray-700" {...toolbarEventProps}>
                 <option value="">None</option>
                 <option value="0 1px 2px rgba(15, 23, 42, 0.2)">Soft</option>
                 <option value="0 2px 8px rgba(15, 23, 42, 0.3)">Glow</option>
@@ -2956,15 +2975,15 @@ function SectionPreviewToolbar({
             </label>
             <label className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-gray-700" title="Button radius">
               <FiSquare className="h-3.5 w-3.5" />
-              <input type="range" min="0" max="40" value={Number(section?.buttonBorderRadius || 8)} onChange={(event) => onUpdate('buttonBorderRadius', event.target.value)} className="w-16 accent-blue-600" />
+              <input type="range" min="0" max="40" value={Number(section?.buttonBorderRadius || 8)} onChange={(event) => onUpdate('buttonBorderRadius', event.target.value)} className="w-16 accent-blue-600" {...toolbarEventProps} />
             </label>
             <label className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-gray-700" title="Horizontal padding">
               <FiArrowLeft className="h-3.5 w-3.5" />
-              <input type="range" min="8" max="40" value={Number(section?.buttonPaddingX || 24)} onChange={(event) => onUpdate('buttonPaddingX', event.target.value)} className="w-16 accent-blue-600" />
+              <input type="range" min="8" max="40" value={Number(section?.buttonPaddingX || 24)} onChange={(event) => onUpdate('buttonPaddingX', event.target.value)} className="w-16 accent-blue-600" {...toolbarEventProps} />
             </label>
             <label className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-gray-700" title="Vertical padding">
               <FiArrowUp className="h-3.5 w-3.5" />
-              <input type="range" min="6" max="28" value={Number(section?.buttonPaddingY || 12)} onChange={(event) => onUpdate('buttonPaddingY', event.target.value)} className="w-16 accent-blue-600" />
+              <input type="range" min="6" max="28" value={Number(section?.buttonPaddingY || 12)} onChange={(event) => onUpdate('buttonPaddingY', event.target.value)} className="w-16 accent-blue-600" {...toolbarEventProps} />
             </label>
           </div>
         )}
@@ -3365,6 +3384,16 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
                     <input type="number" min="320" max="1080" value={section.heroHeight || ''} onChange={(e) => updateSection(index, 'heroHeight', e.target.value)} placeholder={section.heroFormEnabled ? '520' : '640'} className="w-full rounded-lg border px-2 py-1 text-right" />
                     <span className="text-xs text-gray-500">px</span>
                   </div>
+                </label>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Hero motion
+                  <select value={section.heroMediaEffect || 'none'} onChange={(e) => updateSection(index, 'heroMediaEffect', e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
+                    <option value="none">None</option>
+                    <option value="ambient-pan">Ambient movement</option>
+                    <option value="slow-zoom">Slow zoom in</option>
+                    <option value="zoom-pulse">Zoom in and out</option>
+                    <option value="float">Gentle float</option>
+                  </select>
                 </label>
                 <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                   <input type="checkbox" checked={Boolean(section.heroFormEnabled)} onChange={(e) => updateSection(index, 'heroFormEnabled', e.target.checked)} />
