@@ -882,11 +882,11 @@ function ColumnBlock({ block, selectedSectionId, onSelectNestedSection }: { bloc
   }
 
   if (block.type === 'map') {
-    return renderWithSelection(<InteractiveMapSection section={block} />)
+    return renderWithSelection(<InteractiveMapSection section={block} inColumn />)
   }
 
   if (block.type === 'youtube') {
-    return renderWithSelection(<YoutubeSection section={block} />)
+    return renderWithSelection(<YoutubeSection section={block} inColumn />)
   }
 
   if (block.type !== 'paragraph') {
@@ -924,86 +924,88 @@ function getMapEmbedSrc(section: any) {
   return `https://www.google.com/maps?q=${encodeURIComponent(query)}&z=14&output=embed`
 }
 
-function InteractiveMapSection({ section }: { section: any }) {
+function InteractiveMapSection({ section, inColumn = false }: { section: any; inColumn?: boolean }) {
   const src = getMapEmbedSrc(section)
   const height = Math.min(1200, Math.max(220, Number(section.mapHeight || 420)))
   const pins = Array.isArray(section.mapPins) ? section.mapPins : []
-
-  return (
-    <section className="section-padding">
-      <div className="container">
-        <SectionHeading section={section} fallbackTitle="Find Us" />
-        {src ? (
-          <div className="relative overflow-hidden rounded-lg border bg-white shadow-sm">
-            <iframe
-              title={section.title || section.mapQuery || 'Interactive map'}
-              src={src}
-              loading="lazy"
-              allowFullScreen
-              referrerPolicy="no-referrer-when-downgrade"
-              className="w-full border-0"
-              style={{ height: `${height}px` }}
-            />
-            {pins.length > 0 && (
-              <div className="pointer-events-none absolute inset-0">
-                {pins.map((pin: any, index: number) => {
-                  const left = Math.min(95, Math.max(5, Number(pin.x || 50)))
-                  const top = Math.min(92, Math.max(8, Number(pin.y || 50)))
-                  return (
-                    <div
-                      key={pin.id || index}
-                      className="absolute -translate-x-1/2 -translate-y-full"
-                      style={{ left: `${left}%`, top: `${top}%` }}
-                    >
-                      <div className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-gray-900 shadow-lg ring-1 ring-black/5">
-                        <FiMapPin className="text-blue-600" />
-                        <span>{pin.label || 'Location'}</span>
-                      </div>
+  const content = (
+    <>
+      <SectionHeading section={section} fallbackTitle="Find Us" compact={inColumn} />
+      {src ? (
+        <div className="relative overflow-hidden rounded-lg border bg-white shadow-sm">
+          <iframe
+            title={section.title || section.mapQuery || 'Interactive map'}
+            src={src}
+            loading="lazy"
+            allowFullScreen
+            referrerPolicy="no-referrer-when-downgrade"
+            className="w-full border-0"
+            style={{ height: `${height}px` }}
+          />
+          {pins.length > 0 && (
+            <div className="pointer-events-none absolute inset-0">
+              {pins.map((pin: any, index: number) => {
+                const left = Math.min(95, Math.max(5, Number(pin.x || 50)))
+                const top = Math.min(92, Math.max(8, Number(pin.y || 50)))
+                return (
+                  <div
+                    key={pin.id || index}
+                    className="absolute -translate-x-1/2 -translate-y-full"
+                    style={{ left: `${left}%`, top: `${top}%` }}
+                  >
+                    <div className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-gray-900 shadow-lg ring-1 ring-black/5">
+                      <FiMapPin className="text-blue-600" />
+                      <span>{pin.label || 'Location'}</span>
                     </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed p-6 text-center text-gray-600">
-            Add a map address or embed URL in the page builder to show an interactive map here.
-          </div>
-        )}
-      </div>
-    </section>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed p-6 text-center text-gray-600">
+          Add a map address or embed URL in the page builder to show an interactive map here.
+        </div>
+      )}
+    </>
   )
+
+  if (inColumn) return <div className="space-y-4">{content}</div>
+
+  return <section className="section-padding"><div className="container">{content}</div></section>
 }
 
-function YoutubeSection({ section }: { section: any }) {
+function YoutubeSection({ section, inColumn = false }: { section: any; inColumn?: boolean }) {
   const src = getYoutubeEmbedUrl(section.videoUrl)
   const height = Math.min(1200, Math.max(220, Number(section.videoHeight || 420)))
-
-  return (
-    <section className="section-padding">
-      <div className="container">
-        <SectionHeading section={section} fallbackTitle="Watch Video" />
-        {src ? (
-          <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
-            <iframe
-              title={section.title || 'YouTube video'}
-              src={src}
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-              className="w-full border-0"
-              style={{ height: `${height}px` }}
-            />
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed p-6 text-center text-gray-600">
-            Add a YouTube URL in the page builder to show an embedded video here.
-          </div>
-        )}
-      </div>
-    </section>
+  const content = (
+    <>
+      <SectionHeading section={section} fallbackTitle="Watch Video" compact={inColumn} />
+      {src ? (
+        <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+          <iframe
+            title={section.title || 'YouTube video'}
+            src={src}
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            className="w-full border-0"
+            style={{ height: `${height}px` }}
+          />
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed p-6 text-center text-gray-600">
+          Add a YouTube URL in the page builder to show an embedded video here.
+        </div>
+      )}
+    </>
   )
+
+  if (inColumn) return <div className="space-y-4">{content}</div>
+
+  return <section className="section-padding"><div className="container">{content}</div></section>
 }
 
 function ColumnPluginsListBlock({ block }: { block: any }) {
@@ -1275,19 +1277,19 @@ function FeaturedWorkSection({ section }: { section: any }) {
   )
 }
 
-function SectionHeading({ section, fallbackTitle }: { section: any; fallbackTitle: string }) {
+function SectionHeading({ section, fallbackTitle, compact = false }: { section: any; fallbackTitle: string; compact?: boolean }) {
   if (!section.title && !section.body) return null
   const alignment = getAlignmentClasses(section.textAlign)
   const HeadingTag = (section.headingTag || 'h2') as ElementType
 
   return (
-    <div className={`mb-10 ${alignment.container}`}>
+    <div className={`${compact ? 'mb-4' : 'mb-10'} ${alignment.container}`.trim()}>
       <HeadingTag className="text-3xl font-bold text-gray-900">
         {section.titleHtml
           ? <EditableHeadingText section={section} fallbackText={fallbackTitle} />
           : renderLinkedHeading(section.titleLinkUrl, <EditableHeadingText section={section} fallbackText={fallbackTitle} />, 'inline')}
       </HeadingTag>
-      {section.body && <EditableRichTextContent section={section} className={`${alignment.body} mt-3 max-w-3xl text-gray-600`.trim()} />}
+      {section.body && <EditableRichTextContent section={section} className={`${alignment.body} ${compact ? 'mt-2' : 'mt-3'} max-w-3xl text-gray-600`.trim()} />}
     </div>
   )
 }

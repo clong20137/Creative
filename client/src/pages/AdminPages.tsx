@@ -2729,6 +2729,7 @@ function SectionPreviewToolbar({
   }, [section?.id, section?.buttonBoxShadow])
 
   const supportsHeading = Boolean(section?.title) && !['button', 'paragraph', 'divider', 'contactForm', 'customForm'].includes(section?.type)
+  const supportsBody = Boolean(section?.body)
   const supportsVerticalAlign = ['hero', 'banner', 'imageOverlay', 'section'].includes(section?.type)
   const supportsInlineEditing = Boolean(section?.title || section?.body)
   const hasPrimaryButton = Boolean(section?.buttonLabel && section?.buttonUrl)
@@ -2933,6 +2934,53 @@ function SectionPreviewToolbar({
               <option value="h6">H6</option>
             </select>
           </label>
+        )}
+
+        {(supportsHeading || supportsBody || hasPrimaryButton) && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-gray-50 px-2 py-2">
+            {supportsHeading && (
+              <label className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-gray-700" title="Heading size">
+                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded bg-white px-1 text-[10px] font-black">H</span>
+                <input
+                  type="range"
+                  min="16"
+                  max="96"
+                  value={Number(section?.headingFontSize || 48)}
+                  onChange={(event) => onUpdate('headingFontSize', event.target.value)}
+                  className="w-16 accent-blue-600"
+                  {...toolbarEventProps}
+                />
+              </label>
+            )}
+            {supportsBody && (
+              <label className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-gray-700" title="Body size">
+                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded bg-white px-1 text-[10px] font-black">P</span>
+                <input
+                  type="range"
+                  min="12"
+                  max="36"
+                  value={Number(section?.bodyFontSize || 18)}
+                  onChange={(event) => onUpdate('bodyFontSize', event.target.value)}
+                  className="w-16 accent-blue-600"
+                  {...toolbarEventProps}
+                />
+              </label>
+            )}
+            {hasPrimaryButton && (
+              <label className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-gray-700" title="Button text size">
+                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded bg-white px-1 text-[10px] font-black">B</span>
+                <input
+                  type="range"
+                  min="12"
+                  max="28"
+                  value={Number(section?.buttonFontSize || 16)}
+                  onChange={(event) => onUpdate('buttonFontSize', event.target.value)}
+                  className="w-16 accent-blue-600"
+                  {...toolbarEventProps}
+                />
+              </label>
+            )}
+          </div>
         )}
 
         {hasPrimaryButton && (
