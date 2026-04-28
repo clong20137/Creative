@@ -23,6 +23,10 @@ const CustomPage = sequelize.define('CustomPage', {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   },
+  previewToken: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   content: {
     type: DataTypes.TEXT('long'),
     allowNull: true

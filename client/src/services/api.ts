@@ -145,7 +145,8 @@ export const siteSettingsAPI = {
 }
 
 export const customPagesAPI = {
-  getPage: (slug: string) => unwrap(api.get(`/pages/${slug}`))
+  getPage: (slug: string) => unwrap(api.get(`/pages/${slug}`)),
+  getPreviewPage: (token: string) => unwrap(api.get(`/pages/preview/${token}`))
 }
 
 export const contactMessagesAPI = {
@@ -254,6 +255,8 @@ export const adminAPI = {
   createPage: (data: any) => unwrap(api.post('/admin/pages', data)),
   updatePage: (id: string, data: any) => unwrap(api.put(`/admin/pages/${id}`, data)),
   deletePage: (id: string) => unwrap(api.delete(`/admin/pages/${id}`)),
+  ensurePagePreviewLink: (id: string) => unwrap(api.post(`/admin/pages/${id}/preview-link`)),
+  regeneratePagePreviewLink: (id: string) => unwrap(api.post(`/admin/pages/${id}/preview-link/regenerate`)),
   getSiteSettings: () => unwrap(api.get('/admin/site-settings')),
   updateSiteSettings: (data: any) => unwrap(api.put('/admin/site-settings', data)),
   getBackups: () => unwrap<any[]>(api.get('/admin/backups')),

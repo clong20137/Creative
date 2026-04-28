@@ -260,7 +260,30 @@ async function ensureCustomPagesSchema() {
     }
   }
 
+  if (!table.previewToken) {
+    try {
+      await queryInterface.addColumn('CustomPages', 'previewToken', {
+        type: DataTypes.STRING,
+        allowNull: true
+      })
+    } catch (error) {
+      const message = String(error?.message || '')
+      if (!message.includes('Duplicate column')) throw error
+    }
+  }
+
   customPagesSchemaReady = true
+}
+
+function makePagePreviewToken() {
+  return `${crypto.randomUUID().replace(/-/g, '')}${crypto.randomBytes(8).toString('hex')}`
+}
+
+async function ensurePagePreviewToken(page) {
+  if (!page) return page
+  if (page.previewToken) return page
+  await page.update({ previewToken: makePagePreviewToken() })
+  return page
 }
 
 async function ensureSubscriptionSchema() {
@@ -2442,6 +2465,7 @@ router.get('/pages', async (req, res) => {
   try {
     await ensureCustomPagesSchema()
     const pages = await CustomPage.findAll({ order: [['sortOrder', 'ASC'], ['title', 'ASC']] })
+    await Promise.all(pages.map(ensurePagePreviewToken))
     res.json(pages)
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -2466,6 +2490,7 @@ router.post('/pages', async (req, res) => {
       metaTitle: req.body.metaTitle || '',
       metaDescription: req.body.metaDescription || '',
       isPublished: Boolean(req.body.isPublished),
+      previewToken: req.body.previewToken || makePagePreviewToken(),
       sortOrder: Number(req.body.sortOrder || 0)
     })
     await createAuditLog(req, {
@@ -2506,6 +2531,7 @@ router.put('/pages/:id', async (req, res) => {
       metaTitle: req.body.metaTitle || '',
       metaDescription: req.body.metaDescription || '',
       isPublished: Boolean(req.body.isPublished),
+      previewToken: page.previewToken || req.body.previewToken || makePagePreviewToken(),
       sortOrder: Number(req.body.sortOrder || 0)
     })
     await createAuditLog(req, {
@@ -2515,6 +2541,40 @@ router.put('/pages/:id', async (req, res) => {
       summary: `Updated page "${page.title}"`,
       details: {
         changedKeys: summarizeChangedKeys(previous, page.toJSON())
+      }
+    })
+    res.json(page)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/pages/:id/preview-link', async (req, res) => {
+  try {
+    await ensureCustomPagesSchema()
+    const page = await CustomPage.findByPk(req.params.id)
+    if (!page) return res.status(404).json({ error: 'Page not found' })
+    await ensurePagePreviewToken(page)
+    res.json(page)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/pages/:id/preview-link/regenerate', async (req, res) => {
+  try {
+    await ensureCustomPagesSchema()
+    const page = await CustomPage.findByPk(req.params.id)
+    if (!page) return res.status(404).json({ error: 'Page not found' })
+
+    await page.update({ previewToken: makePagePreviewToken() })
+    await createAuditLog(req, {
+      action: 'page.preview.regenerated',
+      targetType: 'page',
+      targetId: page.id,
+      summary: `Regenerated private preview link for "${page.title}"`,
+      details: {
+        slug: page.slug
       }
     })
     res.json(page)

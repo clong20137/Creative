@@ -55,6 +55,7 @@ const AdminPluginDetail = lazy(() => import('./pages/AdminPluginDetail'))
 const AdminSiteDemos = lazy(() => import('./pages/AdminSiteDemos'))
 const AdminMediaLibrary = lazy(() => import('./pages/AdminMediaLibrary'))
 const CustomPage = lazy(() => import('./pages/CustomPage'))
+const CustomPagePreview = lazy(() => import('./pages/CustomPagePreview'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 function RouteLoadingFallback() {
@@ -127,6 +128,7 @@ function AppRoutes() {
             <Route path="/admin/plugins/:slug" element={<AdminPluginDetail />} />
             <Route path="/admin/site-demos" element={<AdminSiteDemos />} />
             <Route path="/admin/media" element={<AdminMediaLibrary />} />
+            <Route path="/preview/page/:token" element={<CustomPagePreview />} />
             <Route path="/:slug" element={<CustomPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

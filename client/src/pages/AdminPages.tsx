@@ -810,6 +810,7 @@ export default function AdminPages() {
     headerTitle: '',
     headerSubtitle: '',
     showPageHeader: true,
+    previewToken: '',
     content: '',
     sections: [],
     metaTitle: '',
@@ -984,6 +985,7 @@ export default function AdminPages() {
       headerTitle: '',
       headerSubtitle: '',
       showPageHeader: true,
+      previewToken: '',
       content: '',
       sections: [],
       metaTitle: '',
@@ -1055,7 +1057,12 @@ export default function AdminPages() {
         setEditingSectionId('')
         setActiveTab('Custom Pages')
         setSelectedPageId(String(customPage.id))
-        setPageDraft({ ...customPage, showPageHeader: customPage.showPageHeader !== false, sections: Array.isArray(customPage.sections) ? customPage.sections : [] })
+        setPageDraft({
+          ...customPage,
+          showPageHeader: customPage.showPageHeader !== false,
+          previewToken: customPage.previewToken || '',
+          sections: Array.isArray(customPage.sections) ? customPage.sections : []
+        })
       }
     }
   }, [location.search, loading, pages, startNewPage])
@@ -1363,19 +1370,6 @@ export default function AdminPages() {
       return current.slice(1)
     })
   }
-  const pageSettingsEditor = activeTab === 'Custom Pages' ? (
-    <CustomPageSettingsEditor pageDraft={pageDraft} updatePageDraft={updatePageDraft} />
-  ) : activeBuiltInPageKey ? (
-    <PageMetadataEditor
-      page={activeBuiltInPageKey}
-      fallback={publicPages.find(page => page.id === activeBuiltInPageKey)}
-      metadata={settings.pageMetadata?.[activeBuiltInPageKey] || {}}
-      legacyHeader={settings.pageHeaders?.[activeBuiltInPageKey] || {}}
-      updatePageMetadata={updatePageMetadata}
-      updatePageHeader={updatePageHeader}
-    />
-  ) : null
-
   const saveCustomPage = async (e: React.FormEvent) => {
     e.preventDefault()
     await saveCustomPageEdits()
@@ -1523,7 +1517,7 @@ export default function AdminPages() {
         return [...withoutSaved, savedPage].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
       })
       setSelectedPageId(String(savedPage.id))
-      setPageDraft({ ...savedPage, showPageHeader: savedPage.showPageHeader !== false })
+      setPageDraft({ ...savedPage, showPageHeader: savedPage.showPageHeader !== false, previewToken: savedPage.previewToken || '' })
       setSavedSnapshot(JSON.stringify(savedPage))
       clearAutosaveEntry(getAutosaveStorageKey('Custom Pages', String(savedPage.id)))
       clearAutosaveEntry(getAutosaveStorageKey('Custom Pages', selectedPageId))
@@ -1555,6 +1549,85 @@ export default function AdminPages() {
       setError(err.error || 'Failed to delete custom page')
     }
   }
+
+  const buildPrivatePreviewUrl = (token?: string) => {
+    if (!token || typeof window === 'undefined') return ''
+    return `${window.location.origin}/preview/page/${token}`
+  }
+
+  const syncSavedPage = (savedPage: any) => {
+    if (!savedPage) return savedPage
+    setPages(current => current.map(page => String(page.id) === String(savedPage.id) ? savedPage : page))
+    setPageDraft((current: any) => ({
+      ...current,
+      ...savedPage,
+      showPageHeader: savedPage.showPageHeader !== false,
+      previewToken: savedPage.previewToken || current.previewToken || '',
+      sections: Array.isArray(savedPage.sections) ? savedPage.sections : current.sections || []
+    }))
+    return savedPage
+  }
+
+  const ensurePrivatePreviewLink = async () => {
+    if (selectedPageId === 'new') return null
+    if (pageDraft.previewToken) return pageDraft
+    const savedPage = await adminAPI.ensurePagePreviewLink(selectedPageId)
+    return syncSavedPage(savedPage)
+  }
+
+  const copyPrivatePreviewLink = async () => {
+    if (selectedPageId === 'new') {
+      setError('Save the page first, then we can generate a private preview link.')
+      return
+    }
+    try {
+      setError('')
+      const savedPage = await ensurePrivatePreviewLink()
+      const previewUrl = buildPrivatePreviewUrl(savedPage?.previewToken || pageDraft.previewToken)
+      if (!previewUrl) throw new Error('Preview link is not ready yet.')
+      await navigator.clipboard.writeText(previewUrl)
+      setMessage('Private preview link copied')
+    } catch (err: any) {
+      setError(err.error || err.message || 'Failed to copy preview link')
+    }
+  }
+
+  const regeneratePrivatePreviewLink = async () => {
+    if (selectedPageId === 'new') {
+      setError('Save the page first, then regenerate its private preview link.')
+      return
+    }
+    try {
+      setError('')
+      const savedPage = await adminAPI.regeneratePagePreviewLink(selectedPageId)
+      syncSavedPage(savedPage)
+      const previewUrl = buildPrivatePreviewUrl(savedPage.previewToken)
+      if (previewUrl) await navigator.clipboard.writeText(previewUrl)
+      setMessage('Private preview link regenerated and copied')
+    } catch (err: any) {
+      setError(err.error || 'Failed to regenerate preview link')
+    }
+  }
+
+  const pageSettingsEditor = activeTab === 'Custom Pages' ? (
+    <CustomPageSettingsEditor
+      pageDraft={pageDraft}
+      updatePageDraft={updatePageDraft}
+      selectedPageId={selectedPageId}
+      previewUrl={buildPrivatePreviewUrl(pageDraft.previewToken)}
+      copyPreviewLink={copyPrivatePreviewLink}
+      regeneratePreviewLink={regeneratePrivatePreviewLink}
+    />
+  ) : activeBuiltInPageKey ? (
+    <PageMetadataEditor
+      page={activeBuiltInPageKey}
+      fallback={publicPages.find(page => page.id === activeBuiltInPageKey)}
+      metadata={settings.pageMetadata?.[activeBuiltInPageKey] || {}}
+      legacyHeader={settings.pageHeaders?.[activeBuiltInPageKey] || {}}
+      updatePageMetadata={updatePageMetadata}
+      updatePageHeader={updatePageHeader}
+    />
+  ) : null
 
   return (
     <AdminLayout title="Website Pages">
@@ -4373,7 +4446,7 @@ function SectionPanelAnimationControls({ section, index, updateSection, prefix, 
   )
 }
 
-function CustomPageSettingsEditor({ pageDraft, updatePageDraft }: any) {
+function CustomPageSettingsEditor({ pageDraft, updatePageDraft, selectedPageId, previewUrl, copyPreviewLink, regeneratePreviewLink }: any) {
   return (
     <section className="rounded-lg border bg-white p-5">
       <div className="mb-5">
@@ -4431,6 +4504,37 @@ function CustomPageSettingsEditor({ pageDraft, updatePageDraft }: any) {
             <span className="mt-1 block text-sm font-normal text-gray-500">Turn this off if the page should begin directly with the first custom section.</span>
           </span>
         </label>
+
+        <div className="rounded-lg border bg-blue-50 px-4 py-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0">
+              <h4 className="text-sm font-bold text-gray-900">Private client preview</h4>
+              <p className="mt-1 text-sm text-gray-600">
+                Share an unpublished test page with a client using a private link. Only someone with the exact link can open it.
+              </p>
+              {selectedPageId === 'new' ? (
+                <p className="mt-3 text-sm font-semibold text-blue-700">Save this page first to generate a private preview link.</p>
+              ) : previewUrl ? (
+                <div className="mt-3 space-y-2">
+                  <input readOnly value={previewUrl} className="w-full rounded-lg border bg-white px-4 py-3 text-sm text-gray-700" />
+                  <p className="text-xs text-gray-500">Tip: keep the page unpublished if you only want the private preview link to work.</p>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm font-semibold text-blue-700">Generate a private preview link for this page.</p>
+              )}
+            </div>
+            <div className="flex w-full flex-col gap-2 md:w-auto">
+              <button type="button" onClick={copyPreviewLink} disabled={selectedPageId === 'new'} className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
+                {previewUrl ? 'Copy Preview Link' : 'Generate Preview Link'}
+              </button>
+              {selectedPageId !== 'new' && (
+                <button type="button" onClick={regeneratePreviewLink} className="rounded-lg border bg-white px-4 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50">
+                  Regenerate Link
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   )

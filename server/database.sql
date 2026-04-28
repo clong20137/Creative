@@ -417,6 +417,7 @@ CREATE TABLE IF NOT EXISTS CustomPages (
   headerTitle VARCHAR(255),
   headerSubtitle TEXT,
   showPageHeader BOOLEAN DEFAULT true,
+  previewToken VARCHAR(255),
   content LONGTEXT,
   sections JSON,
   metaTitle VARCHAR(255),
