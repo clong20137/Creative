@@ -220,7 +220,7 @@ app.get('/sitemap.xml', async (req, res) => {
   try {
     const siteUrl = getPublicSiteUrl()
     const settings = await getOrCreateSiteSettings()
-    const builtInPaths = ['/', '/portfolio', '/services', '/pricing', '/plugins', '/contact']
+    const builtInPaths = ['/', '/portfolio', '/services', '/pricing', '/plugins', '/contact', '/creativecms-platform']
     const metadataEntries = Object.values(settings.pageMetadata || {})
       .map((page) => normalizePublicPath(page?.pageUrl || ''))
       .filter(Boolean)

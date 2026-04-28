@@ -29,6 +29,7 @@ const ElectricianSiteDemo = lazy(() => import('./pages/ElectricianSiteDemo'))
 const MowingBusinessSiteDemo = lazy(() => import('./pages/MowingBusinessSiteDemo'))
 const GolfSiteDemo = lazy(() => import('./pages/GolfSiteDemo'))
 const CornholeSiteDemo = lazy(() => import('./pages/CornholeSiteDemo'))
+const CreativeCmsSalesPage = lazy(() => import('./pages/CreativeCmsSalesPage'))
 const Login = lazy(() => import('./pages/Login'))
 const ClientDashboard = lazy(() => import('./pages/ClientDashboard'))
 const ClientPortalBilling = lazy(() => import('./pages/ClientPortalBilling'))
@@ -102,6 +103,7 @@ function AppRoutes() {
             <Route path="/site-demos/mowing-business" element={<MowingBusinessSiteDemo />} />
             <Route path="/site-demos/golf" element={<GolfSiteDemo />} />
             <Route path="/site-demos/cornhole" element={<CornholeSiteDemo />} />
+            <Route path="/creativecms-platform" element={<CreativeCmsSalesPage />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/login" element={<Login />} />
             <Route path="/client-dashboard" element={<ClientDashboard />} />
