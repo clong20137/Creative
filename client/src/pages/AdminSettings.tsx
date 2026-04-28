@@ -79,6 +79,10 @@ const emptySettings = {
       title: 'Website Plugins',
       subtitle: 'Add the features your business needs when you need them.'
     },
+    creativecms: {
+      title: 'CreativeCMS',
+      subtitle: 'A website platform for demos, plugins, private previews, and recurring client delivery.'
+    },
     contact: {
       title: 'Get in Touch',
       subtitle: "Have a project in mind? Let's talk about how we can help."
@@ -117,6 +121,7 @@ const pageHeaderLabels: Record<string, string> = {
   services: 'Services',
   pricing: 'Pricing',
   plugins: 'Plugins',
+  creativecms: 'CreativeCMS',
   contact: 'Contact'
 }
 const MAX_DATA_URL_LENGTH = 2_500_000

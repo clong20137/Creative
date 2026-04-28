@@ -4,7 +4,7 @@ import SiteSetting from '../models/SiteSetting.js'
 
 const router = express.Router()
 let siteSettingsSchemaReady = false
-const BUILT_IN_PAGE_KEYS = ['home', 'portfolio', 'services', 'pricing', 'plugins', 'contact']
+const BUILT_IN_PAGE_KEYS = ['home', 'portfolio', 'services', 'pricing', 'plugins', 'creativecms', 'contact']
 
 const defaultFooterColumns = [
   {
@@ -251,6 +251,14 @@ const fallbackPageMetadata = {
     metaTitle: 'Website Plugins and Add Ons',
     metaDescription: 'Explore optional website plugins from Creative by Caleb, including restaurant menus and real estate listing tools.'
   },
+  creativecms: {
+    pageTitle: 'CreativeCMS',
+    pageUrl: '/creativecms-platform',
+    headerTitle: 'CreativeCMS',
+    headerSubtitle: 'A productized website platform for demos, plugins, previews, recurring delivery, and client management.',
+    metaTitle: 'CreativeCMS Website Platform',
+    metaDescription: 'CreativeCMS is a website platform for building, previewing, selling, launching, and managing modern client sites with demos, plugins, SEO tools, and client portal workflows.'
+  },
   contact: {
     pageTitle: 'Contact',
     pageUrl: '/contact',
@@ -297,6 +305,7 @@ function buildFallbackBuiltInSections(settings) {
   const servicesMetadata = metadataFor(settings, 'services')
   const pricingMetadata = metadataFor(settings, 'pricing')
   const pluginsMetadata = metadataFor(settings, 'plugins')
+  const creativeCmsMetadata = metadataFor(settings, 'creativecms')
   const contactMetadata = metadataFor(settings, 'contact')
   const whatWeDo = Array.isArray(settings.whatWeDo) && settings.whatWeDo.length > 0 ? settings.whatWeDo : fallbackWhatWeDo
   const featuredWork = Array.isArray(settings.featuredWork) && settings.featuredWork.length > 0 ? settings.featuredWork : fallbackFeaturedWork
@@ -438,6 +447,80 @@ function buildFallbackBuiltInSections(settings) {
         body: 'Explore optional add-ons and interactive demos that can be activated for your site.'
       }
     ],
+    creativecms: [
+      {
+        id: 'legacy-creativecms-hero',
+        type: 'hero',
+        title: 'A website platform built to help us sell, preview, launch, and manage client sites faster.',
+        body: 'CreativeCMS gives us the builder, demos, plugins, client portal, SEO tools, backup controls, and private preview flow needed to turn websites into a repeatable product.',
+        buttonLabel: 'Talk About CreativeCMS',
+        buttonUrl: '/contact',
+        secondaryButtonLabel: 'Explore the Plugin Stack',
+        secondaryButtonUrl: '/plugins',
+        imageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80'
+      },
+      {
+        id: 'legacy-creativecms-benefits',
+        type: 'columns',
+        title: 'Why it works',
+        body: 'CreativeCMS brings the sales side and the delivery side into one workflow.',
+        columns: 2,
+        tabletColumns: 2,
+        mobileColumns: 1,
+        items: [
+          {
+            id: 'legacy-creativecms-benefit-col-1',
+            sections: [
+              { id: 'legacy-creativecms-benefit-1', type: 'header', title: 'Built for fast client work', body: 'Create pages quickly with reusable sections, synced blocks, demos, and responsive editing controls that keep projects moving.' },
+              { id: 'legacy-creativecms-benefit-2', type: 'header', title: 'Responsive without guesswork', body: 'Tune sections for desktop, tablet, and mobile so each site feels polished before it ever goes live.' }
+            ]
+          },
+          {
+            id: 'legacy-creativecms-benefit-col-2',
+            sections: [
+              { id: 'legacy-creativecms-benefit-3', type: 'header', title: 'Private previews and approvals', body: 'Share unpublished preview links with clients so they can review a site safely before purchase or launch.' },
+              { id: 'legacy-creativecms-benefit-4', type: 'header', title: 'Designed for repeatable systems', body: 'Use templates, synced content, plugins, backups, and release tools to run website delivery like a product, not a scramble.' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'legacy-creativecms-inside',
+        type: 'section',
+        title: 'A productized website workflow, not just a pretty editor.',
+        body: 'Everything needed to launch with confidence: page builder with columns, sections, image cards, CTA blocks, and custom forms; CRM, booking, events, protected content, blog, real estate, restaurant, and more; SEO diagnostics, theme controls, media management, demos, and client previews; audit logs, backup tools, onboarding wizard, licensing, and client portal flows.',
+        imageUrl: 'https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=1400&q=80',
+        alt: 'Website team reviewing layouts and launch details at a desk'
+      },
+      {
+        id: 'legacy-creativecms-fit',
+        type: 'section',
+        title: 'CreativeCMS is strongest when websites are part of an ongoing relationship.',
+        body: 'It works especially well when we want to show demos, collect leads, share private previews, manage updates, and keep clients inside a branded portal after the build is done.',
+        imageOrder: 'image-first',
+        imageUrl: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1400&q=80',
+        alt: 'Modern workspace with screens and collaborative planning tools'
+      },
+      {
+        id: 'legacy-creativecms-use-cases',
+        type: 'faq',
+        title: 'Best fit',
+        body: 'CreativeCMS works especially well for repeatable client delivery.',
+        items: [
+          { id: 'legacy-creativecms-use-case-1', q: 'Agencies', a: 'Agencies that want to sell sites with recurring support.' },
+          { id: 'legacy-creativecms-use-case-2', q: 'Studios', a: 'Studios that need a faster client-preview and revision workflow.' },
+          { id: 'legacy-creativecms-use-case-3', q: 'Businesses', a: 'Businesses that want one platform for marketing pages, plugins, leads, and updates.' }
+        ]
+      },
+      {
+        id: 'legacy-creativecms-cta',
+        type: 'cta',
+        title: creativeCmsMetadata.headerTitle || creativeCmsMetadata.pageTitle || 'CreativeCMS',
+        body: 'If the goal is to package websites as a better product, this gives us the system, presentation, and client workflow to do it in one place.',
+        buttonLabel: 'Start a CreativeCMS Conversation',
+        buttonUrl: '/contact'
+      }
+    ],
     contact: [
       {
         id: 'legacy-contact-header',
@@ -474,15 +557,28 @@ function ensureBuiltInPageDefaults(settings) {
     settings.pageMetadata = nextMetadata
   }
 
+  const fallbackSections = buildFallbackBuiltInSections({
+    ...settings.toJSON(),
+    pageMetadata: settings.pageMetadata || nextMetadata
+  })
+
   if (!hasAnyBuiltInSections) {
     settings.pageSections = {
       ...currentSections,
-      ...buildFallbackBuiltInSections({
-        ...settings.toJSON(),
-        pageMetadata: settings.pageMetadata || nextMetadata
-      })
+      ...fallbackSections
     }
     changed = true
+  } else {
+    const nextSections = { ...currentSections }
+    for (const pageKey of BUILT_IN_PAGE_KEYS) {
+      if (!(pageKey in nextSections)) {
+        nextSections[pageKey] = fallbackSections[pageKey] || []
+        changed = true
+      }
+    }
+    if (changed) {
+      settings.pageSections = nextSections
+    }
   }
 
   return changed

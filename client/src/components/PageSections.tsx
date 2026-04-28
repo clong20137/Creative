@@ -450,6 +450,10 @@ function PageSection({ section }: { section: any }) {
     return <ButtonSection section={section} />
   }
 
+  if (section.type === 'map') {
+    return <InteractiveMapSection section={section} />
+  }
+
   if (section.type === 'divider') {
     const width = Math.min(100, Math.max(10, Number(section.dividerWidth || 100)))
     const height = Math.min(20, Math.max(1, Number(section.dividerHeight || 1)))
@@ -622,6 +626,44 @@ function ButtonSection({ section }: { section: any }) {
         <Link to={section.buttonUrl} className="section-button inline-flex items-center justify-center gap-2">
           {section.buttonLabel} <FiArrowRight />
         </Link>
+      </div>
+    </section>
+  )
+}
+
+function getMapEmbedSrc(section: any) {
+  const embedUrl = String(section?.mapEmbedUrl || '').trim()
+  if (embedUrl) return embedUrl
+  const query = String(section?.mapQuery || '').trim()
+  if (!query) return ''
+  return `https://www.google.com/maps?q=${encodeURIComponent(query)}&z=14&output=embed`
+}
+
+function InteractiveMapSection({ section }: { section: any }) {
+  const src = getMapEmbedSrc(section)
+  const height = Math.min(1200, Math.max(220, Number(section.mapHeight || 420)))
+
+  return (
+    <section className="section-padding">
+      <div className="container">
+        <SectionHeading section={section} fallbackTitle="Find Us" />
+        {src ? (
+          <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+            <iframe
+              title={section.title || section.mapQuery || 'Interactive map'}
+              src={src}
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+              className="w-full border-0"
+              style={{ height: `${height}px` }}
+            />
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed p-6 text-center text-gray-600">
+            Add a map address or embed URL in the page builder to show an interactive map here.
+          </div>
+        )}
       </div>
     </section>
   )

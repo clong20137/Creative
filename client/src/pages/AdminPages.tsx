@@ -1,6 +1,6 @@
 import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiCopy, FiEye, FiEyeOff, FiFileText, FiGrid, FiImage, FiLayout, FiMonitor, FiMove, FiRotateCcw, FiRotateCw, FiSave, FiSearch, FiSmartphone, FiSquare, FiTablet, FiTrash2, FiType } from 'react-icons/fi'
+import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiCopy, FiEye, FiEyeOff, FiFileText, FiGrid, FiImage, FiLayout, FiMapPin, FiMonitor, FiMove, FiRotateCcw, FiRotateCw, FiSave, FiSearch, FiSmartphone, FiSquare, FiTablet, FiTrash2, FiType } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import { adminAPI, resolveAssetUrl } from '../services/api'
@@ -16,6 +16,7 @@ const publicPages = [
   { id: 'services', label: 'Services', url: '/services' },
   { id: 'pricing', label: 'Pricing', url: '/pricing' },
   { id: 'plugins', label: 'Plugins', url: '/plugins' },
+  { id: 'creativecms', label: 'CreativeCMS', url: '/creativecms-platform' },
   { id: 'contact', label: 'Contact', url: '/contact' }
 ]
 
@@ -50,6 +51,7 @@ const pageHeaderLabels: Record<string, string> = {
   services: 'Services',
   pricing: 'Pricing',
   plugins: 'Plugins',
+  creativecms: 'CreativeCMS',
   contact: 'Contact'
 }
 
@@ -73,6 +75,7 @@ const sectionTypeOptions = [
   { value: 'image', label: 'Image', icon: FiImage },
   { value: 'imageCards', label: 'Image Cards', icon: FiGrid },
   { value: 'imageOverlay', label: 'Image Overlay', icon: FiImage },
+  { value: 'map', label: 'Interactive Map', icon: FiMapPin },
   { value: 'divider', label: 'Divider', icon: FiLayout },
   { value: 'gallery', label: 'Gallery', icon: FiImage },
   { value: 'plugin', label: 'Plugin', icon: FiGrid },
@@ -279,6 +282,9 @@ function makePageSection(type: string) {
     headingTag: type === 'header' ? 'h2' : '',
     body: '',
     imageUrl: '',
+    mapQuery: '',
+    mapEmbedUrl: '',
+    mapHeight: type === 'map' ? 420 : '',
     mediaType: 'image',
     alt: '',
     pluginSlug: 'restaurant',
@@ -2909,7 +2915,7 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
           </div>
         )}
 
-        {(section.type === 'header' || section.type === 'section' || section.type === 'services') && (
+        {(section.type === 'header' || section.type === 'section' || section.type === 'services' || section.type === 'map') && (
           <div className="space-y-3">
             <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Section title" className="w-full px-4 py-2 border rounded-lg" />
             {section.type === 'header' && (
@@ -2928,7 +2934,7 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
           </div>
         )}
 
-        {(section.type === 'paragraph' || section.type === 'section' || section.type === 'services') && (
+        {(section.type === 'paragraph' || section.type === 'section' || section.type === 'services' || section.type === 'map') && (
           <DeferredRichTextEditorField label="Text content" value={section.body || ''} onChange={(value: string) => updateSection(index, 'body', value)} placeholder="Format certain words, add links, and set colors..." minHeight={160} />
         )}
 
@@ -3016,6 +3022,29 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
               <input type="color" value={/^#[0-9A-F]{6}$/i.test(section.dividerColor || '') ? section.dividerColor : '#d1d5db'} onChange={(e) => updateSection(index, 'dividerColor', e.target.value)} className="h-10 w-12 rounded border p-1" />
               <input value={section.dividerColor || ''} onChange={(e) => updateSection(index, 'dividerColor', e.target.value)} placeholder="#d1d5db" className="w-full rounded-lg border px-2 py-1" />
             </div>
+          </div>
+        )}
+
+        {section.type === 'map' && (
+          <div className="space-y-3 rounded-lg border bg-gray-50 p-4">
+            <label className="space-y-2 block">
+              <span className="text-sm font-semibold text-gray-700">Map search / address</span>
+              <input value={section.mapQuery || ''} onChange={(e) => updateSection(index, 'mapQuery', e.target.value)} placeholder="Indianapolis, IN or 123 Main St, Indianapolis, IN" className="w-full rounded-lg border px-4 py-2" />
+              <p className="text-xs text-gray-500">Quick option: enter an address or city and we will build the embed automatically.</p>
+            </label>
+            <label className="space-y-2 block">
+              <span className="text-sm font-semibold text-gray-700">Custom embed URL</span>
+              <input value={section.mapEmbedUrl || ''} onChange={(e) => updateSection(index, 'mapEmbedUrl', e.target.value)} placeholder="https://www.google.com/maps/embed?..." className="w-full rounded-lg border px-4 py-2" />
+              <p className="text-xs text-gray-500">Paste a Google Maps embed URL here if you want full control. This takes priority over the address field above.</p>
+            </label>
+            <label className="grid grid-cols-[5rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
+              <span className="font-semibold">Height</span>
+              <input type="range" min="220" max="900" step="10" value={Number(section.mapHeight || 420)} onChange={(e) => updateSection(index, 'mapHeight', e.target.value)} className="w-full accent-blue-600" />
+              <div className="flex items-center gap-1">
+                <input type="number" min="220" max="1200" value={section.mapHeight ?? ''} onChange={(e) => updateSection(index, 'mapHeight', e.target.value)} className="w-full rounded-lg border px-2 py-1 text-right" />
+                <span className="text-xs text-gray-500">px</span>
+              </div>
+            </label>
           </div>
         )}
 
@@ -3309,7 +3338,7 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
               </div>
             )}
 
-            {(section.type === 'header' || section.type === 'section' || section.type === 'services') && (
+            {(section.type === 'header' || section.type === 'section' || section.type === 'services' || section.type === 'map') && (
               <div className="mb-3 space-y-3">
                 <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Section title" className="w-full px-4 py-2 border rounded-lg" />
                 {section.type === 'header' && (
@@ -3325,8 +3354,16 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
               </div>
             )}
 
-            {(section.type === 'paragraph' || section.type === 'section' || section.type === 'services') && (
+            {(section.type === 'paragraph' || section.type === 'section' || section.type === 'services' || section.type === 'map') && (
               <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Text content" rows={4} className="mb-3 w-full px-4 py-2 border rounded-lg" />
+            )}
+
+            {section.type === 'map' && (
+              <div className="mb-3 grid grid-cols-1 gap-3">
+                <input value={section.mapQuery || ''} onChange={(e) => updateSection(index, 'mapQuery', e.target.value)} placeholder="Map search / address" className="px-4 py-2 border rounded-lg" />
+                <input value={section.mapEmbedUrl || ''} onChange={(e) => updateSection(index, 'mapEmbedUrl', e.target.value)} placeholder="Custom embed URL" className="px-4 py-2 border rounded-lg" />
+                <input type="number" min="220" max="1200" value={section.mapHeight || ''} onChange={(e) => updateSection(index, 'mapHeight', e.target.value)} placeholder="Map height in px" className="px-4 py-2 border rounded-lg" />
+              </div>
             )}
 
             {section.type === 'portfolio' && (

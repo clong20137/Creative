@@ -24,6 +24,10 @@ const pageDefaults: Record<string, any> = {
     pageTitle: 'Plugins',
     pageUrl: '/plugins'
   },
+  creativecms: {
+    pageTitle: 'CreativeCMS',
+    pageUrl: '/creativecms-platform'
+  },
   contact: {
     pageTitle: 'Contact',
     pageUrl: '/contact'
