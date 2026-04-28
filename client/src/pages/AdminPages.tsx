@@ -298,6 +298,14 @@ function clearAutosaveEntry(key: string) {
   window.localStorage.removeItem(key)
 }
 
+function extractPlainTextFromHtml(value: string) {
+  if (!value) return ''
+  if (typeof window === 'undefined') return value.replace(/<[^>]+>/g, ' ').trim()
+  const parser = new DOMParser()
+  const documentNode = parser.parseFromString(`<div>${value}</div>`, 'text/html')
+  return documentNode.body.textContent?.replace(/\s+/g, ' ').trim() || ''
+}
+
 function getSectionSeoIssues(section: any) {
   const issues: string[] = []
   const imageStats = collectImageDiagnostics(section)
@@ -322,12 +330,14 @@ function makePageSection(type: string) {
     type,
     title: '',
     headingTag: type === 'hero' ? 'h1' : (type === 'header' ? 'h2' : ''),
+    titleHtml: '',
     titleLinkUrl: '',
     body: '',
     imageUrl: '',
     mapQuery: '',
     mapEmbedUrl: '',
     mapHeight: type === 'map' ? 420 : '',
+    mapPins: [],
     videoUrl: '',
     videoHeight: type === 'youtube' ? 420 : '',
     mediaType: 'image',
@@ -345,6 +355,7 @@ function makePageSection(type: string) {
     secondaryButtonPaddingY: '',
     secondaryButtonHoverEffect: 'none',
     buttonHoverBackgroundColor: '',
+    buttonBoxShadow: '',
     buttonBorderRadius: '',
     buttonPaddingX: '',
     buttonPaddingY: '',
@@ -457,6 +468,16 @@ function makeCustomFormField(type = 'text', overrides: Record<string, any> = {})
     required: false,
     placeholder: '',
     options: '',
+    ...overrides
+  }
+}
+
+function makeMapPin(overrides: Record<string, any> = {}) {
+  return {
+    id: crypto.randomUUID(),
+    label: 'Location',
+    x: 50,
+    y: 50,
     ...overrides
   }
 }
@@ -2484,10 +2505,36 @@ function DiagnosticList({ title, items }: { title: string; items: string[] }) {
   )
 }
 
-const PreviewSectionContent = memo(function PreviewSectionContent({ section, previewMode }: { section: any; previewMode: 'desktop' | 'tablet' | 'mobile' }) {
+const PreviewSectionContent = memo(function PreviewSectionContent({
+  section,
+  previewMode,
+  isSelected,
+  onTitleContentChange
+}: {
+  section: any
+  previewMode: 'desktop' | 'tablet' | 'mobile'
+  isSelected?: boolean
+  onTitleContentChange?: (html: string, text: string) => void
+}) {
+  const previewSection = useMemo(() => {
+    if (!isSelected || !onTitleContentChange || !section?.title) return section
+    return {
+      ...section,
+      __liveEdit: {
+        titleEditable: true,
+        onTitleChange: onTitleContentChange,
+        syncFromDom: () => {
+          const editor = document.getElementById(`editable-heading-${section.id}`) as HTMLSpanElement | null
+          if (!editor) return
+          onTitleContentChange(editor.innerHTML || '', extractPlainTextFromHtml(editor.innerHTML || ''))
+        }
+      }
+    }
+  }, [section, isSelected, onTitleContentChange])
+
   return (
     <Suspense fallback={<div className="min-h-[12rem] animate-pulse bg-gray-100" />}>
-      <PageSections sections={[section]} previewMode={previewMode} />
+      <PageSections sections={[previewSection]} previewMode={previewMode} />
     </Suspense>
   )
 })
@@ -2528,17 +2575,21 @@ function SectionPreviewToolbar({
   onUpdate: (field: string, value: any) => void
   onSelectSectionSettings: () => void
 }) {
+  const savedRangeRef = useRef<Range | null>(null)
   const [linkOpen, setLinkOpen] = useState(false)
-  const [linkValue, setLinkValue] = useState(section?.titleLinkUrl || '')
+  const [linkValue, setLinkValue] = useState('')
+  const [buttonShadowValue, setButtonShadowValue] = useState(section?.buttonBoxShadow || '')
 
   useEffect(() => {
-    setLinkValue(section?.titleLinkUrl || '')
     setLinkOpen(false)
-  }, [section?.id, section?.titleLinkUrl])
+    setLinkValue('')
+    setButtonShadowValue(section?.buttonBoxShadow || '')
+  }, [section?.id, section?.buttonBoxShadow])
 
   const supportsHeading = Boolean(section?.title) && !['button', 'paragraph', 'divider', 'contactForm', 'customForm'].includes(section?.type)
   const supportsVerticalAlign = ['hero', 'banner', 'imageOverlay', 'section'].includes(section?.type)
-  const supportsTitleLink = Boolean(section?.title) && section?.type !== 'divider'
+  const supportsInlineHeadingEdit = supportsHeading
+  const hasPrimaryButton = Boolean(section?.buttonLabel && section?.buttonUrl)
 
   const alignButtons = [
     { value: 'left', icon: FiAlignLeft, label: 'Align left' },
@@ -2552,9 +2603,83 @@ function SectionPreviewToolbar({
     { value: 'bottom', icon: FiArrowDown, label: 'Align bottom' }
   ]
 
+  const buttonShadowPresets = [
+    { label: 'None', value: '' },
+    { label: 'Soft', value: '0 8px 18px rgba(15, 23, 42, 0.12)' },
+    { label: 'Lift', value: '0 12px 24px rgba(15, 23, 42, 0.16)' },
+    { label: 'Glow', value: '0 0 0 1px rgba(37, 99, 235, 0.08), 0 14px 30px rgba(37, 99, 235, 0.24)' }
+  ]
+
+  const focusHeadingEditor = () => {
+    const editor = document.getElementById(`editable-heading-${section?.id}`) as HTMLSpanElement | null
+    editor?.focus()
+    return editor
+  }
+
+  const saveHeadingSelection = () => {
+    const editor = document.getElementById(`editable-heading-${section?.id}`) as HTMLSpanElement | null
+    const selection = window.getSelection()
+    if (!editor || !selection || selection.rangeCount === 0) return false
+    const range = selection.getRangeAt(0)
+    if (!editor.contains(range.commonAncestorContainer)) return false
+    savedRangeRef.current = range.cloneRange()
+    return true
+  }
+
+  const restoreHeadingSelection = () => {
+    const selection = window.getSelection()
+    if (!selection || !savedRangeRef.current) return
+    selection.removeAllRanges()
+    selection.addRange(savedRangeRef.current)
+  }
+
+  const syncHeading = () => {
+    section?.__liveEdit?.syncFromDom?.()
+  }
+
+  const getActiveHeadingLink = () => {
+    const selection = window.getSelection()
+    const node = selection?.anchorNode
+    if (!node) return null
+    const element = node.nodeType === Node.ELEMENT_NODE ? (node as HTMLElement) : node.parentElement
+    return element?.closest('a') || null
+  }
+
+  const applyHeadingCommand = (command: string, commandValue?: string) => {
+    const editor = focusHeadingEditor()
+    if (!editor) return
+    document.execCommand('styleWithCSS', false, command === 'foreColor' ? 'true' : 'false')
+    document.execCommand(command, false, commandValue)
+    window.setTimeout(syncHeading, 0)
+  }
+
+  const openHeadingLinkPopover = () => {
+    const hasSelection = saveHeadingSelection()
+    const activeLink = getActiveHeadingLink()
+    setLinkValue(activeLink?.getAttribute('href') || '')
+    setLinkOpen(true)
+    if (!hasSelection && !activeLink) focusHeadingEditor()
+  }
+
+  const applyHeadingLink = () => {
+    const editor = focusHeadingEditor()
+    if (!editor) return
+    restoreHeadingSelection()
+    document.execCommand('styleWithCSS', false, 'false')
+    if (linkValue.trim()) {
+      document.execCommand('createLink', false, linkValue.trim())
+    } else {
+      document.execCommand('unlink')
+    }
+    window.setTimeout(() => {
+      syncHeading()
+      setLinkOpen(false)
+    }, 0)
+  }
+
   return (
     <div
-      className="absolute left-1/2 top-3 z-20 w-[min(calc(100%-1.5rem),56rem)] -translate-x-1/2 rounded-xl border bg-white/95 p-3 shadow-2xl backdrop-blur"
+      className="absolute left-1/2 top-3 z-20 w-[min(calc(100%-1.5rem),72rem)] -translate-x-1/2 rounded-xl border bg-white/95 p-3 shadow-2xl backdrop-blur"
       onClick={(event) => event.stopPropagation()}
     >
       <div className="flex flex-wrap items-center gap-3">
@@ -2572,6 +2697,25 @@ function SectionPreviewToolbar({
             </button>
           ))}
         </div>
+
+        {supportsInlineHeadingEdit && (
+          <div className="flex items-center gap-1 rounded-lg border bg-gray-50 p-1">
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyHeadingCommand('bold')} className="rounded-md px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-white">B</button>
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyHeadingCommand('italic')} className="rounded-md px-3 py-2 text-sm italic text-gray-700 transition hover:bg-white">I</button>
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyHeadingCommand('underline')} className="rounded-md px-3 py-2 text-sm underline text-gray-700 transition hover:bg-white">U</button>
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={openHeadingLinkPopover} className="inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white">
+              <FiLink />
+              <span>Link</span>
+            </button>
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyHeadingCommand('unlink')} className="rounded-md px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white">
+              Unlink
+            </button>
+            <label className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white">
+              <span>Color</span>
+              <input type="color" onChange={(event) => applyHeadingCommand('foreColor', event.target.value)} className="h-7 w-8 cursor-pointer rounded border p-0" />
+            </label>
+          </div>
+        )}
 
         {supportsVerticalAlign && (
           <div className="flex items-center gap-1 rounded-lg border bg-gray-50 p-1">
@@ -2609,36 +2753,60 @@ function SectionPreviewToolbar({
           </label>
         )}
 
-        {supportsTitleLink && (
-          <div className="flex items-center gap-2 rounded-lg border bg-gray-50 px-2 py-2">
-            <button
-              type="button"
-              onClick={() => setLinkOpen((current) => !current)}
-              className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition ${linkOpen || section?.titleLinkUrl ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-white'}`}
-            >
-              <FiLink />
-              <span>Link title</span>
-            </button>
-            {linkOpen && (
-              <div className="flex min-w-[18rem] items-center gap-2">
-                <input
-                  value={linkValue}
-                  onChange={(event) => setLinkValue(event.target.value)}
-                  placeholder="/contact or https://..."
-                  className="w-full rounded-md border bg-white px-3 py-2 text-sm text-gray-700"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    onUpdate('titleLinkUrl', linkValue.trim())
-                    setLinkOpen(false)
-                  }}
-                  className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white"
-                >
-                  Apply
-                </button>
-              </div>
-            )}
+        {hasPrimaryButton && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-gray-50 px-2 py-2">
+            <label className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-semibold text-gray-700">
+              Text
+              <input type="color" value={section?.buttonTextColor || '#ffffff'} onChange={(event) => onUpdate('buttonTextColor', event.target.value)} className="h-8 w-9 rounded border p-1" />
+            </label>
+            <label className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-semibold text-gray-700">
+              Button
+              <input type="color" value={section?.buttonBackgroundColor || '#2563eb'} onChange={(event) => onUpdate('buttonBackgroundColor', event.target.value)} className="h-8 w-9 rounded border p-1" />
+            </label>
+            <label className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-semibold text-gray-700">
+              Shadow
+              <select
+                value={buttonShadowPresets.some((preset) => preset.value === buttonShadowValue) ? buttonShadowValue : '__custom__'}
+                onChange={(event) => {
+                  const nextValue = event.target.value === '__custom__' ? buttonShadowValue : event.target.value
+                  setButtonShadowValue(nextValue)
+                  onUpdate('buttonBoxShadow', nextValue)
+                }}
+                className="rounded-md border bg-white px-2 py-1 text-xs text-gray-700"
+              >
+                {buttonShadowPresets.map((preset) => <option key={preset.label} value={preset.value}>{preset.label}</option>)}
+                <option value="__custom__">Custom</option>
+              </select>
+            </label>
+            <label className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-semibold text-gray-700">
+              Effect
+              <select value={section?.buttonHoverEffect || 'lift'} onChange={(event) => onUpdate('buttonHoverEffect', event.target.value)} className="rounded-md border bg-white px-2 py-1 text-xs text-gray-700">
+                <option value="none">None</option>
+                <option value="lift">Lift</option>
+                <option value="grow">Grow</option>
+                <option value="glow">Glow</option>
+              </select>
+            </label>
+            <label className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-semibold text-gray-700">
+              Text shadow
+              <select value={section?.buttonTextShadow || ''} onChange={(event) => onUpdate('buttonTextShadow', event.target.value)} className="rounded-md border bg-white px-2 py-1 text-xs text-gray-700">
+                <option value="">None</option>
+                <option value="0 1px 2px rgba(15, 23, 42, 0.2)">Soft</option>
+                <option value="0 2px 8px rgba(15, 23, 42, 0.3)">Glow</option>
+              </select>
+            </label>
+            <label className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-semibold text-gray-700">
+              Radius
+              <input type="range" min="0" max="40" value={Number(section?.buttonBorderRadius || 8)} onChange={(event) => onUpdate('buttonBorderRadius', event.target.value)} className="w-20 accent-blue-600" />
+            </label>
+            <label className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-semibold text-gray-700">
+              Pad X
+              <input type="range" min="8" max="40" value={Number(section?.buttonPaddingX || 24)} onChange={(event) => onUpdate('buttonPaddingX', event.target.value)} className="w-20 accent-blue-600" />
+            </label>
+            <label className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-semibold text-gray-700">
+              Pad Y
+              <input type="range" min="6" max="28" value={Number(section?.buttonPaddingY || 12)} onChange={(event) => onUpdate('buttonPaddingY', event.target.value)} className="w-20 accent-blue-600" />
+            </label>
           </div>
         )}
 
@@ -2651,6 +2819,19 @@ function SectionPreviewToolbar({
           <span>More controls</span>
         </button>
       </div>
+      {linkOpen && supportsInlineHeadingEdit && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border bg-blue-50 p-3">
+          <input
+            value={linkValue}
+            onChange={(event) => setLinkValue(event.target.value)}
+            placeholder="https://example.com or /contact"
+            className="min-w-[16rem] flex-1 rounded-md border bg-white px-3 py-2 text-sm text-gray-700"
+          />
+          <button type="button" onClick={applyHeadingLink} className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white">Apply Link</button>
+          <button type="button" onClick={() => { setLinkValue(''); applyHeadingLink() }} className="rounded-md border px-3 py-2 text-sm font-semibold text-gray-700">Remove</button>
+          <button type="button" onClick={() => setLinkOpen(false)} className="rounded-md border px-3 py-2 text-sm font-semibold text-gray-700">Close</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -2755,7 +2936,17 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
                     <p className="font-bold">{getSectionTitle(section, index)} is hidden</p>
                     <p className="text-sm">It will not appear on the live page until you show it again.</p>
                   </div>
-                ) : <PreviewSectionContent section={section} previewMode={previewMode} />}
+                ) : (
+                  <PreviewSectionContent
+                    section={section}
+                    previewMode={previewMode}
+                    isSelected={selectedSectionId === sectionKey}
+                    onTitleContentChange={(html: string, text: string) => {
+                      updateSelectedSection?.('titleHtml', html)
+                      updateSelectedSection?.('title', text)
+                    }}
+                  />
+                )}
               </div>
                 )
               })()
@@ -3102,7 +3293,15 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
 
         {(section.type === 'header' || section.type === 'hero' || section.type === 'banner' || section.type === 'section' || section.type === 'services' || section.type === 'map' || section.type === 'youtube' || section.type === 'imageOverlay' || section.type === 'cta') && (
           <div className="space-y-3">
-            <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Section title" className="w-full px-4 py-2 border rounded-lg" />
+            <input
+              value={section.title || ''}
+              onChange={(e) => {
+                updateSection(index, 'title', e.target.value)
+                updateSection(index, 'titleHtml', e.target.value)
+              }}
+              placeholder="Section title"
+              className="w-full px-4 py-2 border rounded-lg"
+            />
             <input value={section.titleLinkUrl || ''} onChange={(e) => updateSection(index, 'titleLinkUrl', e.target.value)} placeholder="Optional title link URL" className="w-full px-4 py-2 border rounded-lg" />
             {['header', 'hero', 'banner', 'section', 'services', 'map', 'youtube', 'imageOverlay', 'cta'].includes(section.type) && (
               <label className="block text-sm font-semibold text-gray-700">
@@ -3241,6 +3440,7 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
                 <span className="text-xs text-gray-500">px</span>
               </div>
             </label>
+            <MapPinsEditor section={section} index={index} updateSection={updateSection} />
           </div>
         )}
 
@@ -3985,6 +4185,52 @@ function FaqItemsEditor({ section, index, updateSection }: any) {
         </div>
       ))}
       {items.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-gray-600">No questions yet. Add your first question and answer.</div>}
+    </div>
+  )
+}
+
+function MapPinsEditor({ section, index, updateSection }: any) {
+  const pins = Array.isArray(section.mapPins) ? section.mapPins : []
+  const updatePin = (pinIndex: number, field: string, value: any) => {
+    updateSection(index, 'mapPins', pins.map((item: any, currentIndex: number) => currentIndex === pinIndex ? { ...item, [field]: value } : item))
+  }
+  const addPin = () => updateSection(index, 'mapPins', [...pins, makeMapPin({ label: `Location ${pins.length + 1}` })])
+  const removePin = (pinIndex: number) => updateSection(index, 'mapPins', pins.filter((_: any, currentIndex: number) => currentIndex !== pinIndex))
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h4 className="font-bold text-gray-900">Map Pins</h4>
+          <p className="text-sm text-gray-600">Add saved locations with a pin and place label pill over the map.</p>
+        </div>
+        <button type="button" onClick={addPin} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add Pin</button>
+      </div>
+      {pins.map((pin: any, pinIndex: number) => (
+        <div key={pin.id || pinIndex} className="space-y-3 rounded-lg border p-3">
+          <input value={pin.label || ''} onChange={(e) => updatePin(pinIndex, 'label', e.target.value)} placeholder="Place name" className="w-full rounded-lg border px-4 py-2" />
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label className="grid grid-cols-[4rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
+              <span className="font-semibold">X</span>
+              <input type="range" min="0" max="100" step="1" value={Number(pin.x || 50)} onChange={(e) => updatePin(pinIndex, 'x', e.target.value)} className="w-full accent-blue-600" />
+              <div className="flex items-center gap-1">
+                <input type="number" min="0" max="100" value={pin.x ?? ''} onChange={(e) => updatePin(pinIndex, 'x', e.target.value)} className="w-full rounded-lg border px-2 py-1 text-right" />
+                <span className="text-xs text-gray-500">%</span>
+              </div>
+            </label>
+            <label className="grid grid-cols-[4rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
+              <span className="font-semibold">Y</span>
+              <input type="range" min="0" max="100" step="1" value={Number(pin.y || 50)} onChange={(e) => updatePin(pinIndex, 'y', e.target.value)} className="w-full accent-blue-600" />
+              <div className="flex items-center gap-1">
+                <input type="number" min="0" max="100" value={pin.y ?? ''} onChange={(e) => updatePin(pinIndex, 'y', e.target.value)} className="w-full rounded-lg border px-2 py-1 text-right" />
+                <span className="text-xs text-gray-500">%</span>
+              </div>
+            </label>
+          </div>
+          <button type="button" onClick={() => removePin(pinIndex)} className="rounded-lg border px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Remove Pin</button>
+        </div>
+      ))}
+      {pins.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-gray-600">No pins yet. Add a pin to show a saved location pill on top of the map.</div>}
     </div>
   )
 }

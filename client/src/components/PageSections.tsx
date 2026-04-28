@@ -5,7 +5,7 @@ import { FiArrowRight, FiCamera, FiCheck, FiMail, FiMapPin, FiMessageSquare, FiM
 import Testimonials from './Testimonials'
 import TurnstileWidget from './TurnstileWidget'
 import { contactMessagesAPI, formSubmissionsAPI, pluginsAPI, portfolioAPI, resolveAssetUrl, servicePackagesAPI, siteDemosAPI, siteSettingsAPI } from '../services/api'
-import { normalizeRichTextHtml } from '../utils/richText'
+import { normalizeRichTextHtml, sanitizeRichTextHtml } from '../utils/richText'
 
 const pluginLabels: Record<string, string> = {
   restaurant: 'Restaurant Menu',
@@ -100,6 +100,59 @@ function renderLinkedHeading(url: string | undefined, content: ReactNode, classN
     return <a href={href} className={className}>{content}</a>
   }
   return <Link to={href} className={className}>{content}</Link>
+}
+
+function extractPlainText(value: string) {
+  if (!value) return ''
+  if (typeof window === 'undefined') return value.replace(/<[^>]+>/g, ' ').trim()
+  const parser = new DOMParser()
+  const documentNode = parser.parseFromString(`<div>${value}</div>`, 'text/html')
+  return documentNode.body.textContent?.replace(/\s+/g, ' ').trim() || ''
+}
+
+function EditableHeadingText({ section, fallbackText = '' }: { section: any; fallbackText?: string }) {
+  const editorRef = useRef<HTMLSpanElement | null>(null)
+  const editableMeta = section?.__liveEdit
+  const isEditable = Boolean(editableMeta?.titleEditable)
+  const rawHtml = section?.titleHtml || section?.title || fallbackText
+  const normalized = normalizeRichTextHtml(rawHtml)
+
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor || !isEditable) return
+    if (document.activeElement === editor) return
+    if (editor.innerHTML !== normalized) editor.innerHTML = normalized
+  }, [normalized, isEditable])
+
+  if (isEditable) {
+    return (
+      <span
+        id={`editable-heading-${section.id}`}
+        ref={editorRef}
+        contentEditable
+        draggable={false}
+        suppressContentEditableWarning
+        data-placeholder="Double-click and start typing..."
+        className="preview-editable-heading inline-block min-w-[2rem] rounded px-1 focus:outline-none focus:ring-2 focus:ring-blue-300"
+        onClick={(event) => event.stopPropagation()}
+        onDoubleClick={(event) => {
+          event.stopPropagation()
+          editorRef.current?.focus()
+        }}
+        onInput={() => {
+          const html = sanitizeRichTextHtml(editorRef.current?.innerHTML || '')
+          editableMeta?.onTitleChange?.(html, extractPlainText(html))
+        }}
+        dangerouslySetInnerHTML={{ __html: normalized || fallbackText || '' }}
+      />
+    )
+  }
+
+  if (section?.titleHtml) {
+    return <span className="inline" dangerouslySetInnerHTML={{ __html: normalizeRichTextHtml(section.titleHtml) }} />
+  }
+
+  return <>{section?.title || fallbackText}</>
 }
 
 function resolveResponsiveSection(section: any, mode: ResponsiveMode) {
@@ -423,6 +476,7 @@ function getSectionSpacingStyle(section: any) {
     '--section-button-bg': section.buttonBackgroundColor || undefined,
     '--section-button-text': section.buttonTextColor || undefined,
     '--section-button-hover-bg': section.buttonHoverBackgroundColor || section.buttonBackgroundColor || undefined,
+    '--section-button-box-shadow': section.buttonBoxShadow || undefined,
     '--section-button-radius': toPixels(section.buttonBorderRadius),
     '--section-button-px': toPixels(section.buttonPaddingX),
     '--section-button-py': toPixels(section.buttonPaddingY),
@@ -477,7 +531,9 @@ function PageSection({ section }: { section: any }) {
         <div className={`container relative flex min-h-[30rem] ${verticalClass} py-20 md:min-h-[36rem] md:py-28 ${alignment.container}`}>
           <div className="max-w-3xl">
             <HeadingTag className="text-4xl font-bold md:text-6xl">
-              {renderLinkedHeading(section.titleLinkUrl, section.title, 'inline')}
+              {section.titleHtml
+                ? <EditableHeadingText section={section} />
+                : renderLinkedHeading(section.titleLinkUrl, <EditableHeadingText section={section} />, 'inline')}
             </HeadingTag>
             {section.body && <RichTextContent html={section.body} className={`${alignment.body} mt-6 text-xl text-blue-100`.trim()} />}
             {section.buttonLabel && section.buttonUrl && (
@@ -498,7 +554,9 @@ function PageSection({ section }: { section: any }) {
       <section className="section-padding">
         <div className={`container ${alignment.container}`}>
           <HeadingTag className="mb-12 text-4xl font-bold text-gray-900">
-            {renderLinkedHeading(section.titleLinkUrl, section.title, 'inline')}
+            {section.titleHtml
+              ? <EditableHeadingText section={section} />
+              : renderLinkedHeading(section.titleLinkUrl, <EditableHeadingText section={section} />, 'inline')}
           </HeadingTag>
           {section.body && <RichTextContent html={section.body} className={`${alignment.body} -mt-8 max-w-3xl text-lg text-gray-600`.trim()} />}
         </div>
@@ -617,7 +675,9 @@ function PageSection({ section }: { section: any }) {
       <div className={`${textAnimation.className} ${alignment.container}`.trim()} data-animation={textAnimation.dataAnimation} style={{ ...textPanelStyle, ...textAnimation.style }}>
         {section.title && (
           <HeadingTag className="text-3xl font-bold text-gray-900">
-            {renderLinkedHeading(section.titleLinkUrl, section.title, 'inline')}
+            {section.titleHtml
+              ? <EditableHeadingText section={section} />
+              : renderLinkedHeading(section.titleLinkUrl, <EditableHeadingText section={section} />, 'inline')}
           </HeadingTag>
         )}
         {section.body && <RichTextContent html={section.body} className={`${alignment.body} mt-3 text-gray-600`.trim()} />}
@@ -762,13 +822,14 @@ function getMapEmbedSrc(section: any) {
 function InteractiveMapSection({ section }: { section: any }) {
   const src = getMapEmbedSrc(section)
   const height = Math.min(1200, Math.max(220, Number(section.mapHeight || 420)))
+  const pins = Array.isArray(section.mapPins) ? section.mapPins : []
 
   return (
     <section className="section-padding">
       <div className="container">
         <SectionHeading section={section} fallbackTitle="Find Us" />
         {src ? (
-          <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+          <div className="relative overflow-hidden rounded-lg border bg-white shadow-sm">
             <iframe
               title={section.title || section.mapQuery || 'Interactive map'}
               src={src}
@@ -778,6 +839,26 @@ function InteractiveMapSection({ section }: { section: any }) {
               className="w-full border-0"
               style={{ height: `${height}px` }}
             />
+            {pins.length > 0 && (
+              <div className="pointer-events-none absolute inset-0">
+                {pins.map((pin: any, index: number) => {
+                  const left = Math.min(95, Math.max(5, Number(pin.x || 50)))
+                  const top = Math.min(92, Math.max(8, Number(pin.y || 50)))
+                  return (
+                    <div
+                      key={pin.id || index}
+                      className="absolute -translate-x-1/2 -translate-y-full"
+                      style={{ left: `${left}%`, top: `${top}%` }}
+                    >
+                      <div className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-gray-900 shadow-lg ring-1 ring-black/5">
+                        <FiMapPin className="text-blue-600" />
+                        <span>{pin.label || 'Location'}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         ) : (
           <div className="rounded-lg border border-dashed p-6 text-center text-gray-600">
@@ -941,7 +1022,9 @@ function ImageOverlaySection({ section }: { section: any }) {
         <div className="max-w-2xl">
           {section.title && (
             <HeadingTag className="text-4xl font-bold md:text-6xl">
-              {renderLinkedHeading(section.titleLinkUrl, section.title, 'inline')}
+              {section.titleHtml
+                ? <EditableHeadingText section={section} />
+                : renderLinkedHeading(section.titleLinkUrl, <EditableHeadingText section={section} />, 'inline')}
             </HeadingTag>
           )}
           {section.body && <RichTextContent html={section.body} className={`${alignment.body} mt-5 text-lg text-gray-100 md:text-xl`.trim()} />}
@@ -1000,7 +1083,9 @@ function HeroSection({ section }: { section: any }) {
         <div className={`grid grid-cols-1 items-center gap-10 ${hasHeroForm ? 'lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]' : ''}`}>
           <div className={`max-w-3xl ${alignment.container}`}>
             <HeadingTag className="text-4xl font-bold md:text-6xl">
-              {renderLinkedHeading(section.titleLinkUrl, section.title, 'inline')}
+              {section.titleHtml
+                ? <EditableHeadingText section={section} />
+                : renderLinkedHeading(section.titleLinkUrl, <EditableHeadingText section={section} />, 'inline')}
             </HeadingTag>
             {section.body && <RichTextContent html={section.body} className={`${alignment.body} mt-6 text-xl text-blue-100 md:text-2xl`.trim()} />}
             <div className="mt-8 flex flex-wrap gap-4">
@@ -1089,7 +1174,9 @@ function SectionHeading({ section, fallbackTitle }: { section: any; fallbackTitl
   return (
     <div className={`mb-10 ${alignment.container}`}>
       <HeadingTag className="text-3xl font-bold text-gray-900">
-        {renderLinkedHeading(section.titleLinkUrl, section.title || fallbackTitle, 'inline')}
+        {section.titleHtml
+          ? <EditableHeadingText section={section} fallbackText={fallbackTitle} />
+          : renderLinkedHeading(section.titleLinkUrl, <EditableHeadingText section={section} fallbackText={fallbackTitle} />, 'inline')}
       </HeadingTag>
       {section.body && <RichTextContent html={section.body} className={`${alignment.body} mt-3 max-w-3xl text-gray-600`.trim()} />}
     </div>
@@ -1733,7 +1820,9 @@ function CtaSection({ section }: { section: any }) {
     <section className="bg-blue-600 py-16 text-white">
       <div className={`container ${alignment.container}`}>
         <HeadingTag className="text-3xl font-bold md:text-4xl">
-          {renderLinkedHeading(section.titleLinkUrl, section.title, 'inline')}
+          {section.titleHtml
+            ? <EditableHeadingText section={section} />
+            : renderLinkedHeading(section.titleLinkUrl, <EditableHeadingText section={section} />, 'inline')}
         </HeadingTag>
         {section.body && <RichTextContent html={section.body} className={`${alignment.body} mt-6 max-w-2xl text-xl text-blue-100`.trim()} />}
         {section.buttonLabel && section.buttonUrl && (

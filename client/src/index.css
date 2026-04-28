@@ -1268,6 +1268,7 @@ html.dark-mode .login-page {
 .page-section-render .section-button {
   background-color: var(--section-button-bg, var(--theme-primary, #2563eb)) !important;
   color: var(--section-button-text, var(--theme-button-text, #ffffff)) !important;
+  box-shadow: var(--section-button-box-shadow, none);
   border-radius: var(--section-button-radius, var(--theme-button-radius, 0.5rem)) !important;
   padding: var(--section-button-py, 0.75rem) var(--section-button-px, 1.5rem) !important;
   font-weight: var(--section-button-weight, 600) !important;
@@ -1294,6 +1295,11 @@ html.dark-mode .login-page {
 .page-section-render > section.py-16 {
   padding-top: 0 !important;
   padding-bottom: 0 !important;
+}
+
+.preview-editable-heading:empty::before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
 }
 
 .page-section-render h1,
