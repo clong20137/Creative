@@ -89,6 +89,7 @@ const sectionTypeOptions = [
   { value: 'pluginsList', label: 'Plugins List', icon: FiGrid },
   { value: 'siteDemos', label: 'Site Demos', icon: FiGrid },
   { value: 'contactForm', label: 'Contact Form', icon: FiFileText },
+  { value: 'customForm', label: 'Custom Form', icon: FiFileText },
   { value: 'cta', label: 'CTA', icon: FiLayout }
 ]
 
@@ -318,6 +319,16 @@ function makePageSection(type: string) {
     crmInputBorderRadius: '',
     crmInputPaddingX: '',
     crmInputPaddingY: '',
+    customFormName: 'Website Inquiry',
+    customFormSubmitLabel: 'Send Message',
+    customFormSuccessMessage: 'Thanks. Your submission has been sent.',
+    formFields: type === 'customForm'
+      ? [
+          makeCustomFormField('text', { label: 'Your Name', placeholder: 'Jane Doe', required: true }),
+          makeCustomFormField('email', { label: 'Email Address', placeholder: 'hello@example.com', required: true }),
+          makeCustomFormField('textarea', { label: 'How can we help?', placeholder: 'Tell us about your project...', required: true })
+        ]
+      : [],
     marginTop: '',
     marginRight: '',
     marginBottom: '',
@@ -382,6 +393,18 @@ function makeImageCard() {
     image: '',
     buttonLabel: 'View More',
     buttonUrl: '/contact'
+  }
+}
+
+function makeCustomFormField(type = 'text', overrides: Record<string, any> = {}) {
+  return {
+    id: crypto.randomUUID(),
+    label: '',
+    type,
+    required: false,
+    placeholder: '',
+    options: '',
+    ...overrides
   }
 }
 
@@ -3174,6 +3197,19 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
               </>
             )}
 
+            {section.type === 'customForm' && (
+              <>
+                <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Section title" className="px-4 py-2 border rounded-lg" />
+                  <input value={section.customFormName || ''} onChange={(e) => updateSection(index, 'customFormName', e.target.value)} placeholder="Internal form name" className="px-4 py-2 border rounded-lg" />
+                  <input value={section.customFormSubmitLabel || ''} onChange={(e) => updateSection(index, 'customFormSubmitLabel', e.target.value)} placeholder="Submit button label" className="px-4 py-2 border rounded-lg" />
+                  <input value={section.customFormSuccessMessage || ''} onChange={(e) => updateSection(index, 'customFormSuccessMessage', e.target.value)} placeholder="Success message" className="px-4 py-2 border rounded-lg" />
+                  <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Form description" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                </div>
+                <CustomFormFieldsEditor section={section} index={index} updateSection={updateSection} />
+              </>
+            )}
+
             {(section.type === 'image' || section.type === 'section') && (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <input value={section.imageUrl || ''} onChange={(e) => updateSection(index, 'imageUrl', e.target.value)} placeholder="Image URL" className="px-4 py-2 border rounded-lg" />
@@ -3366,6 +3402,72 @@ function SectionItemsEditor({ section, index, updateSection, uploadImageToField,
         </div>
       ))}
       {items.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-gray-600">No gallery images yet.</div>}
+    </div>
+  )
+}
+
+function CustomFormFieldsEditor({ section, index, updateSection }: any) {
+  const fields = Array.isArray(section.formFields) ? section.formFields : []
+
+  const updateField = (fieldIndex: number, field: string, value: any) => {
+    updateSection(index, 'formFields', fields.map((item: any, currentIndex: number) => currentIndex === fieldIndex ? { ...item, [field]: value } : item))
+  }
+
+  const addField = (type = 'text') => {
+    updateSection(index, 'formFields', [...fields, makeCustomFormField(type, { label: 'New Field' })])
+  }
+
+  const removeField = (fieldIndex: number) => {
+    updateSection(index, 'formFields', fields.filter((_: any, currentIndex: number) => currentIndex !== fieldIndex))
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h4 className="font-bold text-gray-900">Form Fields</h4>
+          <p className="text-sm text-gray-600">Build the questions this form should collect from visitors.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => addField('text')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add Text</button>
+          <button type="button" onClick={() => addField('textarea')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add Textarea</button>
+          <button type="button" onClick={() => addField('select')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add Select</button>
+          <button type="button" onClick={() => addField('checkbox')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add Checkbox</button>
+        </div>
+      </div>
+      {fields.map((field: any, fieldIndex: number) => (
+        <div key={field.id || fieldIndex} className="space-y-3 rounded-lg border p-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <input value={field.label || ''} onChange={(e) => updateField(fieldIndex, 'label', e.target.value)} placeholder="Field label" className="px-4 py-2 border rounded-lg" />
+            <select value={field.type || 'text'} onChange={(e) => updateField(fieldIndex, 'type', e.target.value)} className="px-4 py-2 border rounded-lg bg-white">
+              <option value="text">Text</option>
+              <option value="email">Email</option>
+              <option value="tel">Phone</option>
+              <option value="textarea">Textarea</option>
+              <option value="select">Select</option>
+              <option value="checkbox">Checkbox</option>
+            </select>
+            <input value={field.placeholder || ''} onChange={(e) => updateField(fieldIndex, 'placeholder', e.target.value)} placeholder="Placeholder / helper prompt" className="px-4 py-2 border rounded-lg md:col-span-2" />
+            {field.type === 'select' && (
+              <textarea
+                value={field.options || ''}
+                onChange={(e) => updateField(fieldIndex, 'options', e.target.value)}
+                placeholder="Options, one per line"
+                rows={4}
+                className="px-4 py-2 border rounded-lg md:col-span-2"
+              />
+            )}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+              <input type="checkbox" checked={Boolean(field.required)} onChange={(e) => updateField(fieldIndex, 'required', e.target.checked)} />
+              Required
+            </label>
+            <button type="button" onClick={() => removeField(fieldIndex)} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Remove Field</button>
+          </div>
+        </div>
+      ))}
+      {fields.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-sm text-gray-600">No fields yet. Add the first field above.</div>}
     </div>
   )
 }

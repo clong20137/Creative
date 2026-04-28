@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { FiArrowRight, FiCamera, FiCheck, FiMail, FiMapPin, FiMonitor, FiPenTool, FiPhone, FiVideo } from 'react-icons/fi'
 import Testimonials from './Testimonials'
 import TurnstileWidget from './TurnstileWidget'
-import { contactMessagesAPI, pluginsAPI, portfolioAPI, resolveAssetUrl, servicePackagesAPI, siteDemosAPI, siteSettingsAPI } from '../services/api'
+import { contactMessagesAPI, formSubmissionsAPI, pluginsAPI, portfolioAPI, resolveAssetUrl, servicePackagesAPI, siteDemosAPI, siteSettingsAPI } from '../services/api'
 import { normalizeRichTextHtml } from '../utils/richText'
 
 const pluginLabels: Record<string, string> = {
@@ -461,6 +461,7 @@ function PageSection({ section }: { section: any }) {
   if (section.type === 'pluginsList') return <PluginsListSection section={section} />
   if (section.type === 'siteDemos') return <SiteDemosSection section={section} />
   if (section.type === 'contactForm') return <ContactFormSection />
+  if (section.type === 'customForm') return <CustomFormSection section={section} />
   if (section.type === 'cta') return <CtaSection section={section} />
 
   if (section.type === 'section') {
@@ -1367,6 +1368,103 @@ function ContactFormSection() {
   )
 }
 
+function CustomFormSection({ section }: { section: any }) {
+  const rawFields = Array.isArray(section.formFields) ? section.formFields : []
+  const fields = rawFields.filter((field: any) => String(field?.label || '').trim())
+  const initialState = useMemo(() => fields.reduce((acc: Record<string, any>, field: any) => {
+    acc[field.id] = field.type === 'checkbox' ? false : ''
+    return acc
+  }, {}), [fields])
+  const [formData, setFormData] = useState<Record<string, any>>(initialState)
+  const [settings, setSettings] = useState<any>({})
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
+
+  useEffect(() => {
+    setFormData(initialState)
+  }, [initialState])
+
+  useEffect(() => {
+    siteSettingsAPI.getSettings().then(setSettings).catch(() => setSettings({}))
+  }, [])
+
+  const handleChange = (fieldId: string, value: any) => {
+    if (isSubmitted) setIsSubmitted(false)
+    if (submitError) setSubmitError('')
+    setFormData((prev) => ({ ...prev, [fieldId]: value }))
+  }
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setIsSubmitting(true)
+    setIsSubmitted(false)
+    setSubmitError('')
+
+    try {
+      await formSubmissionsAPI.createSubmission({
+        formName: section.customFormName || section.title || 'Website Inquiry',
+        pagePath: typeof window !== 'undefined' ? window.location.pathname : '',
+        pageTitle: section.title || '',
+        turnstileToken,
+        fields: fields.map((field: any) => ({
+          id: field.id,
+          label: field.label,
+          type: field.type,
+          required: Boolean(field.required),
+          value: formData[field.id]
+        }))
+      })
+      setIsSubmitted(true)
+      setTurnstileToken('')
+      setFormData(initialState)
+    } catch (error) {
+      setSubmitError('We could not send this form right now. Please try again in a moment.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <section className="py-16">
+      <div className="container">
+        <div className="mx-auto max-w-3xl">
+          <div className="card p-8">
+            <SectionHeading section={section} fallbackTitle="Get in Touch" />
+            {isSubmitted && (
+              <div role="status" className="mb-6 rounded-lg border border-green-400 bg-green-100 p-4 text-green-700">
+                {section.customFormSuccessMessage || 'Thanks. Your submission has been sent.'}
+              </div>
+            )}
+            {submitError && <div role="alert" className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{submitError}</div>}
+            {fields.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-600">
+                Add form fields in the page editor to start collecting submissions here.
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {fields.map((field: any) => (
+                  <CustomFormField
+                    key={field.id}
+                    field={field}
+                    value={formData[field.id]}
+                    onChange={(value) => handleChange(field.id, value)}
+                  />
+                ))}
+                {settings.turnstileSiteKey && <TurnstileWidget siteKey={settings.turnstileSiteKey} onVerify={setTurnstileToken} />}
+                <button type="submit" className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60" disabled={isSubmitting}>
+                  {isSubmitting ? 'Sending...' : (section.customFormSubmitLabel || 'Submit')}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function CtaSection({ section }: { section: any }) {
   return (
     <section className="bg-blue-600 py-16 text-white">
@@ -1376,6 +1474,80 @@ function CtaSection({ section }: { section: any }) {
         {section.buttonLabel && section.buttonUrl && <Link to={section.buttonUrl} className="section-button mt-8 inline-flex items-center justify-center">{section.buttonLabel}</Link>}
       </div>
     </section>
+  )
+}
+
+function CustomFormField({ field, value, onChange }: { field: any; value: any; onChange: (value: any) => void }) {
+  const label = `${field.label}${field.required ? ' *' : ''}`
+  const commonClassName = 'w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600'
+
+  if (field.type === 'textarea') {
+    return (
+      <div>
+        <label htmlFor={field.id} className="mb-2 block font-semibold text-gray-700">{label}</label>
+        <textarea
+          id={field.id}
+          value={value || ''}
+          onChange={(event) => onChange(event.target.value)}
+          required={Boolean(field.required)}
+          rows={5}
+          className={commonClassName}
+          placeholder={field.placeholder || ''}
+        />
+      </div>
+    )
+  }
+
+  if (field.type === 'select') {
+    const options = String(field.options || '')
+      .split('\n')
+      .map((option: string) => option.trim())
+      .filter(Boolean)
+    return (
+      <div>
+        <label htmlFor={field.id} className="mb-2 block font-semibold text-gray-700">{label}</label>
+        <select
+          id={field.id}
+          value={value || ''}
+          onChange={(event) => onChange(event.target.value)}
+          required={Boolean(field.required)}
+          className={commonClassName}
+        >
+          <option value="">{field.placeholder || 'Select an option...'}</option>
+          {options.map((option: string) => <option key={option} value={option}>{option}</option>)}
+        </select>
+      </div>
+    )
+  }
+
+  if (field.type === 'checkbox') {
+    return (
+      <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+        <input
+          type="checkbox"
+          checked={Boolean(value)}
+          onChange={(event) => onChange(event.target.checked)}
+          required={Boolean(field.required)}
+          className="mt-1 h-4 w-4 rounded border-gray-300"
+        />
+        <span className="text-sm font-semibold text-gray-700">{label}</span>
+      </label>
+    )
+  }
+
+  return (
+    <Field
+      id={field.id}
+      label={label}
+      type={field.type === 'tel' ? 'tel' : field.type === 'email' ? 'email' : 'text'}
+      value={value || ''}
+      onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChange(event.target.value)}
+      required={Boolean(field.required)}
+      inputClassName=""
+      inputStyle={undefined}
+      labelStyle={undefined}
+      placeholder={field.placeholder || ''}
+    />
   )
 }
 
@@ -1392,11 +1564,11 @@ function ContactInfo({ icon, label, value, note }: { icon: React.ReactNode; labe
   )
 }
 
-function Field({ id, label, type = 'text', value, onChange, required = false, labelStyle, inputStyle, inputClassName = '' }: any) {
+function Field({ id, label, type = 'text', value, onChange, required = false, labelStyle, inputStyle, inputClassName = '', placeholder = '' }: any) {
   return (
     <div>
       <label htmlFor={id} className="mb-2 block font-semibold text-gray-700" style={labelStyle}>{label}</label>
-      <input type={type} id={id} name={id} value={value} onChange={onChange} required={required} className={`w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 ${inputClassName}`.trim()} style={inputStyle} />
+      <input type={type} id={id} name={id} value={value} onChange={onChange} required={required} placeholder={placeholder} className={`w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 ${inputClassName}`.trim()} style={inputStyle} />
     </div>
   )
 }

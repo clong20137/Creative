@@ -16,6 +16,7 @@ import SiteSetting from './models/SiteSetting.js'
 import CustomPage from './models/CustomPage.js'
 import Ticket from './models/Ticket.js'
 import ContactMessage from './models/ContactMessage.js'
+import FormSubmission from './models/FormSubmission.js'
 import Plugin from './models/Plugin.js'
 import RestaurantMenuItem from './models/RestaurantMenuItem.js'
 import RealEstateListing from './models/RealEstateListing.js'
@@ -43,6 +44,7 @@ import servicePackageRoutes from './routes/service-packages.js'
 import siteSettingsRoutes from './routes/site-settings.js'
 import ticketRoutes from './routes/tickets.js'
 import contactMessageRoutes from './routes/contact-messages.js'
+import formSubmissionRoutes from './routes/form-submissions.js'
 import stripeWebhookRoutes from './routes/stripe-webhooks.js'
 import pluginRoutes from './routes/plugins.js'
 import pageRoutes from './routes/pages.js'
@@ -202,6 +204,7 @@ app.use('/api/service-packages', servicePackageRoutes)
 app.use('/api/site-settings', siteSettingsRoutes)
 app.use('/api/tickets', ticketRoutes)
 app.use('/api/contact-messages', contactMessageRoutes)
+app.use('/api/form-submissions', formSubmissionRoutes)
 app.use('/api/plugins', pluginRoutes)
 app.use('/api/site-demos', siteDemoRoutes)
 app.use('/api/pages', pageRoutes)

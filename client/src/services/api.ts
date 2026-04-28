@@ -152,6 +152,12 @@ export const contactMessagesAPI = {
   createMessage: (data: any) => unwrap(api.post('/contact-messages', data))
 }
 
+export const formSubmissionsAPI = {
+  createSubmission: (data: any) => unwrap(api.post('/form-submissions', data)),
+  getSubmissions: () => unwrap<any[]>(api.get('/form-submissions')),
+  updateSubmission: (id: string, data: any) => unwrap(api.put(`/form-submissions/${id}`, data))
+}
+
 export const pluginsAPI = {
   getPlugins: () => unwrap<any[]>(api.get('/plugins')),
   getClientPlugins: () => unwrap<any[]>(api.get('/plugins/client')),
