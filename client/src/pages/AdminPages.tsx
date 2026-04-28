@@ -1381,6 +1381,37 @@ export default function AdminPages() {
   const moveActiveSection = (fromIndex: number, toIndex: number) => activeTab === 'Custom Pages'
     ? movePageSection(fromIndex, toIndex)
     : moveBuiltInSection(activeBuiltInPageKey, fromIndex, toIndex)
+  const updateNestedActiveSection = (topLevelIndex: number, columnIndex: number, blockIndex: number, field: string, value: any) => {
+    const sourceSection = activeSectionsRaw[topLevelIndex]
+    const columns = Array.isArray(sourceSection?.items) ? sourceSection.items : []
+    const nextColumns = columns.map((column: any, currentColumnIndex: number) => {
+      if (currentColumnIndex !== columnIndex) return column
+      return {
+        ...column,
+        sections: Array.isArray(column.sections)
+          ? column.sections.map((block: any, currentBlockIndex: number) => (
+              currentBlockIndex === blockIndex ? { ...block, [field]: value } : block
+            ))
+          : []
+      }
+    })
+    updateActiveSection(topLevelIndex, 'items', nextColumns)
+  }
+  const removeNestedActiveSection = (topLevelIndex: number, columnIndex: number, blockIndex: number) => {
+    const sourceSection = activeSectionsRaw[topLevelIndex]
+    const columns = Array.isArray(sourceSection?.items) ? sourceSection.items : []
+    const nextColumns = columns.map((column: any, currentColumnIndex: number) => {
+      if (currentColumnIndex !== columnIndex) return column
+      return {
+        ...column,
+        sections: Array.isArray(column.sections)
+          ? column.sections.filter((_: any, currentBlockIndex: number) => currentBlockIndex !== blockIndex)
+          : []
+      }
+    })
+    updateActiveSection(topLevelIndex, 'items', nextColumns)
+    setEditingSectionId(sourceSection?.id || String(topLevelIndex))
+  }
   const handlePreviewDrop = (e: React.DragEvent) => {
     e.preventDefault()
     const sectionType = e.dataTransfer.getData('application/x-section-type')
@@ -1393,9 +1424,56 @@ export default function AdminPages() {
       setDraggingSectionIndex(null)
     }
   }
-  const selectedSectionIndex = activeSections.findIndex((section: any, index: number) => (section.id || String(index)) === editingSectionId)
-  const selectedSection = selectedSectionIndex >= 0 ? activeSections[selectedSectionIndex] : null
-  const selectedSectionRaw = selectedSectionIndex >= 0 ? activeSectionsRaw[selectedSectionIndex] : null
+  const selectedSectionContext = useMemo(() => {
+    for (let topLevelIndex = 0; topLevelIndex < activeSections.length; topLevelIndex += 1) {
+      const resolvedSection = activeSections[topLevelIndex]
+      const rawSection = activeSectionsRaw[topLevelIndex]
+      const topLevelId = String(resolvedSection?.id || topLevelIndex)
+      if (topLevelId === editingSectionId) {
+        return { kind: 'top', topLevelIndex, topLevelId, resolvedSection, rawSection }
+      }
+      if (resolvedSection?.type === 'columns' && Array.isArray(resolvedSection?.items)) {
+        for (let columnIndex = 0; columnIndex < resolvedSection.items.length; columnIndex += 1) {
+          const resolvedColumn = resolvedSection.items[columnIndex]
+          const rawColumn = rawSection?.items?.[columnIndex]
+          const blocks = Array.isArray(resolvedColumn?.sections) ? resolvedColumn.sections : []
+          for (let blockIndex = 0; blockIndex < blocks.length; blockIndex += 1) {
+            const resolvedBlock = blocks[blockIndex]
+            const blockId = String(resolvedBlock?.id || '')
+            if (blockId && blockId === editingSectionId) {
+              return {
+                kind: 'nested',
+                topLevelIndex,
+                topLevelId,
+                columnIndex,
+                blockIndex,
+                resolvedSection: resolvedBlock,
+                rawSection: rawColumn?.sections?.[blockIndex] || resolvedBlock
+              }
+            }
+          }
+        }
+      }
+    }
+    return null
+  }, [activeSections, activeSectionsRaw, editingSectionId])
+  const selectedSectionIndex = selectedSectionContext?.topLevelIndex ?? -1
+  const selectedSection = selectedSectionContext?.resolvedSection || null
+  const selectedSectionRaw = selectedSectionContext?.rawSection || null
+  const updateSelectedSectionValue = (field: string, value: any) => {
+    if (!selectedSectionContext) return
+    if (selectedSectionContext.kind === 'nested') {
+      updateNestedActiveSection(
+        selectedSectionContext.topLevelIndex,
+        selectedSectionContext.columnIndex ?? 0,
+        selectedSectionContext.blockIndex ?? 0,
+        field,
+        value
+      )
+      return
+    }
+    updateActiveSection(selectedSectionContext.topLevelIndex, field, value)
+  }
   const saveActivePage = () => activeTab === 'Custom Pages' ? saveCustomPageEdits() : saveBuiltInPageEdits()
   const editorGridColumns = `minmax(0, 1fr) ${sectionsPanelOpen ? '23rem' : '3.25rem'}`
   const activePageSnapshot = useMemo(() => JSON.stringify(activeTab === 'Custom Pages' ? pageDraft : getActivePayload(settings, activeTab)), [activeTab, pageDraft, settings])
@@ -1960,8 +2038,9 @@ export default function AdminPages() {
                   emptyText={pageDraft.content || 'Drag a section from the right panel into the preview.'}
                   insights={pageInsights}
                   selectedSectionId={editingSectionId}
-                  updateSelectedSection={(field: string, value: any) => selectedSectionIndex >= 0 && updateActiveSection(selectedSectionIndex, field, value)}
-                  openSectionSettings={() => setSectionsPanelOpen(true)}
+                  selectedTopLevelId={selectedSectionContext?.topLevelId}
+                  selectedSectionForToolbar={selectedSection}
+                  updateSelectedSection={updateSelectedSectionValue}
                 />
               </form>
             </section>
@@ -2144,8 +2223,9 @@ export default function AdminPages() {
                   emptyText="Drag a section from the right panel into the preview."
                   insights={pageInsights}
                   selectedSectionId={editingSectionId}
-                  updateSelectedSection={(field: string, value: any) => selectedSectionIndex >= 0 && updateActiveSection(selectedSectionIndex, field, value)}
-                  openSectionSettings={() => setSectionsPanelOpen(true)}
+                  selectedTopLevelId={selectedSectionContext?.topLevelId}
+                  selectedSectionForToolbar={selectedSection}
+                  updateSelectedSection={updateSelectedSectionValue}
                 />
                 )}
               </div>
@@ -2154,7 +2234,28 @@ export default function AdminPages() {
           </div>
 
           <aside className={`overflow-hidden rounded-xl border bg-white shadow transition-all duration-300 ease-in-out md:max-h-[70vh] xl:sticky xl:top-4 xl:h-[calc(100vh-12rem)] xl:max-h-none xl:rounded-none xl:border-r-0 ${sectionsPanelOpen ? 'opacity-100' : 'opacity-95'}`}>
-            {selectedSection ? (
+            {selectedSection && selectedSectionContext?.kind === 'nested' ? (
+              <div className="flex h-full min-h-0 flex-col">
+                <div className="border-b bg-gray-50 px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-blue-600">Nested Block</p>
+                  <h3 className="mt-1 text-base font-bold text-gray-900">
+                    {selectedSection.title || selectedSection.buttonLabel || selectedSection.type || 'Selected block'}
+                  </h3>
+                  <p className="mt-1 text-xs text-gray-600">This edits the selected block inside its column, not the whole parent column.</p>
+                </div>
+                <div className="h-full min-h-0 overflow-y-auto p-4">
+                  <NestedBlockEditor
+                    block={selectedSection}
+                    columnIndex={selectedSectionContext.columnIndex}
+                    blockIndex={selectedSectionContext.blockIndex}
+                    updateBlock={(columnIndex: number, blockIndex: number, field: string, value: any) => updateNestedActiveSection(selectedSectionContext.topLevelIndex, columnIndex, blockIndex, field, value)}
+                    removeBlock={(columnIndex: number, blockIndex: number) => removeNestedActiveSection(selectedSectionContext.topLevelIndex, columnIndex, blockIndex)}
+                    uploadImageToField={uploadImageToField}
+                    openMediaPicker={openMediaPicker}
+                  />
+                </div>
+              </div>
+            ) : selectedSection ? (
               <SectionInspector
                 title="Section Settings"
                 section={selectedSection}
@@ -2509,41 +2610,74 @@ const PreviewSectionContent = memo(function PreviewSectionContent({
   section,
   previewMode,
   isSelected,
+  selectedSectionId,
+  onSelectNestedSection,
   onTitleContentChange,
   onBodyContentChange
 }: {
   section: any
   previewMode: 'desktop' | 'tablet' | 'mobile'
   isSelected?: boolean
+  selectedSectionId?: string
+  onSelectNestedSection?: (sectionId: string) => void
   onTitleContentChange?: (html: string, text: string) => void
   onBodyContentChange?: (html: string, text: string) => void
 }) {
   const previewSection = useMemo(() => {
-    if (!isSelected) return section
-    return {
-      ...section,
-      __liveEdit: {
-        titleEditable: Boolean(onTitleContentChange && section?.title),
-        onTitleChange: onTitleContentChange,
-        bodyEditable: Boolean(onBodyContentChange && section?.body),
-        onBodyChange: onBodyContentChange,
-        syncFromDom: () => {
-          if (onTitleContentChange && section?.title) {
-            const headingEditor = document.getElementById(`editable-heading-${section.id}`) as HTMLSpanElement | null
-            if (headingEditor) onTitleContentChange(headingEditor.innerHTML || '', extractPlainTextFromHtml(headingEditor.innerHTML || ''))
-          }
-          if (onBodyContentChange && section?.body) {
-            const bodyEditor = document.getElementById(`editable-body-${section.id}`) as HTMLDivElement | null
-            if (bodyEditor) onBodyContentChange(bodyEditor.innerHTML || '', extractPlainTextFromHtml(bodyEditor.innerHTML || ''))
-          }
+    const makeLiveEditMeta = (target: any) => ({
+      titleEditable: Boolean(onTitleContentChange && target?.title),
+      onTitleChange: onTitleContentChange,
+      bodyEditable: Boolean(onBodyContentChange && target?.body),
+      onBodyChange: onBodyContentChange,
+      syncFromDom: () => {
+        if (onTitleContentChange && target?.title) {
+          const headingEditor = document.getElementById(`editable-heading-${target.id}`) as HTMLSpanElement | null
+          if (headingEditor) onTitleContentChange(headingEditor.innerHTML || '', extractPlainTextFromHtml(headingEditor.innerHTML || ''))
+        }
+        if (onBodyContentChange && target?.body) {
+          const bodyEditor = document.getElementById(`editable-body-${target.id}`) as HTMLDivElement | null
+          if (bodyEditor) onBodyContentChange(bodyEditor.innerHTML || '', extractPlainTextFromHtml(bodyEditor.innerHTML || ''))
         }
       }
+    })
+
+    const decorateNestedBlocks = (inputSection: any): any => {
+      if (!inputSection || inputSection.type !== 'columns' || !Array.isArray(inputSection.items)) return inputSection
+      return {
+        ...inputSection,
+        items: inputSection.items.map((column: any) => ({
+          ...column,
+          sections: Array.isArray(column.sections)
+            ? column.sections.map((block: any) => {
+              const blockId = String(block?.id || '')
+              const isNestedSelected = Boolean(blockId) && blockId === selectedSectionId
+              return {
+                ...block,
+                __previewSelection: blockId
+                  ? {
+                      isSelected: isNestedSelected,
+                      onSelect: () => onSelectNestedSection?.(blockId)
+                    }
+                  : undefined,
+                ...(isNestedSelected ? { __liveEdit: makeLiveEditMeta(block) } : {})
+              }
+            })
+            : []
+        }))
+      }
     }
-  }, [section, isSelected, onTitleContentChange, onBodyContentChange])
+
+    const baseSection = decorateNestedBlocks(section)
+    if (!isSelected && selectedSectionId !== section?.id) return baseSection
+    return {
+      ...baseSection,
+      __liveEdit: makeLiveEditMeta(section)
+    }
+  }, [section, isSelected, selectedSectionId, onSelectNestedSection, onTitleContentChange, onBodyContentChange])
 
   return (
     <Suspense fallback={<div className="min-h-[12rem] animate-pulse bg-gray-100" />}>
-      <PageSections sections={[previewSection]} previewMode={previewMode} />
+      <PageSections sections={[previewSection]} previewMode={previewMode} selectedSectionId={selectedSectionId} onSelectNestedSection={onSelectNestedSection} />
     </Suspense>
   )
 })
@@ -2577,12 +2711,10 @@ function SeoTitleField({ value, onChange, placeholder }: { value?: string; onCha
 
 function SectionPreviewToolbar({
   section,
-  onUpdate,
-  onSelectSectionSettings
+  onUpdate
 }: {
   section: any
   onUpdate: (field: string, value: any) => void
-  onSelectSectionSettings: () => void
 }) {
   const savedRangeRef = useRef<Range | null>(null)
   const [linkOpen, setLinkOpen] = useState(false)
@@ -2675,8 +2807,13 @@ function SectionPreviewToolbar({
   const applyInlineCommand = (command: string, commandValue?: string) => {
     const editor = focusPreferredEditor()
     if (!editor) return
-    document.execCommand('styleWithCSS', false, command === 'foreColor' ? 'true' : 'false')
-    document.execCommand(command, false, commandValue)
+    document.execCommand('styleWithCSS', false, 'true')
+    if (command === 'hiliteColor') {
+      const applied = document.execCommand('hiliteColor', false, commandValue)
+      if (!applied) document.execCommand('backColor', false, commandValue)
+    } else {
+      document.execCommand(command, false, commandValue)
+    }
     window.setTimeout(syncInlineEditors, 0)
   }
 
@@ -2736,6 +2873,9 @@ function SectionPreviewToolbar({
             <button type="button" title="Remove link" aria-label="Remove link" onMouseDown={(event) => event.preventDefault()} onClick={() => applyInlineCommand('unlink')} className="rounded-md px-2.5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white">
               <FiLink className="opacity-50" />
             </button>
+            <label className="inline-flex items-center rounded-md px-2 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-white" title="Text highlight">
+              <input type="color" onChange={(event) => applyInlineCommand('hiliteColor', event.target.value)} className="h-7 w-7 cursor-pointer rounded border p-0" />
+            </label>
             <label className="inline-flex items-center rounded-md px-2 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-white" title="Text color">
               <input type="color" onChange={(event) => applyInlineCommand('foreColor', event.target.value)} className="h-7 w-7 cursor-pointer rounded border p-0" />
             </label>
@@ -2829,15 +2969,6 @@ function SectionPreviewToolbar({
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={onSelectSectionSettings}
-          title="More controls"
-          aria-label="More controls"
-          className="ml-auto inline-flex items-center rounded-lg border px-2.5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-        >
-          <FiFileText />
-        </button>
       </div>
       {linkOpen && supportsInlineEditing && (
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border bg-blue-50 p-3">
@@ -2856,7 +2987,7 @@ function SectionPreviewToolbar({
   )
 }
 
-function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSectionIndex, moveSection, setEditingSectionId, clearSelection, highlightedSectionId, previewMode, setPreviewMode, canUndo, canRedo, undoPageChange, redoPageChange, onDrop, emptyText, insights, selectedSectionId, updateSelectedSection, openSectionSettings }: any) {
+function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSectionIndex, moveSection, setEditingSectionId, clearSelection, highlightedSectionId, previewMode, setPreviewMode, canUndo, canRedo, undoPageChange, redoPageChange, onDrop, emptyText, insights, selectedSectionId, selectedTopLevelId, selectedSectionForToolbar, updateSelectedSection }: any) {
   const previewModes = [
     { value: 'desktop', label: 'Desktop', icon: FiMonitor, width: 'w-full' },
     { value: 'tablet', label: 'Tablet', icon: FiTablet, width: 'max-w-[820px]' },
@@ -2935,11 +3066,10 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
                 className={`relative cursor-pointer transition ${draggingSectionIndex === index ? 'scale-[0.99] opacity-60 ring-2 ring-blue-500' : highlightedSectionId === sectionKey ? 'animate-pulse ring-4 ring-blue-500 ring-offset-2' : seoIssueCount > 0 ? 'ring-2 ring-orange-300 hover:ring-orange-400' : 'hover:ring-2 hover:ring-blue-300'}`}
                 title={`Edit ${getSectionTitle(section, index)}`}
               >
-                {selectedSectionId === sectionKey && (
+                {selectedTopLevelId === sectionKey && selectedSectionForToolbar && (
                   <SectionPreviewToolbar
-                    section={section}
+                    section={selectedSectionForToolbar}
                     onUpdate={(field, value) => updateSelectedSection?.(field, value)}
-                    onSelectSectionSettings={() => openSectionSettings?.()}
                   />
                 )}
                 <div className="absolute left-3 top-3 z-10 rounded bg-blue-600 px-2 py-1 text-xs font-bold text-white shadow">
@@ -2961,6 +3091,8 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
                     section={section}
                     previewMode={previewMode}
                     isSelected={selectedSectionId === sectionKey}
+                    selectedSectionId={selectedSectionId}
+                    onSelectNestedSection={(sectionId: string) => setEditingSectionId(sectionId)}
                     onTitleContentChange={(html: string, text: string) => {
                       updateSelectedSection?.('titleHtml', html)
                       updateSelectedSection?.('title', text)

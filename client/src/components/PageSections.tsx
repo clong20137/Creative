@@ -245,7 +245,19 @@ function resolveSyncedSection(section: any, reusableSections: any[] = []) {
   }
 }
 
-export default function PageSections({ sections, previewMode, reusableSections: reusableSectionsProp }: { sections?: any[]; previewMode?: ResponsiveMode; reusableSections?: any[] }) {
+export default function PageSections({
+  sections,
+  previewMode,
+  reusableSections: reusableSectionsProp,
+  selectedSectionId,
+  onSelectNestedSection
+}: {
+  sections?: any[]
+  previewMode?: ResponsiveMode
+  reusableSections?: any[]
+  selectedSectionId?: string
+  onSelectNestedSection?: (sectionId: string) => void
+}) {
   const [responsiveMode, setResponsiveMode] = useState<ResponsiveMode>(() => previewMode || (typeof window !== 'undefined' ? getResponsiveModeFromWidth(window.innerWidth) : 'desktop'))
   const [reusableSections, setReusableSections] = useState<any[]>(() => Array.isArray(reusableSectionsProp) ? reusableSectionsProp : [])
 
@@ -287,7 +299,7 @@ export default function PageSections({ sections, previewMode, reusableSections: 
     <div>
       {visibleSections.map((section, index) => (
         <AnimatedSection key={section.id || index} section={section}>
-          <PageSection section={section} />
+          <PageSection section={section} selectedSectionId={selectedSectionId} onSelectNestedSection={onSelectNestedSection} />
         </AnimatedSection>
       ))}
     </div>
@@ -568,7 +580,15 @@ function getSectionSpacingStyle(section: any) {
   } as CSSProperties
 }
 
-function PageSection({ section }: { section: any }) {
+function PageSection({
+  section,
+  selectedSectionId,
+  onSelectNestedSection
+}: {
+  section: any
+  selectedSectionId?: string
+  onSelectNestedSection?: (sectionId: string) => void
+}) {
   if (section.type === 'banner') {
     const HeadingTag = (section.headingTag || 'h2') as ElementType
     const verticalClass = getVerticalAlignmentClass(section.contentVerticalAlign)
@@ -690,7 +710,7 @@ function PageSection({ section }: { section: any }) {
   if (section.type === 'portfolio') return <PortfolioSection section={section} />
   if (section.type === 'services') return <ServicesSection section={section} />
   if (section.type === 'hero') return <HeroSection section={section} />
-  if (section.type === 'columns') return <ColumnsSection section={section} />
+  if (section.type === 'columns') return <ColumnsSection section={section} selectedSectionId={selectedSectionId} onSelectNestedSection={onSelectNestedSection} />
   if (section.type === 'imageCards') return <ImageCardsSection section={section} />
   if (section.type === 'imageOverlay') return <ImageOverlaySection section={section} />
   if (section.type === 'gallery') return <GallerySection section={section} />
@@ -767,7 +787,7 @@ export function RichTextContent({ html, className = '' }: { html?: string; class
   return <div className={`rich-text-content ${className}`.trim()} dangerouslySetInnerHTML={{ __html: normalized }} />
 }
 
-function ColumnsSection({ section }: { section: any }) {
+function ColumnsSection({ section, selectedSectionId, onSelectNestedSection }: { section: any; selectedSectionId?: string; onSelectNestedSection?: (sectionId: string) => void }) {
   const columns = Array.isArray(section.items) ? section.items : []
   const count = Number(section.columns || columns.length || 2)
 
@@ -779,7 +799,7 @@ function ColumnsSection({ section }: { section: any }) {
           {columns.slice(0, count).map((column: any, index: number) => (
             <div key={column.id || index} className="space-y-5">
               {(column.sections || []).map((block: any, blockIndex: number) => (
-                <ColumnBlock key={block.id || blockIndex} block={block} />
+                <ColumnBlock key={block.id || blockIndex} block={block} selectedSectionId={selectedSectionId} onSelectNestedSection={onSelectNestedSection} />
               ))}
             </div>
           ))}
@@ -789,23 +809,59 @@ function ColumnsSection({ section }: { section: any }) {
   )
 }
 
-function ColumnBlock({ block }: { block: any }) {
+function PreviewSelectableBlock({ block, children }: { block: any; children: ReactNode }) {
+  const selection = block?.__previewSelection
+
+  if (!selection) return <>{children}</>
+
+  return (
+    <div className={`group relative rounded-lg transition ${selection.isSelected ? 'ring-2 ring-blue-500 ring-offset-2' : 'hover:ring-2 hover:ring-blue-300/80 hover:ring-offset-2'}`}>
+      {!selection.isSelected && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            selection.onSelect?.()
+          }}
+          className="absolute inset-0 z-10 rounded-lg"
+          aria-label={`Edit ${block?.title || block?.buttonLabel || block?.type || 'block'}`}
+        />
+      )}
+      <div className={selection.isSelected ? 'relative z-20' : ''}>{children}</div>
+    </div>
+  )
+}
+
+function ColumnBlock({ block, selectedSectionId, onSelectNestedSection }: { block: any; selectedSectionId?: string; onSelectNestedSection?: (sectionId: string) => void }) {
+  const renderWithSelection = (content: ReactNode) => {
+    if (!content) return null
+    return <PreviewSelectableBlock block={block}>{content}</PreviewSelectableBlock>
+  }
+
   if (block.type === 'header') {
-    return (
+    const HeadingTag = (block.headingTag || 'h3') as ElementType
+    return renderWithSelection(
       <div>
-        {block.title && <h3 className="text-2xl font-bold text-gray-900">{block.title}</h3>}
-        {block.body && <RichTextContent html={block.body} className="mt-2 text-gray-600" />}
+        {block.title && (
+          <HeadingTag className="text-2xl font-bold text-gray-900">
+            {block.titleHtml
+              ? <EditableHeadingText section={block} />
+              : renderLinkedHeading(block.titleLinkUrl, <EditableHeadingText section={block} />, 'inline')}
+          </HeadingTag>
+        )}
+        {block.body && <EditableRichTextContent section={block} className="mt-2 text-gray-600" />}
       </div>
     )
   }
 
   if (block.type === 'image') {
-    return block.imageUrl ? <img src={resolveAssetUrl(block.imageUrl)} alt={block.alt || block.title || ''} loading="lazy" decoding="async" className="w-full rounded-lg object-cover" /> : null
+    return block.imageUrl ? renderWithSelection(<img src={resolveAssetUrl(block.imageUrl)} alt={block.alt || block.title || ''} loading="lazy" decoding="async" className="w-full rounded-lg object-cover" />) : null
   }
 
   if (block.type === 'button') {
     return block.buttonLabel && block.buttonUrl
-      ? (
+      ? renderWithSelection(
         <Link to={block.buttonUrl} className="section-button inline-flex items-center justify-center gap-2" aria-label={block.buttonLabel || 'Button'}>
           <ButtonContent label={block.buttonLabel} icon={block.buttonIcon} iconOnly={block.buttonIconOnly} showArrow={block.buttonShowArrow} />
         </Link>
@@ -814,30 +870,30 @@ function ColumnBlock({ block }: { block: any }) {
   }
 
   if (block.type === 'imageCard') {
-    return <ImageCard item={block} />
+    return renderWithSelection(<ImageCard item={block} />)
   }
 
   if (block.type === 'pluginsList') {
-    return <ColumnPluginsListBlock block={block} />
+    return renderWithSelection(<ColumnPluginsListBlock block={block} />)
   }
 
   if (block.type === 'siteDemos') {
-    return <ColumnSiteDemosBlock block={block} />
+    return renderWithSelection(<ColumnSiteDemosBlock block={block} />)
   }
 
   if (block.type === 'map') {
-    return <InteractiveMapSection section={block} />
+    return renderWithSelection(<InteractiveMapSection section={block} />)
   }
 
   if (block.type === 'youtube') {
-    return <YoutubeSection section={block} />
+    return renderWithSelection(<YoutubeSection section={block} />)
   }
 
   if (block.type !== 'paragraph') {
-    return <PageSection section={block} />
+    return renderWithSelection(<PageSection section={block} selectedSectionId={selectedSectionId} onSelectNestedSection={onSelectNestedSection} />)
   }
 
-  return <EditableRichTextContent section={block} className="text-gray-700" />
+  return renderWithSelection(<EditableRichTextContent section={block} className="text-gray-700" />)
 }
 
 function ButtonSection({ section }: { section: any }) {
