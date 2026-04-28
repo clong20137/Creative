@@ -1,5 +1,6 @@
 const ALLOWED_TAGS = new Set(['A', 'B', 'BR', 'DIV', 'EM', 'I', 'LI', 'OL', 'P', 'SPAN', 'STRONG', 'U', 'UL'])
 const SAFE_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
+const ALLOWED_LINK_CLASSES = new Set(['inline-rich-button'])
 
 function escapeHtml(value: string) {
   return value
@@ -21,9 +22,13 @@ function hasMarkup(value: string) {
   return /<\/?[a-z][\s\S]*>/i.test(value)
 }
 
-function getSafeColor(styleValue: string) {
-  const match = String(styleValue || '').match(/color\s*:\s*([^;]+)/i)
-  return match?.[1]?.trim() || ''
+function getSafeStyles(styleValue: string) {
+  const colorMatch = String(styleValue || '').match(/(?:^|;)\s*color\s*:\s*([^;]+)/i)
+  const backgroundMatch = String(styleValue || '').match(/(?:^|;)\s*background-color\s*:\s*([^;]+)/i)
+  return {
+    color: colorMatch?.[1]?.trim() || '',
+    backgroundColor: backgroundMatch?.[1]?.trim() || ''
+  }
 }
 
 function sanitizeHref(href: string) {
@@ -85,9 +90,23 @@ export function sanitizeRichTextHtml(value: string) {
           return
         }
 
+        if (name === 'class' && element.tagName === 'A') {
+          const safeClasses = String(attributeValue || '')
+            .split(/\s+/)
+            .map((token) => token.trim())
+            .filter((token) => ALLOWED_LINK_CLASSES.has(token))
+          if (safeClasses.length > 0) element.setAttribute('class', safeClasses.join(' '))
+          else element.removeAttribute('class')
+          return
+        }
+
         if (name === 'style') {
-          const color = getSafeColor(attributeValue)
-          if (color) element.setAttribute('style', `color: ${color};`)
+          const { color, backgroundColor } = getSafeStyles(attributeValue)
+          const nextStyles = [
+            color ? `color: ${color};` : '',
+            backgroundColor ? `background-color: ${backgroundColor};` : ''
+          ].filter(Boolean)
+          if (nextStyles.length > 0) element.setAttribute('style', nextStyles.join(' '))
           else element.removeAttribute('style')
           return
         }

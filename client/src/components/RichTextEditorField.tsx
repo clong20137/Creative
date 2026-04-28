@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FiLink, FiList } from 'react-icons/fi'
+import { FiLink, FiList, FiSquare } from 'react-icons/fi'
 import { normalizeRichTextHtml, sanitizeRichTextHtml } from '../utils/richText'
 
 type RichTextEditorFieldProps = {
@@ -21,9 +21,13 @@ export default function RichTextEditorField({
   const savedRangeRef = useRef<Range | null>(null)
   const normalized = normalizeRichTextHtml(value)
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false)
+  const [buttonPopoverOpen, setButtonPopoverOpen] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const [linkTarget, setLinkTarget] = useState<'_self' | '_blank'>('_self')
   const [linkColor, setLinkColor] = useState('#2563eb')
+  const [buttonLabel, setButtonLabel] = useState('')
+  const [buttonUrl, setButtonUrl] = useState('')
+  const [buttonTarget, setButtonTarget] = useState<'_self' | '_blank'>('_self')
 
   useEffect(() => {
     const editor = editorRef.current
@@ -84,6 +88,18 @@ export default function RichTextEditorField({
     }
   }
 
+  const openButtonPopover = () => {
+    const hasSelection = saveCurrentSelection()
+    const selectionText = window.getSelection()?.toString().trim() || ''
+    setButtonLabel(selectionText)
+    setButtonUrl('')
+    setButtonTarget('_self')
+    setButtonPopoverOpen(true)
+    if (!hasSelection) {
+      editorRef.current?.focus()
+    }
+  }
+
   const applyLinkSettings = () => {
     const editor = editorRef.current
     if (!editor) return
@@ -108,6 +124,23 @@ export default function RichTextEditorField({
     setLinkPopoverOpen(false)
   }
 
+  const applyButtonSettings = () => {
+    const editor = editorRef.current
+    if (!editor) return
+    editor.focus()
+    restoreSelection()
+    const href = buttonUrl.trim()
+    const label = buttonLabel.trim() || window.getSelection()?.toString().trim() || 'Learn More'
+    if (!href) {
+      setButtonPopoverOpen(false)
+      return
+    }
+    const html = `<a href="${href.replace(/"/g, '&quot;')}" class="inline-rich-button"${buttonTarget === '_blank' ? ' target="_blank" rel="noreferrer noopener"' : ''}>${label.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</a>`
+    document.execCommand('insertHTML', false, html)
+    emitChange()
+    setButtonPopoverOpen(false)
+  }
+
   return (
     <div className="space-y-2">
       {label && <label className="block text-sm font-bold text-gray-700">{label}</label>}
@@ -123,6 +156,7 @@ export default function RichTextEditorField({
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => applyCommand('insertUnorderedList')} className="inline-flex items-center gap-1 rounded border bg-white px-3 py-1 text-sm font-semibold text-gray-800 hover:bg-gray-100" title="Bullet list"><FiList size={14} /> Bullets</button>
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => applyCommand('insertOrderedList')} className="rounded border bg-white px-3 py-1 text-sm font-semibold text-gray-800 hover:bg-gray-100" title="Numbered list">1.</button>
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={openLinkPopover} className="inline-flex items-center gap-1 rounded border bg-white px-3 py-1 text-sm font-semibold text-gray-800 hover:bg-gray-100" title="Add hyperlink"><FiLink size={14} /> Link</button>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={openButtonPopover} className="inline-flex items-center gap-1 rounded border bg-white px-3 py-1 text-sm font-semibold text-gray-800 hover:bg-gray-100" title="Insert button"><FiSquare size={14} /> Button</button>
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => applyCommand('unlink')} className="rounded border bg-white px-3 py-1 text-sm font-semibold text-gray-800 hover:bg-gray-100" title="Remove hyperlink">Unlink</button>
           <label className="inline-flex items-center gap-2 rounded border bg-white px-3 py-1 text-sm font-semibold text-gray-800">
             Text Color
@@ -159,6 +193,39 @@ export default function RichTextEditorField({
                   <div className="flex justify-end gap-2">
                     <button type="button" onClick={() => setLinkPopoverOpen(false)} className="rounded-lg border px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
                     <button type="button" onClick={applyLinkSettings} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">Apply Link</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {buttonPopoverOpen && (
+            <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/40 p-4" onMouseDown={() => setButtonPopoverOpen(false)}>
+              <div className="w-full max-w-md rounded-lg border bg-white p-4 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-600">Button Text</label>
+                    <input value={buttonLabel} onChange={(e) => setButtonLabel(e.target.value)} placeholder="Learn More" className="w-full rounded-lg border px-3 py-2 text-sm text-gray-900" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-600">Button URL</label>
+                    <input value={buttonUrl} onChange={(e) => setButtonUrl(e.target.value)} placeholder="https://example.com or /contact" className="w-full rounded-lg border px-3 py-2 text-sm text-gray-900" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-600">Open Button In</label>
+                    <div className="flex gap-3">
+                      <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <input type="radio" checked={buttonTarget === '_self'} onChange={() => setButtonTarget('_self')} />
+                        Existing tab
+                      </label>
+                      <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <input type="radio" checked={buttonTarget === '_blank'} onChange={() => setButtonTarget('_blank')} />
+                        New tab
+                      </label>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button type="button" onClick={() => setButtonPopoverOpen(false)} className="rounded-lg border px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="button" onClick={applyButtonSettings} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">Insert Button</button>
                   </div>
                 </div>
               </div>

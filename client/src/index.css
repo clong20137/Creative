@@ -1464,6 +1464,53 @@ html.dark-mode .login-page {
   text-decoration: underline;
 }
 
+.rich-text-content a.inline-rich-button,
+.site-theme .rich-text-content a.inline-rich-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  border-radius: var(--theme-button-radius, 0.5rem);
+  background-color: var(--theme-primary, #2563eb);
+  color: var(--theme-button-text, #ffffff) !important;
+  padding: 0.7rem 1.1rem;
+  font-weight: 600;
+  text-decoration: none !important;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
+}
+
+.rich-text-content a.inline-rich-button:hover,
+.site-theme .rich-text-content a.inline-rich-button:hover {
+  background-color: var(--theme-primary-hover, #1d4ed8);
+  color: var(--theme-button-text, #ffffff) !important;
+}
+
+.creativecms-map-pill {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.creativecms-map-pill > div {
+  background: transparent !important;
+}
+
+.creativecms-map-pill::before {
+  display: none !important;
+}
+
+.creativecms-map-pill .leaflet-tooltip-content {
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #111827;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
 .rich-text-content ul,
 .rich-text-content ol {
   padding-left: 1.5rem;

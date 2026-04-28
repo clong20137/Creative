@@ -477,6 +477,9 @@ function makeMapPin(overrides: Record<string, any> = {}) {
   return {
     id: crypto.randomUUID(),
     label: 'Location',
+    query: '',
+    lat: '',
+    lng: '',
     x: 50,
     y: 50,
     ...overrides
@@ -2614,7 +2617,8 @@ const PreviewSectionContent = memo(function PreviewSectionContent({
   selectedSectionId,
   onSelectNestedSection,
   onTitleContentChange,
-  onBodyContentChange
+  onBodyContentChange,
+  onSectionItemsChange
 }: {
   section: any
   previewMode: 'desktop' | 'tablet' | 'mobile'
@@ -2623,6 +2627,7 @@ const PreviewSectionContent = memo(function PreviewSectionContent({
   onSelectNestedSection?: (sectionId: string) => void
   onTitleContentChange?: (html: string, text: string) => void
   onBodyContentChange?: (html: string, text: string) => void
+  onSectionItemsChange?: (items: any[]) => void
 }) {
   const previewSection = useMemo(() => {
     const makeLiveEditMeta = (target: any) => ({
@@ -2644,6 +2649,42 @@ const PreviewSectionContent = memo(function PreviewSectionContent({
 
     const decorateNestedBlocks = (inputSection: any): any => {
       if (!inputSection || inputSection.type !== 'columns' || !Array.isArray(inputSection.items)) return inputSection
+      const decorateFaqItems = (block: any, updateBlockItems: (items: any[]) => void) => {
+        if (block?.type !== 'faq' || !Array.isArray(block.items)) return block
+        return {
+          ...block,
+          items: block.items.map((faqItem: any, faqIndex: number) => ({
+            ...faqItem,
+            title: faqItem.q ?? faqItem.question ?? '',
+            titleHtml: faqItem.q ?? faqItem.question ?? '',
+            body: faqItem.a ?? faqItem.answer ?? '',
+            __liveEdit: {
+              titleEditable: true,
+              bodyEditable: true,
+              onTitleChange: (_html: string, text: string) => {
+                updateBlockItems(block.items.map((item: any, currentIndex: number) => currentIndex === faqIndex ? { ...item, q: text, question: text } : item))
+              },
+              onBodyChange: (html: string) => {
+                updateBlockItems(block.items.map((item: any, currentIndex: number) => currentIndex === faqIndex ? { ...item, a: html, answer: html } : item))
+              },
+              syncFromDom: () => {
+                const headingEditor = document.getElementById(`editable-heading-${faqItem.id}`) as HTMLSpanElement | null
+                const bodyEditor = document.getElementById(`editable-body-${faqItem.id}`) as HTMLDivElement | null
+                updateBlockItems(block.items.map((item: any, currentIndex: number) => {
+                  if (currentIndex !== faqIndex) return item
+                  return {
+                    ...item,
+                    q: headingEditor ? extractPlainTextFromHtml(headingEditor.innerHTML || '') : (item.q ?? item.question ?? ''),
+                    question: headingEditor ? extractPlainTextFromHtml(headingEditor.innerHTML || '') : (item.q ?? item.question ?? ''),
+                    a: bodyEditor ? bodyEditor.innerHTML || '' : (item.a ?? item.answer ?? ''),
+                    answer: bodyEditor ? bodyEditor.innerHTML || '' : (item.a ?? item.answer ?? '')
+                  }
+                }))
+              }
+            }
+          }))
+        }
+      }
       return {
         ...inputSection,
         items: inputSection.items.map((column: any) => ({
@@ -2652,15 +2693,27 @@ const PreviewSectionContent = memo(function PreviewSectionContent({
             ? column.sections.map((block: any) => {
               const blockId = String(block?.id || '')
               const isNestedSelected = Boolean(blockId) && blockId === selectedSectionId
+              const withFaqDecoration = isNestedSelected
+                ? decorateFaqItems(block, (items: any[]) => onSectionItemsChange?.(
+                    inputSection.items.map((columnItem: any) => (
+                      columnItem.id === column.id
+                        ? {
+                            ...columnItem,
+                            sections: (column.sections || []).map((columnBlock: any) => columnBlock.id === block.id ? { ...columnBlock, items } : columnBlock)
+                          }
+                        : columnItem
+                    ))
+                  ))
+                : block
               return {
-                ...block,
+                ...withFaqDecoration,
                 __previewSelection: blockId
                   ? {
                       isSelected: isNestedSelected,
                       onSelect: () => onSelectNestedSection?.(blockId)
                     }
                   : undefined,
-                ...(isNestedSelected ? { __liveEdit: makeLiveEditMeta(block) } : {})
+                ...(isNestedSelected ? { __liveEdit: makeLiveEditMeta(withFaqDecoration) } : {})
               }
             })
             : []
@@ -2668,13 +2721,39 @@ const PreviewSectionContent = memo(function PreviewSectionContent({
       }
     }
 
-    const baseSection = decorateNestedBlocks(section)
+    const decorateTopLevelFaq = (inputSection: any) => {
+      if (inputSection?.type !== 'faq' || !Array.isArray(inputSection.items) || !isSelected) return inputSection
+      return {
+        ...inputSection,
+        items: inputSection.items.map((faqItem: any, faqIndex: number) => ({
+          ...faqItem,
+          title: faqItem.q ?? faqItem.question ?? '',
+          titleHtml: faqItem.q ?? faqItem.question ?? '',
+          body: faqItem.a ?? faqItem.answer ?? '',
+          __liveEdit: {
+            titleEditable: true,
+            bodyEditable: true,
+            onTitleChange: (_html: string, text: string) => {
+              const nextItems = inputSection.items.map((item: any, currentIndex: number) => currentIndex === faqIndex ? { ...item, q: text, question: text } : item)
+              onSectionItemsChange?.(nextItems)
+            },
+            onBodyChange: (html: string) => {
+              const nextItems = inputSection.items.map((item: any, currentIndex: number) => currentIndex === faqIndex ? { ...item, a: html, answer: html } : item)
+              onSectionItemsChange?.(nextItems)
+            }
+          }
+        }))
+      }
+    }
+
+    let baseSection = decorateNestedBlocks(section)
+    baseSection = decorateTopLevelFaq(baseSection)
     if (!isSelected && selectedSectionId !== section?.id) return baseSection
     return {
       ...baseSection,
       __liveEdit: makeLiveEditMeta(section)
     }
-  }, [section, isSelected, selectedSectionId, onSelectNestedSection, onTitleContentChange, onBodyContentChange])
+  }, [section, isSelected, selectedSectionId, onSelectNestedSection, onTitleContentChange, onBodyContentChange, onSectionItemsChange])
 
   return (
     <Suspense fallback={<div className="min-h-[12rem] animate-pulse bg-gray-100" />}>
@@ -2720,11 +2799,19 @@ function SectionPreviewToolbar({
   const savedRangeRef = useRef<Range | null>(null)
   const [linkOpen, setLinkOpen] = useState(false)
   const [linkValue, setLinkValue] = useState('')
+  const [buttonOpen, setButtonOpen] = useState(false)
+  const [buttonLabel, setButtonLabel] = useState('')
+  const [buttonUrl, setButtonUrl] = useState('')
+  const [buttonTarget, setButtonTarget] = useState<'_self' | '_blank'>('_self')
   const [buttonShadowValue, setButtonShadowValue] = useState(section?.buttonBoxShadow || '')
 
   useEffect(() => {
     setLinkOpen(false)
     setLinkValue('')
+    setButtonOpen(false)
+    setButtonLabel('')
+    setButtonUrl('')
+    setButtonTarget('_self')
     setButtonShadowValue(section?.buttonBoxShadow || '')
   }, [section?.id, section?.buttonBoxShadow])
 
@@ -2803,6 +2890,10 @@ function SectionPreviewToolbar({
   }
 
   const syncInlineEditors = () => {
+    const activeEditor = getActiveEditableElement()
+    if (activeEditor) {
+      activeEditor.dispatchEvent(new Event('input', { bubbles: true }))
+    }
     section?.__liveEdit?.syncFromDom?.()
   }
 
@@ -2835,6 +2926,16 @@ function SectionPreviewToolbar({
     if (!hasSelection && !activeLink) focusPreferredEditor()
   }
 
+  const openInlineButtonPopover = () => {
+    const hasSelection = saveCurrentSelection()
+    const selectionText = window.getSelection()?.toString().trim() || ''
+    setButtonLabel(selectionText)
+    setButtonUrl('')
+    setButtonTarget('_self')
+    setButtonOpen(true)
+    if (!hasSelection) focusPreferredEditor()
+  }
+
   const applyInlineLink = () => {
     const editor = focusPreferredEditor()
     if (!editor) return
@@ -2848,6 +2949,24 @@ function SectionPreviewToolbar({
     window.setTimeout(() => {
       syncInlineEditors()
       setLinkOpen(false)
+    }, 0)
+  }
+
+  const applyInlineButton = () => {
+    const editor = focusPreferredEditor()
+    if (!editor) return
+    restoreCurrentSelection()
+    const href = buttonUrl.trim()
+    const label = buttonLabel.trim() || window.getSelection()?.toString().trim() || 'Learn More'
+    if (!href) {
+      setButtonOpen(false)
+      return
+    }
+    const html = `<a href="${href.replace(/"/g, '&quot;')}" class="inline-rich-button"${buttonTarget === '_blank' ? ' target="_blank" rel="noreferrer noopener"' : ''}>${label.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</a>`
+    document.execCommand('insertHTML', false, html)
+    window.setTimeout(() => {
+      syncInlineEditors()
+      setButtonOpen(false)
     }, 0)
   }
 
@@ -2886,6 +3005,9 @@ function SectionPreviewToolbar({
             <button type="button" title="Underline" aria-label="Underline" onMouseDown={(event) => event.preventDefault()} onClick={() => applyInlineCommand('underline')} className="rounded-md px-2.5 py-2 text-sm underline text-gray-700 transition hover:bg-white" {...toolbarEventProps}>U</button>
             <button type="button" title="Add link" aria-label="Add link" onMouseDown={(event) => event.preventDefault()} onClick={openInlineLinkPopover} className="inline-flex items-center rounded-md px-2.5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white" {...toolbarEventProps}>
               <FiLink />
+            </button>
+            <button type="button" title="Insert button" aria-label="Insert button" onMouseDown={(event) => event.preventDefault()} onClick={openInlineButtonPopover} className="inline-flex items-center rounded-md px-2.5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white" {...toolbarEventProps}>
+              <FiSquare />
             </button>
             <button type="button" title="Remove link" aria-label="Remove link" onMouseDown={(event) => event.preventDefault()} onClick={() => applyInlineCommand('unlink')} className="rounded-md px-2.5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white" {...toolbarEventProps}>
               <FiLink className="opacity-50" />
@@ -3050,6 +3172,28 @@ function SectionPreviewToolbar({
           <button type="button" onClick={() => setLinkOpen(false)} className="rounded-md border px-3 py-2 text-sm font-semibold text-gray-700">Close</button>
         </div>
       )}
+      {buttonOpen && supportsInlineEditing && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border bg-blue-50 p-3">
+          <input
+            value={buttonLabel}
+            onChange={(event) => setButtonLabel(event.target.value)}
+            placeholder="Button text"
+            className="min-w-[12rem] flex-1 rounded-md border bg-white px-3 py-2 text-sm text-gray-700"
+          />
+          <input
+            value={buttonUrl}
+            onChange={(event) => setButtonUrl(event.target.value)}
+            placeholder="https://example.com or /contact"
+            className="min-w-[16rem] flex-[1.2] rounded-md border bg-white px-3 py-2 text-sm text-gray-700"
+          />
+          <select value={buttonTarget} onChange={(event) => setButtonTarget(event.target.value as '_self' | '_blank')} className="rounded-md border bg-white px-3 py-2 text-sm text-gray-700">
+            <option value="_self">Same tab</option>
+            <option value="_blank">New tab</option>
+          </select>
+          <button type="button" onClick={applyInlineButton} className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white">Insert</button>
+          <button type="button" onClick={() => setButtonOpen(false)} className="rounded-md border px-3 py-2 text-sm font-semibold text-gray-700">Close</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -3160,6 +3304,9 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
                     isSelected={selectedSectionId === sectionKey}
                     selectedSectionId={selectedSectionId}
                     onSelectNestedSection={(sectionId: string) => setEditingSectionId(sectionId)}
+                    onSectionItemsChange={(items: any[]) => {
+                      updateSelectedSection?.('items', items)
+                    }}
                     onTitleContentChange={(html: string, text: string) => {
                       updateSelectedSection?.('titleHtml', html)
                       updateSelectedSection?.('title', text)
@@ -4406,12 +4553,12 @@ function FaqItemsEditor({ section, index, updateSection }: any) {
             placeholder="Question"
             className="px-4 py-2 border rounded-lg"
           />
-          <textarea
+          <DeferredRichTextEditorField
+            label="Answer"
             value={item.a ?? item.answer ?? ''}
-            onChange={(e) => updateItem(itemIndex, 'a', e.target.value)}
-            placeholder="Answer"
-            rows={4}
-            className="px-4 py-2 border rounded-lg"
+            onChange={(value: string) => updateItem(itemIndex, 'a', value)}
+            placeholder="Answer, links, and inline buttons..."
+            minHeight={140}
           />
           <button type="button" onClick={() => removeItem(itemIndex)} className="rounded-lg border px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Remove Question</button>
         </div>
@@ -4441,6 +4588,11 @@ function MapPinsEditor({ section, index, updateSection }: any) {
       {pins.map((pin: any, pinIndex: number) => (
         <div key={pin.id || pinIndex} className="space-y-3 rounded-lg border p-3">
           <input value={pin.label || ''} onChange={(e) => updatePin(pinIndex, 'label', e.target.value)} placeholder="Place name" className="w-full rounded-lg border px-4 py-2" />
+          <input value={pin.query || ''} onChange={(e) => updatePin(pinIndex, 'query', e.target.value)} placeholder="Address or place search used to lock this pin" className="w-full rounded-lg border px-4 py-2" />
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <input value={pin.lat ?? ''} onChange={(e) => updatePin(pinIndex, 'lat', e.target.value)} placeholder="Latitude (optional override)" className="w-full rounded-lg border px-4 py-2" />
+            <input value={pin.lng ?? ''} onChange={(e) => updatePin(pinIndex, 'lng', e.target.value)} placeholder="Longitude (optional override)" className="w-full rounded-lg border px-4 py-2" />
+          </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <label className="grid grid-cols-[4rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
               <span className="font-semibold">X</span>
@@ -4459,6 +4611,7 @@ function MapPinsEditor({ section, index, updateSection }: any) {
               </div>
             </label>
           </div>
+          <p className="text-xs text-gray-500">Address or coordinates will keep the pin locked to the real map while zooming. X/Y is only used for the older overlay fallback.</p>
           <button type="button" onClick={() => removePin(pinIndex)} className="rounded-lg border px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Remove Pin</button>
         </div>
       ))}

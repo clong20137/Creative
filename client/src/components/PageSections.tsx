@@ -7,6 +7,13 @@ import TurnstileWidget from './TurnstileWidget'
 import { contactMessagesAPI, formSubmissionsAPI, pluginsAPI, portfolioAPI, resolveAssetUrl, servicePackagesAPI, siteDemosAPI, siteSettingsAPI } from '../services/api'
 import { normalizeRichTextHtml, sanitizeRichTextHtml } from '../utils/richText'
 
+declare global {
+  interface Window {
+    L?: any
+    __creativeCmsLeafletLoader?: Promise<any>
+  }
+}
+
 const pluginLabels: Record<string, string> = {
   restaurant: 'Restaurant Menu',
   'real-estate': 'Real Estate Listings',
@@ -16,6 +23,60 @@ const pluginLabels: Record<string, string> = {
   'protected-content': 'Protected Content',
   crm: 'CRM Quote System',
   plugins: 'Website Plugins'
+}
+
+const LEAFLET_SCRIPT_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+const LEAFLET_CSS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+
+function loadLeafletLibrary() {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Leaflet can only load in the browser'))
+  if (window.L) return Promise.resolve(window.L)
+  if (window.__creativeCmsLeafletLoader) return window.__creativeCmsLeafletLoader
+
+  window.__creativeCmsLeafletLoader = new Promise((resolve, reject) => {
+    if (!document.querySelector(`link[href="${LEAFLET_CSS_URL}"]`)) {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = LEAFLET_CSS_URL
+      document.head.appendChild(link)
+    }
+
+    const existingScript = document.querySelector(`script[src="${LEAFLET_SCRIPT_URL}"]`) as HTMLScriptElement | null
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(window.L))
+      existingScript.addEventListener('error', () => reject(new Error('Leaflet failed to load')))
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = LEAFLET_SCRIPT_URL
+    script.async = true
+    script.onload = () => resolve(window.L)
+    script.onerror = () => reject(new Error('Leaflet failed to load'))
+    document.body.appendChild(script)
+  })
+
+  return window.__creativeCmsLeafletLoader
+}
+
+async function geocodeLocation(query: string) {
+  const trimmed = String(query || '').trim()
+  if (!trimmed || typeof window === 'undefined') return null
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(trimmed)}`, {
+      headers: { Accept: 'application/json' }
+    })
+    if (!response.ok) return null
+    const results = await response.json()
+    const match = Array.isArray(results) ? results[0] : null
+    if (!match) return null
+    return {
+      lat: Number(match.lat),
+      lng: Number(match.lon)
+    }
+  } catch (error) {
+    return null
+  }
 }
 
 function clampColumns(value: any, fallback = 1) {
@@ -924,14 +985,129 @@ function getMapEmbedSrc(section: any) {
   return `https://www.google.com/maps?q=${encodeURIComponent(query)}&z=14&output=embed`
 }
 
+function LeafletLocationMap({ section, height }: { section: any; height: number }) {
+  const mapElementRef = useRef<HTMLDivElement | null>(null)
+  const mapRef = useRef<any>(null)
+  const markerLayerRef = useRef<any>(null)
+  const [ready, setReady] = useState(false)
+  const [resolvedLocations, setResolvedLocations] = useState<any[]>([])
+
+  const pins = useMemo(() => Array.isArray(section.mapPins) ? section.mapPins : [], [section.mapPins])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const resolveLocations = async () => {
+      const nextLocations = await Promise.all(pins.map(async (pin: any) => {
+        const lat = Number(pin.lat)
+        const lng = Number(pin.lng)
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          return { ...pin, lat, lng }
+        }
+        const geocoded = await geocodeLocation(pin.query || pin.label || '')
+        if (!geocoded) return null
+        return { ...pin, ...geocoded }
+      }))
+      if (isMounted) setResolvedLocations(nextLocations.filter(Boolean))
+    }
+
+    resolveLocations()
+    return () => {
+      isMounted = false
+    }
+  }, [pins])
+
+  useEffect(() => {
+    let isMounted = true
+    loadLeafletLibrary()
+      .then(() => {
+        if (isMounted) setReady(true)
+      })
+      .catch(() => {
+        if (isMounted) setReady(false)
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!ready || !mapElementRef.current || !window.L) return
+
+    if (!mapRef.current) {
+      mapRef.current = window.L.map(mapElementRef.current, {
+        scrollWheelZoom: true,
+        dragging: true,
+        zoomControl: true
+      })
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(mapRef.current)
+      markerLayerRef.current = window.L.layerGroup().addTo(mapRef.current)
+    }
+
+    const map = mapRef.current
+    const markerLayer = markerLayerRef.current
+    markerLayer.clearLayers()
+
+    const points = resolvedLocations
+      .map((pin: any) => [Number(pin.lat), Number(pin.lng)] as [number, number])
+      .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng))
+
+    resolvedLocations.forEach((pin: any) => {
+      if (!Number.isFinite(pin.lat) || !Number.isFinite(pin.lng)) return
+      const marker = window.L.marker([pin.lat, pin.lng]).addTo(markerLayer)
+      marker.bindTooltip(pin.label || 'Location', {
+        permanent: true,
+        direction: 'top',
+        offset: [0, -10],
+        className: 'creativecms-map-pill'
+      })
+    })
+
+    if (points.length > 1) {
+      map.fitBounds(points, { padding: [30, 30] })
+    } else if (points.length === 1) {
+      map.setView(points[0], Math.max(12, Number(section.mapZoom || 14)))
+    } else if (section.mapQuery) {
+      geocodeLocation(section.mapQuery).then((center) => {
+        if (center) map.setView([center.lat, center.lng], Math.max(10, Number(section.mapZoom || 13)))
+      })
+    } else {
+      map.setView([39.8283, -98.5795], 4)
+    }
+
+    window.setTimeout(() => map.invalidateSize(), 0)
+
+    return () => {
+      if (markerLayerRef.current) markerLayerRef.current.clearLayers()
+    }
+  }, [ready, resolvedLocations, section.mapQuery, section.mapZoom])
+
+  useEffect(() => () => {
+    if (mapRef.current) {
+      mapRef.current.remove()
+      mapRef.current = null
+      markerLayerRef.current = null
+    }
+  }, [])
+
+  return <div ref={mapElementRef} className="w-full" style={{ height: `${height}px` }} />
+}
+
 function InteractiveMapSection({ section, inColumn = false }: { section: any; inColumn?: boolean }) {
   const src = getMapEmbedSrc(section)
   const height = Math.min(1200, Math.max(220, Number(section.mapHeight || 420)))
   const pins = Array.isArray(section.mapPins) ? section.mapPins : []
+  const hasLocationPins = pins.some((pin: any) => String(pin.query || '').trim() || (pin.lat !== '' && pin.lng !== ''))
   const content = (
     <>
       <SectionHeading section={section} fallbackTitle="Find Us" compact={inColumn} />
-      {src ? (
+      {hasLocationPins ? (
+        <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+          <LeafletLocationMap section={section} height={height} />
+        </div>
+      ) : src ? (
         <div className="relative overflow-hidden rounded-lg border bg-white shadow-sm">
           <iframe
             title={section.title || section.mapQuery || 'Interactive map'}
@@ -1568,12 +1744,18 @@ function FaqSection({ section }: { section: any }) {
       <div className={`container ${columns > 1 ? 'max-w-5xl' : 'max-w-2xl'}`}>
         <SectionHeading section={section} fallbackTitle="Frequently Asked Questions" />
         <div className="responsive-grid gap-6" style={getResponsiveGridStyle(section, columns > 1 ? 2 : 1)}>
-          {visibleItems.map((faq: any, index: number) => (
+          {visibleItems.map((faq: any, index: number) => {
+            const editableFaq = { ...faq, id: faq.id || `${section?.id || 'faq'}-${index}` }
+            return (
             <div key={index} className="card p-6">
-              <h3 className="text-lg font-bold text-gray-900">{faq.q || faq.question}</h3>
-              <p className="mt-3 whitespace-pre-line text-gray-600">{faq.a || faq.answer}</p>
+              <h3 className="text-lg font-bold text-gray-900">
+                {editableFaq.titleHtml
+                  ? <EditableHeadingText section={editableFaq} fallbackText={editableFaq.q || editableFaq.question || ''} />
+                  : <EditableHeadingText section={{ ...editableFaq, title: editableFaq.q || editableFaq.question || '' }} fallbackText={editableFaq.q || editableFaq.question || ''} />}
+              </h3>
+              <EditableRichTextContent section={{ ...editableFaq, body: editableFaq.body || editableFaq.a || editableFaq.answer || '' }} className="mt-3 text-gray-600" />
             </div>
-          ))}
+          )})}
           {visibleItems.length === 0 && (
             <div className="rounded-lg border border-dashed bg-white p-8 text-center text-gray-600 md:col-span-2">
               No FAQ questions have been added yet.
