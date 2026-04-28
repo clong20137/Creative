@@ -1782,7 +1782,7 @@ export default function AdminPages() {
       {loading ? <PageSkeleton /> : (
         <div className="grid min-h-[calc(100vh-12rem)] grid-cols-1 items-start gap-3 transition-all duration-300 xl:grid-cols-[var(--editor-grid)]" style={{ '--editor-grid': editorGridColumns } as any}>
           <div className="space-y-4 px-1 md:space-y-6">
-            <section className="z-20 rounded-lg border bg-white p-3 shadow-sm xl:sticky xl:top-0 xl:p-4">
+            <section className="z-20 rounded-2xl border border-gray-200 bg-white/96 p-3 shadow-lg backdrop-blur xl:sticky xl:top-24 xl:p-4">
               <SectionBlockLibrary
                 addSection={addActiveSection}
                 reusableSections={settings.reusableSections || []}
@@ -2237,7 +2237,7 @@ export default function AdminPages() {
           )}
           </div>
 
-          <aside className={`overflow-hidden rounded-xl border bg-white shadow transition-all duration-300 ease-in-out md:max-h-[70vh] xl:sticky xl:top-4 xl:h-[calc(100vh-12rem)] xl:max-h-none xl:rounded-none xl:border-r-0 ${sectionsPanelOpen ? 'opacity-100' : 'opacity-95'}`}>
+          <aside className={`overflow-hidden rounded-2xl border border-gray-200 bg-white/96 shadow-lg backdrop-blur transition-all duration-300 ease-in-out md:max-h-[70vh] xl:sticky xl:top-24 xl:h-[calc(100vh-14rem)] xl:max-h-none ${sectionsPanelOpen ? 'opacity-100' : 'opacity-95'}`}>
             {selectedSection && selectedSectionContext?.kind === 'nested' ? (
               <div className="flex h-full min-h-0 flex-col">
                 <div className="border-b bg-gray-50 px-4 py-3">
