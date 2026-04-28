@@ -78,6 +78,30 @@ function getResponsiveValue(section: any, key: string, mode: ResponsiveMode) {
   return overrideValue === '' || overrideValue === null || overrideValue === undefined ? section?.[key] : overrideValue
 }
 
+function isExternalOrSpecialUrl(value?: string) {
+  const url = String(value || '').trim()
+  return url.startsWith('http://')
+    || url.startsWith('https://')
+    || url.startsWith('mailto:')
+    || url.startsWith('tel:')
+    || url.startsWith('#')
+}
+
+function getVerticalAlignmentClass(value?: string) {
+  if (value === 'top') return 'items-start'
+  if (value === 'bottom') return 'items-end'
+  return 'items-center'
+}
+
+function renderLinkedHeading(url: string | undefined, content: ReactNode, className: string) {
+  const href = String(url || '').trim()
+  if (!href) return <span className={className}>{content}</span>
+  if (isExternalOrSpecialUrl(href)) {
+    return <a href={href} className={className}>{content}</a>
+  }
+  return <Link to={href} className={className}>{content}</Link>
+}
+
 function resolveResponsiveSection(section: any, mode: ResponsiveMode) {
   if (!section || mode === 'desktop') return section
   const nextSection = { ...section }
@@ -443,14 +467,19 @@ function getSectionSpacingStyle(section: any) {
 
 function PageSection({ section }: { section: any }) {
   if (section.type === 'banner') {
+    const HeadingTag = (section.headingTag || 'h2') as ElementType
+    const verticalClass = getVerticalAlignmentClass(section.contentVerticalAlign)
+    const alignment = getAlignmentClasses(section.textAlign)
     return (
-      <section className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-800 py-20 text-white md:py-28">
+      <section className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-800 text-white">
         {section.imageUrl && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
         <div className="absolute inset-0 bg-blue-950/55"></div>
-        <div className="container relative">
+        <div className={`container relative flex min-h-[30rem] ${verticalClass} py-20 md:min-h-[36rem] md:py-28 ${alignment.container}`}>
           <div className="max-w-3xl">
-            <h2 className="text-4xl font-bold md:text-6xl">{section.title}</h2>
-            {section.body && <RichTextContent html={section.body} className="mt-6 text-xl text-blue-100" />}
+            <HeadingTag className="text-4xl font-bold md:text-6xl">
+              {renderLinkedHeading(section.titleLinkUrl, section.title, 'inline')}
+            </HeadingTag>
+            {section.body && <RichTextContent html={section.body} className={`${alignment.body} mt-6 text-xl text-blue-100`.trim()} />}
             {section.buttonLabel && section.buttonUrl && (
               <Link to={section.buttonUrl} className="section-button mt-8 inline-flex items-center justify-center gap-2" aria-label={section.buttonLabel || 'Button'}>
                 <ButtonContent label={section.buttonLabel} icon={section.buttonIcon} iconOnly={section.buttonIconOnly} showArrow={section.buttonShowArrow} />
@@ -468,7 +497,9 @@ function PageSection({ section }: { section: any }) {
     return (
       <section className="section-padding">
         <div className={`container ${alignment.container}`}>
-          <HeadingTag className="mb-12 text-4xl font-bold text-gray-900">{section.title}</HeadingTag>
+          <HeadingTag className="mb-12 text-4xl font-bold text-gray-900">
+            {renderLinkedHeading(section.titleLinkUrl, section.title, 'inline')}
+          </HeadingTag>
           {section.body && <RichTextContent html={section.body} className={`${alignment.body} -mt-8 max-w-3xl text-lg text-gray-600`.trim()} />}
         </div>
       </section>
@@ -575,10 +606,21 @@ function PageSection({ section }: { section: any }) {
     const imagePanelStyle = getPanelStyle(section, 'imagePanel')
     const textAnimation = getChildAnimationProps(section, 'textPanel')
     const imageAnimation = getChildAnimationProps(section, 'imagePanel')
+    const alignment = getAlignmentClasses(section.textAlign)
+    const HeadingTag = (section.headingTag || 'h2') as ElementType
+    const verticalClass = section.contentVerticalAlign === 'top'
+      ? 'md:items-start'
+      : section.contentVerticalAlign === 'bottom'
+        ? 'md:items-end'
+        : 'md:items-center'
     const textBlock = (
-      <div className={textAnimation.className} data-animation={textAnimation.dataAnimation} style={{ ...textPanelStyle, ...textAnimation.style }}>
-        {section.title && <h2 className="text-3xl font-bold text-gray-900">{section.title}</h2>}
-        {section.body && <RichTextContent html={section.body} className="mt-3 text-gray-600" />}
+      <div className={`${textAnimation.className} ${alignment.container}`.trim()} data-animation={textAnimation.dataAnimation} style={{ ...textPanelStyle, ...textAnimation.style }}>
+        {section.title && (
+          <HeadingTag className="text-3xl font-bold text-gray-900">
+            {renderLinkedHeading(section.titleLinkUrl, section.title, 'inline')}
+          </HeadingTag>
+        )}
+        {section.body && <RichTextContent html={section.body} className={`${alignment.body} mt-3 text-gray-600`.trim()} />}
       </div>
     )
     const imageBlock = section.imageUrl
@@ -592,7 +634,7 @@ function PageSection({ section }: { section: any }) {
     return (
       <section className="section-padding">
         <div className="container">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-center">
+          <div className={`grid grid-cols-1 gap-6 md:grid-cols-2 ${verticalClass}`}>
             {isImageFirst ? imageBlock : textBlock}
             {isImageFirst ? textBlock : imageBlock}
           </div>
@@ -888,14 +930,21 @@ function ImageCard({ item }: { item: any }) {
 }
 
 function ImageOverlaySection({ section }: { section: any }) {
+  const HeadingTag = (section.headingTag || 'h2') as ElementType
+  const verticalClass = getVerticalAlignmentClass(section.contentVerticalAlign)
+  const alignment = getAlignmentClasses(section.textAlign)
   return (
     <section className="relative min-h-[30rem] overflow-hidden bg-gray-950 text-white">
       {section.imageUrl && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
       <div className="absolute inset-0 bg-black/55"></div>
-      <div className="container relative flex min-h-[30rem] items-center py-16">
+      <div className={`container relative flex min-h-[30rem] ${verticalClass} py-16 ${alignment.container}`}>
         <div className="max-w-2xl">
-          {section.title && <h2 className="text-4xl font-bold md:text-6xl">{section.title}</h2>}
-          {section.body && <RichTextContent html={section.body} className="mt-5 text-lg text-gray-100 md:text-xl" />}
+          {section.title && (
+            <HeadingTag className="text-4xl font-bold md:text-6xl">
+              {renderLinkedHeading(section.titleLinkUrl, section.title, 'inline')}
+            </HeadingTag>
+          )}
+          {section.body && <RichTextContent html={section.body} className={`${alignment.body} mt-5 text-lg text-gray-100 md:text-xl`.trim()} />}
           {section.buttonLabel && section.buttonUrl && (
             <Link to={section.buttonUrl} className="section-button mt-8 inline-flex items-center justify-center gap-2" aria-label={section.buttonLabel || 'Button'}>
               <ButtonContent label={section.buttonLabel} icon={section.buttonIcon} iconOnly={section.buttonIconOnly} showArrow={section.buttonShowArrow} />
@@ -936,6 +985,9 @@ function GallerySection({ section }: { section: any }) {
 function HeroSection({ section }: { section: any }) {
   const hasHeroForm = Boolean(section.heroFormEnabled)
   const heroMinHeight = Number(section.heroHeight || 0)
+  const HeadingTag = (section.headingTag || 'h1') as ElementType
+  const verticalClass = getVerticalAlignmentClass(section.contentVerticalAlign)
+  const alignment = getAlignmentClasses(section.textAlign)
   return (
     <section
       className={`relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-800 text-white ${hasHeroForm ? 'py-12 md:py-16' : 'py-20 md:py-32'}`}
@@ -944,11 +996,13 @@ function HeroSection({ section }: { section: any }) {
       {section.imageUrl && section.mediaType !== 'video' && <img src={resolveAssetUrl(section.imageUrl)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
       {section.imageUrl && section.mediaType === 'video' && <video src={resolveAssetUrl(section.imageUrl)} className="absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline />}
       <div className="absolute inset-0 bg-blue-950/55"></div>
-      <div className={`container relative ${heroMinHeight > 0 ? 'flex items-center' : ''}`} style={heroMinHeight > 0 ? { minHeight: `${heroMinHeight}px` } : undefined}>
+      <div className={`container relative flex ${verticalClass}`} style={heroMinHeight > 0 ? { minHeight: `${heroMinHeight}px` } : undefined}>
         <div className={`grid grid-cols-1 items-center gap-10 ${hasHeroForm ? 'lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]' : ''}`}>
-          <div className="max-w-3xl">
-            <h1 className="text-4xl font-bold md:text-6xl">{section.title}</h1>
-            {section.body && <RichTextContent html={section.body} className="mt-6 text-xl text-blue-100 md:text-2xl" />}
+          <div className={`max-w-3xl ${alignment.container}`}>
+            <HeadingTag className="text-4xl font-bold md:text-6xl">
+              {renderLinkedHeading(section.titleLinkUrl, section.title, 'inline')}
+            </HeadingTag>
+            {section.body && <RichTextContent html={section.body} className={`${alignment.body} mt-6 text-xl text-blue-100 md:text-2xl`.trim()} />}
             <div className="mt-8 flex flex-wrap gap-4">
               {section.buttonLabel && section.buttonUrl && (
                 <Link to={section.buttonUrl} className="section-button inline-flex items-center justify-center gap-2" aria-label={section.buttonLabel || 'Button'}>
@@ -1030,10 +1084,13 @@ function FeaturedWorkSection({ section }: { section: any }) {
 function SectionHeading({ section, fallbackTitle }: { section: any; fallbackTitle: string }) {
   if (!section.title && !section.body) return null
   const alignment = getAlignmentClasses(section.textAlign)
+  const HeadingTag = (section.headingTag || 'h2') as ElementType
 
   return (
     <div className={`mb-10 ${alignment.container}`}>
-      <h2 className="text-3xl font-bold text-gray-900">{section.title || fallbackTitle}</h2>
+      <HeadingTag className="text-3xl font-bold text-gray-900">
+        {renderLinkedHeading(section.titleLinkUrl, section.title || fallbackTitle, 'inline')}
+      </HeadingTag>
       {section.body && <RichTextContent html={section.body} className={`${alignment.body} mt-3 max-w-3xl text-gray-600`.trim()} />}
     </div>
   )
@@ -1670,11 +1727,15 @@ function CustomFormSection({ section }: { section: any }) {
 }
 
 function CtaSection({ section }: { section: any }) {
+  const HeadingTag = (section.headingTag || 'h2') as ElementType
+  const alignment = getAlignmentClasses(section.textAlign)
   return (
     <section className="bg-blue-600 py-16 text-white">
-      <div className="container text-center">
-        <h2 className="text-3xl font-bold md:text-4xl">{section.title}</h2>
-        {section.body && <RichTextContent html={section.body} className="mx-auto mt-6 max-w-2xl text-xl text-blue-100" />}
+      <div className={`container ${alignment.container}`}>
+        <HeadingTag className="text-3xl font-bold md:text-4xl">
+          {renderLinkedHeading(section.titleLinkUrl, section.title, 'inline')}
+        </HeadingTag>
+        {section.body && <RichTextContent html={section.body} className={`${alignment.body} mt-6 max-w-2xl text-xl text-blue-100`.trim()} />}
         {section.buttonLabel && section.buttonUrl && (
           <Link to={section.buttonUrl} className="section-button mt-8 inline-flex items-center justify-center gap-2" aria-label={section.buttonLabel || 'Button'}>
             <ButtonContent label={section.buttonLabel} icon={section.buttonIcon} iconOnly={section.buttonIconOnly} showArrow={section.buttonShowArrow} />

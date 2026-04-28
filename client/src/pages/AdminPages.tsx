@@ -1,6 +1,6 @@
 import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiCopy, FiEye, FiEyeOff, FiFileText, FiGrid, FiImage, FiLayout, FiMail, FiMapPin, FiMessageSquare, FiMonitor, FiMove, FiPhone, FiRotateCcw, FiRotateCw, FiSave, FiSearch, FiSmartphone, FiSquare, FiTablet, FiTrash2, FiType, FiVideo } from 'react-icons/fi'
+import { FiAlignCenter, FiAlignLeft, FiAlignRight, FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiCopy, FiEye, FiEyeOff, FiFileText, FiGrid, FiImage, FiLayout, FiLink, FiMail, FiMapPin, FiMessageSquare, FiMonitor, FiMove, FiPhone, FiRotateCcw, FiRotateCw, FiSave, FiSearch, FiSmartphone, FiSquare, FiTablet, FiTrash2, FiType, FiVideo } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import { adminAPI, resolveAssetUrl } from '../services/api'
@@ -33,6 +33,9 @@ const emptySettings = {
     secondaryButtonIcon: '',
     secondaryButtonIconOnly: false,
     secondaryButtonShowArrow: false,
+    headingTag: '',
+    titleLinkUrl: '',
+    contentVerticalAlign: '',
     heroMediaType: 'none',
   heroMediaUrl: '',
   pageHeaders: {} as Record<string, { title: string; subtitle: string }>,
@@ -318,7 +321,8 @@ function makePageSection(type: string) {
     id: crypto.randomUUID(),
     type,
     title: '',
-    headingTag: type === 'header' ? 'h2' : '',
+    headingTag: type === 'hero' ? 'h1' : (type === 'header' ? 'h2' : ''),
+    titleLinkUrl: '',
     body: '',
     imageUrl: '',
     mapQuery: '',
@@ -345,6 +349,7 @@ function makePageSection(type: string) {
     buttonPaddingX: '',
     buttonPaddingY: '',
     buttonHoverEffect: 'lift',
+    contentVerticalAlign: type === 'section' ? 'center' : '',
     heroFormEnabled: false,
     heroHeight: '',
     items: defaultItems(),
@@ -1933,6 +1938,9 @@ export default function AdminPages() {
                   onDrop={handlePreviewDrop}
                   emptyText={pageDraft.content || 'Drag a section from the right panel into the preview.'}
                   insights={pageInsights}
+                  selectedSectionId={editingSectionId}
+                  updateSelectedSection={(field: string, value: any) => selectedSectionIndex >= 0 && updateActiveSection(selectedSectionIndex, field, value)}
+                  openSectionSettings={() => setSectionsPanelOpen(true)}
                 />
               </form>
             </section>
@@ -2110,11 +2118,14 @@ export default function AdminPages() {
                     canUndo={undoStack.length > 0}
                     canRedo={redoStack.length > 0}
                     undoPageChange={undoPageChange}
-                    redoPageChange={redoPageChange}
-                    onDrop={handlePreviewDrop}
-                    emptyText="Drag a section from the right panel into the preview."
-                    insights={pageInsights}
-                  />
+                  redoPageChange={redoPageChange}
+                  onDrop={handlePreviewDrop}
+                  emptyText="Drag a section from the right panel into the preview."
+                  insights={pageInsights}
+                  selectedSectionId={editingSectionId}
+                  updateSelectedSection={(field: string, value: any) => selectedSectionIndex >= 0 && updateActiveSection(selectedSectionIndex, field, value)}
+                  openSectionSettings={() => setSectionsPanelOpen(true)}
+                />
                 )}
               </div>
             </form>
@@ -2508,7 +2519,143 @@ function SeoTitleField({ value, onChange, placeholder }: { value?: string; onCha
   )
 }
 
-function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSectionIndex, moveSection, setEditingSectionId, clearSelection, highlightedSectionId, previewMode, setPreviewMode, canUndo, canRedo, undoPageChange, redoPageChange, onDrop, emptyText, insights }: any) {
+function SectionPreviewToolbar({
+  section,
+  onUpdate,
+  onSelectSectionSettings
+}: {
+  section: any
+  onUpdate: (field: string, value: any) => void
+  onSelectSectionSettings: () => void
+}) {
+  const [linkOpen, setLinkOpen] = useState(false)
+  const [linkValue, setLinkValue] = useState(section?.titleLinkUrl || '')
+
+  useEffect(() => {
+    setLinkValue(section?.titleLinkUrl || '')
+    setLinkOpen(false)
+  }, [section?.id, section?.titleLinkUrl])
+
+  const supportsHeading = Boolean(section?.title) && !['button', 'paragraph', 'divider', 'contactForm', 'customForm'].includes(section?.type)
+  const supportsVerticalAlign = ['hero', 'banner', 'imageOverlay', 'section'].includes(section?.type)
+  const supportsTitleLink = Boolean(section?.title) && section?.type !== 'divider'
+
+  const alignButtons = [
+    { value: 'left', icon: FiAlignLeft, label: 'Align left' },
+    { value: 'center', icon: FiAlignCenter, label: 'Align center' },
+    { value: 'right', icon: FiAlignRight, label: 'Align right' }
+  ]
+
+  const verticalButtons = [
+    { value: 'top', icon: FiArrowUp, label: 'Align top' },
+    { value: 'center', icon: FiMove, label: 'Align middle' },
+    { value: 'bottom', icon: FiArrowDown, label: 'Align bottom' }
+  ]
+
+  return (
+    <div
+      className="absolute left-1/2 top-3 z-20 w-[min(calc(100%-1.5rem),56rem)] -translate-x-1/2 rounded-xl border bg-white/95 p-3 shadow-2xl backdrop-blur"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1 rounded-lg border bg-gray-50 p-1">
+          {alignButtons.map(({ value, icon: Icon, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => onUpdate('textAlign', value)}
+              title={label}
+              aria-label={label}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-sm transition ${section?.textAlign === value ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-white'}`}
+            >
+              <Icon />
+            </button>
+          ))}
+        </div>
+
+        {supportsVerticalAlign && (
+          <div className="flex items-center gap-1 rounded-lg border bg-gray-50 p-1">
+            {verticalButtons.map(({ value, icon: Icon, label }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onUpdate('contentVerticalAlign', value)}
+                title={label}
+                aria-label={label}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-sm transition ${(section?.contentVerticalAlign || 'center') === value ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-white'}`}
+              >
+                <Icon />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {supportsHeading && (
+          <label className="flex items-center gap-2 rounded-lg border bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700">
+            <FiType className="text-gray-500" />
+            <span>Heading</span>
+            <select
+              value={section?.headingTag || (section?.type === 'hero' ? 'h1' : 'h2')}
+              onChange={(event) => onUpdate('headingTag', event.target.value)}
+              className="rounded-md border bg-white px-2 py-1 text-sm font-semibold text-gray-700"
+            >
+              <option value="h1">H1</option>
+              <option value="h2">H2</option>
+              <option value="h3">H3</option>
+              <option value="h4">H4</option>
+              <option value="h5">H5</option>
+              <option value="h6">H6</option>
+            </select>
+          </label>
+        )}
+
+        {supportsTitleLink && (
+          <div className="flex items-center gap-2 rounded-lg border bg-gray-50 px-2 py-2">
+            <button
+              type="button"
+              onClick={() => setLinkOpen((current) => !current)}
+              className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition ${linkOpen || section?.titleLinkUrl ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-white'}`}
+            >
+              <FiLink />
+              <span>Link title</span>
+            </button>
+            {linkOpen && (
+              <div className="flex min-w-[18rem] items-center gap-2">
+                <input
+                  value={linkValue}
+                  onChange={(event) => setLinkValue(event.target.value)}
+                  placeholder="/contact or https://..."
+                  className="w-full rounded-md border bg-white px-3 py-2 text-sm text-gray-700"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdate('titleLinkUrl', linkValue.trim())
+                    setLinkOpen(false)
+                  }}
+                  className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white"
+                >
+                  Apply
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onSelectSectionSettings}
+          className="ml-auto inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+        >
+          <FiFileText />
+          <span>More controls</span>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSectionIndex, moveSection, setEditingSectionId, clearSelection, highlightedSectionId, previewMode, setPreviewMode, canUndo, canRedo, undoPageChange, redoPageChange, onDrop, emptyText, insights, selectedSectionId, updateSelectedSection, openSectionSettings }: any) {
   const previewModes = [
     { value: 'desktop', label: 'Desktop', icon: FiMonitor, width: 'w-full' },
     { value: 'tablet', label: 'Tablet', icon: FiTablet, width: 'max-w-[820px]' },
@@ -2587,6 +2734,13 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
                 className={`relative cursor-pointer transition ${draggingSectionIndex === index ? 'scale-[0.99] opacity-60 ring-2 ring-blue-500' : highlightedSectionId === sectionKey ? 'animate-pulse ring-4 ring-blue-500 ring-offset-2' : seoIssueCount > 0 ? 'ring-2 ring-orange-300 hover:ring-orange-400' : 'hover:ring-2 hover:ring-blue-300'}`}
                 title={`Edit ${getSectionTitle(section, index)}`}
               >
+                {selectedSectionId === sectionKey && (
+                  <SectionPreviewToolbar
+                    section={section}
+                    onUpdate={(field, value) => updateSelectedSection?.(field, value)}
+                    onSelectSectionSettings={() => openSectionSettings?.()}
+                  />
+                )}
                 <div className="absolute left-3 top-3 z-10 rounded bg-blue-600 px-2 py-1 text-xs font-bold text-white shadow">
                   {index + 1}
                 </div>
@@ -2946,19 +3100,30 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
           </div>
         )}
 
-        {(section.type === 'header' || section.type === 'section' || section.type === 'services' || section.type === 'map' || section.type === 'youtube') && (
+        {(section.type === 'header' || section.type === 'hero' || section.type === 'banner' || section.type === 'section' || section.type === 'services' || section.type === 'map' || section.type === 'youtube' || section.type === 'imageOverlay' || section.type === 'cta') && (
           <div className="space-y-3">
             <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Section title" className="w-full px-4 py-2 border rounded-lg" />
-            {section.type === 'header' && (
+            <input value={section.titleLinkUrl || ''} onChange={(e) => updateSection(index, 'titleLinkUrl', e.target.value)} placeholder="Optional title link URL" className="w-full px-4 py-2 border rounded-lg" />
+            {['header', 'hero', 'banner', 'section', 'services', 'map', 'youtube', 'imageOverlay', 'cta'].includes(section.type) && (
               <label className="block text-sm font-semibold text-gray-700">
                 Heading tag
-                <select value={section.headingTag || 'h2'} onChange={(e) => updateSection(index, 'headingTag', e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
+                <select value={section.headingTag || (section.type === 'hero' ? 'h1' : 'h2')} onChange={(e) => updateSection(index, 'headingTag', e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
                   <option value="h1">H1</option>
                   <option value="h2">H2</option>
                   <option value="h3">H3</option>
                   <option value="h4">H4</option>
                   <option value="h5">H5</option>
                   <option value="h6">H6</option>
+                </select>
+              </label>
+            )}
+            {['hero', 'banner', 'imageOverlay', 'section'].includes(section.type) && (
+              <label className="block text-sm font-semibold text-gray-700">
+                Vertical alignment
+                <select value={section.contentVerticalAlign || 'center'} onChange={(e) => updateSection(index, 'contentVerticalAlign', e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
+                  <option value="top">Top</option>
+                  <option value="center">Center</option>
+                  <option value="bottom">Bottom</option>
                 </select>
               </label>
             )}
