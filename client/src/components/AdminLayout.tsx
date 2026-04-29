@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { FiAlertCircle, FiArrowLeft, FiArrowRight, FiBarChart, FiBell, FiCheckCircle, FiChevronDown, FiChevronRight, FiCreditCard, FiEdit2, FiFileText, FiGrid, FiHelpCircle, FiHome, FiImage, FiInbox, FiLogOut, FiMenu, FiMonitor, FiMoon, FiMove, FiSearch, FiSettings, FiSun, FiTrash2, FiUsers, FiX } from 'react-icons/fi'
+import { FiAlertCircle, FiArrowLeft, FiArrowRight, FiBarChart, FiBell, FiBriefcase, FiCheckCircle, FiChevronDown, FiChevronRight, FiCopy, FiCreditCard, FiEdit2, FiEye, FiEyeOff, FiFileText, FiGrid, FiHelpCircle, FiHome, FiImage, FiInbox, FiLogOut, FiMenu, FiMonitor, FiMoon, FiMove, FiSearch, FiSettings, FiSun, FiTrash2, FiUsers, FiX } from 'react-icons/fi'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { adminAPI, resolveAssetUrl, ticketsAPI } from '../services/api'
@@ -7,7 +7,7 @@ import { adminAPI, resolveAssetUrl, ticketsAPI } from '../services/api'
 const primaryLinks = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: FiHome },
   { label: 'Clients', path: '/admin/clients', icon: FiUsers },
-  { label: 'Projects', path: '/admin/projects', icon: FiFileText }
+  { label: 'Projects', path: '/admin/projects', icon: FiBriefcase }
 ]
 
 const builtInPageLinks = [
@@ -295,6 +295,8 @@ export default function AdminLayout({ title, children, headerActions }: { title:
   const [notificationItems, setNotificationItems] = useState<any[]>([])
   const [notificationsLoading, setNotificationsLoading] = useState(false)
   const [setupBannerDismissed, setSetupBannerDismissed] = useState(() => localStorage.getItem(ONBOARDING_BANNER_DISMISSED_KEY) === 'true')
+  const [outlineEditingId, setOutlineEditingId] = useState('')
+  const [outlineDrafts, setOutlineDrafts] = useState<Record<string, string>>({})
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Pages: true,
     Revenue: true,
@@ -554,6 +556,25 @@ export default function AdminLayout({ title, children, headerActions }: { title:
     window.localStorage.setItem(ONBOARDING_BANNER_DISMISSED_KEY, 'true')
   }, [])
 
+  const startOutlineRename = useCallback((sectionId: string, currentName: string) => {
+    setOutlineEditingId(sectionId)
+    setOutlineDrafts((current) => ({ ...current, [sectionId]: currentName }))
+  }, [])
+
+  const updateOutlineDraft = useCallback((sectionId: string, value: string) => {
+    setOutlineDrafts((current) => ({ ...current, [sectionId]: value }))
+  }, [])
+
+  const cancelOutlineRename = useCallback(() => {
+    setOutlineEditingId('')
+  }, [])
+
+  const commitOutlineRename = useCallback((sectionId: string) => {
+    const nextName = String(outlineDrafts[sectionId] || '').trim()
+    if (nextName) emitBuilderOutlineEvent('creative-builder-outline-rename', { sectionId, name: nextName })
+    setOutlineEditingId('')
+  }, [emitBuilderOutlineEvent, outlineDrafts])
+
   const renderPageOutline = (pageLink: PageNavLink) => {
     if (location.pathname !== '/admin/pages' || !pageLink.active || pageLink.isAction || currentOutlineSections.length === 0) return null
     return (
@@ -580,17 +601,55 @@ export default function AdminLayout({ title, children, headerActions }: { title:
                 }}
                 className="group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
               >
+                <FiMove className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                {outlineEditingId === sectionId ? (
+                  <input
+                    autoFocus
+                    value={outlineDrafts[sectionId] ?? getOutlineSectionTitle(section, index)}
+                    onChange={(event) => updateOutlineDraft(sectionId, event.target.value)}
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        commitOutlineRename(sectionId)
+                      } else if (event.key === 'Escape') {
+                        event.preventDefault()
+                        cancelOutlineRename()
+                      }
+                    }}
+                    onBlur={() => commitOutlineRename(sectionId)}
+                    className="min-w-0 flex-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-sm font-semibold text-gray-800 outline-none ring-0"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => emitBuilderOutlineEvent('creative-builder-outline-select', { sectionId })}
+                    className="min-w-0 flex flex-1 items-center gap-2 text-left"
+                  >
+                    <span className={`truncate ${section?.isHidden ? 'text-gray-400 line-through' : ''}`}>{getOutlineSectionTitle(section, index)}</span>
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => emitBuilderOutlineEvent('creative-builder-outline-select', { sectionId })}
-                  className="min-w-0 flex flex-1 items-center gap-2 text-left"
+                  onClick={() => emitBuilderOutlineEvent('creative-builder-outline-visibility', { sectionId })}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition hover:bg-white hover:text-blue-700"
+                  aria-label={section?.isHidden ? 'Show section' : 'Hide section'}
+                  title={section?.isHidden ? 'Show section' : 'Hide section'}
                 >
-                  <FiMove className="h-3.5 w-3.5 shrink-0 opacity-60" />
-                  <span className="truncate">{getOutlineSectionTitle(section, index)}</span>
+                  {section?.isHidden ? <FiEyeOff className="h-3.5 w-3.5" /> : <FiEye className="h-3.5 w-3.5" />}
                 </button>
                 <button
                   type="button"
-                  onClick={() => emitBuilderOutlineEvent('creative-builder-outline-rename', { sectionId })}
+                  onClick={() => emitBuilderOutlineEvent('creative-builder-outline-duplicate', { sectionId })}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition hover:bg-white hover:text-blue-700"
+                  aria-label="Duplicate section"
+                  title="Duplicate section"
+                >
+                  <FiCopy className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startOutlineRename(sectionId, getOutlineSectionTitle(section, index))}
                   className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition hover:bg-white hover:text-blue-700"
                   aria-label="Rename section"
                   title="Rename section"
@@ -613,17 +672,55 @@ export default function AdminLayout({ title, children, headerActions }: { title:
                     const blockId = String(block?.id || `${sectionId}-nested-${blockIndex}`)
                     return (
                       <div key={blockId} className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-gray-500 transition hover:bg-gray-50 hover:text-gray-700">
+                        <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+                        {outlineEditingId === blockId ? (
+                          <input
+                            autoFocus
+                            value={outlineDrafts[blockId] ?? getOutlineSectionTitle(block, blockIndex)}
+                            onChange={(event) => updateOutlineDraft(blockId, event.target.value)}
+                            onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') {
+                                event.preventDefault()
+                                commitOutlineRename(blockId)
+                              } else if (event.key === 'Escape') {
+                                event.preventDefault()
+                                cancelOutlineRename()
+                              }
+                            }}
+                            onBlur={() => commitOutlineRename(blockId)}
+                            className="min-w-0 flex-1 rounded border border-blue-200 bg-white px-2 py-1 text-xs font-semibold text-gray-800 outline-none ring-0"
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => emitBuilderOutlineEvent('creative-builder-outline-select', { sectionId: blockId })}
+                            className="min-w-0 flex flex-1 items-center gap-2 text-left"
+                          >
+                            <span className={`truncate ${block?.isHidden ? 'text-gray-400 line-through' : ''}`}>{getOutlineSectionTitle(block, blockIndex)}</span>
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => emitBuilderOutlineEvent('creative-builder-outline-select', { sectionId: blockId })}
-                          className="min-w-0 flex flex-1 items-center gap-2 text-left"
+                          onClick={() => emitBuilderOutlineEvent('creative-builder-outline-visibility', { sectionId: blockId })}
+                          className="inline-flex h-6 w-6 items-center justify-center rounded text-gray-400 transition hover:bg-white hover:text-blue-700"
+                          aria-label={block?.isHidden ? 'Show block' : 'Hide block'}
+                          title={block?.isHidden ? 'Show block' : 'Hide block'}
                         >
-                          <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
-                          <span className="truncate">{getOutlineSectionTitle(block, blockIndex)}</span>
+                          {block?.isHidden ? <FiEyeOff className="h-3 w-3" /> : <FiEye className="h-3 w-3" />}
                         </button>
                         <button
                           type="button"
-                          onClick={() => emitBuilderOutlineEvent('creative-builder-outline-rename', { sectionId: blockId })}
+                          onClick={() => emitBuilderOutlineEvent('creative-builder-outline-duplicate', { sectionId: blockId })}
+                          className="inline-flex h-6 w-6 items-center justify-center rounded text-gray-400 transition hover:bg-white hover:text-blue-700"
+                          aria-label="Duplicate block"
+                          title="Duplicate block"
+                        >
+                          <FiCopy className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startOutlineRename(blockId, getOutlineSectionTitle(block, blockIndex))}
                           className="inline-flex h-6 w-6 items-center justify-center rounded text-gray-400 transition hover:bg-white hover:text-blue-700"
                           aria-label="Rename block"
                           title="Rename block"
@@ -821,32 +918,7 @@ export default function AdminLayout({ title, children, headerActions }: { title:
           </div>
         </nav>
 
-        <div className="space-y-2 border-t border-gray-200 p-4">
-          <Link
-            to="/"
-            onClick={() => setMobileSidebarOpen(false)}
-            className="flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-3 text-sm font-bold text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
-          >
-            <FiMonitor />
-            Back to Website
-          </Link>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}
-              className="flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-3 text-sm font-bold text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
-            >
-              {theme === 'dark' ? <FiSun /> : <FiMoon />}
-              {theme === 'dark' ? 'Light' : 'Dark'}
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-red-700"
-            >
-              <FiLogOut />
-              Logout
-            </button>
-          </div>
-        </div>
+        <div className="border-t border-gray-200 p-4" />
       </aside>
       <aside className={`admin-sidebar hidden fixed inset-y-0 left-0 z-50 max-w-[88vw] overflow-visible bg-white shadow-sm transition-transform duration-300 lg:sticky lg:top-0 lg:flex lg:h-screen lg:shrink-0 lg:flex-col lg:translate-x-0 lg:transition-all ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${sidebarOpen ? '' : 'lg:w-16'}`} style={sidebarOpen ? { width: `${sidebarWidth}px` } : undefined}>
         <div className="hidden w-full flex-col border-b border-gray-200 lg:flex lg:h-full lg:border-b-0 lg:border-r">
@@ -1023,31 +1095,6 @@ export default function AdminLayout({ title, children, headerActions }: { title:
             {sidebarOpen && showPoweredBy && (
               <p className="rounded-lg bg-gray-50 px-3 py-2 text-center text-xs text-gray-500">{poweredByText}</p>
             )}
-            <Link
-              to="/"
-              onClick={() => setMobileSidebarOpen(false)}
-              className="flex items-center justify-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
-              title="Back to Website"
-            >
-              <FiMonitor />
-              {sidebarOpen && 'Back to Website'}
-            </Link>
-            <button
-              onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
-              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            >
-              {theme === 'dark' ? <FiSun /> : <FiMoon />}
-              {sidebarOpen && (theme === 'dark' ? 'Light Mode' : 'Dark Mode')}
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-red-700"
-            >
-              <FiLogOut />
-              {sidebarOpen && 'Logout'}
-            </button>
           </div>
         </div>
         {sidebarOpen && (
@@ -1080,6 +1127,32 @@ export default function AdminLayout({ title, children, headerActions }: { title:
               </div>
               <div className="flex items-center gap-2">
                 {headerActions}
+                <Link
+                  to="/"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
+                  aria-label="Back to website"
+                  title="Back to website"
+                >
+                  <FiMonitor size={18} />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
+                  aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                >
+                  {theme === 'dark' ? <FiSun size={18} /> : <FiMoon size={18} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600 transition hover:bg-red-100"
+                  aria-label="Logout"
+                  title="Logout"
+                >
+                  <FiLogOut size={18} />
+                </button>
                 <div className="relative">
                   <button
                     type="button"

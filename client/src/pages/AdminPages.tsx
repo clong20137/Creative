@@ -1659,14 +1659,46 @@ export default function AdminPages() {
     updateActiveSection(topLevelIndex, 'items', nextColumns)
     setEditingSectionId(sourceSection?.id || String(topLevelIndex))
   }
+  const duplicateNestedActiveSection = (topLevelIndex: number, columnIndex: number, blockIndex: number) => {
+    const sourceSection = activeSectionsRaw[topLevelIndex]
+    const columns = Array.isArray(sourceSection?.items) ? sourceSection.items : []
+    const nextColumns = columns.map((column: any, currentColumnIndex: number) => {
+      if (currentColumnIndex !== columnIndex) return column
+      const blocks = Array.isArray(column.sections) ? [...column.sections] : []
+      const sourceBlock = blocks[blockIndex]
+      if (!sourceBlock) return column
+      const duplicatedBlock = cloneSectionWithNewIds(sourceBlock)
+      blocks.splice(blockIndex + 1, 0, duplicatedBlock)
+      return {
+        ...column,
+        sections: blocks
+      }
+    })
+    updateActiveSection(topLevelIndex, 'items', nextColumns)
+    window.setTimeout(() => markNewSection(nextColumns[columnIndex]?.sections?.[blockIndex + 1]?.id), 0)
+  }
+  const toggleNestedActiveSectionVisibility = (topLevelIndex: number, columnIndex: number, blockIndex: number) => {
+    const sourceSection = activeSectionsRaw[topLevelIndex]
+    const sourceBlock = sourceSection?.items?.[columnIndex]?.sections?.[blockIndex]
+    if (!sourceBlock) return
+    updateNestedActiveSection(topLevelIndex, columnIndex, blockIndex, 'isHidden', !sourceBlock.isHidden)
+  }
   outlineActionStateRef.current = {
     activeSections,
     activeSectionsRaw,
     removeActiveSection,
     removeNestedActiveSection,
+    duplicateActiveSection,
+    duplicateNestedActiveSection,
     updateActiveSection,
     updateNestedActiveSection,
     moveActiveSection,
+    toggleActiveSectionVisibility: (index: number) => {
+      const sourceSection = activeSectionsRaw[index]
+      if (!sourceSection) return
+      updateActiveSection(index, 'isHidden', !sourceSection.isHidden)
+    },
+    toggleNestedActiveSectionVisibility,
     focusSectionFromOutline,
     showToast
   }
@@ -1735,19 +1767,19 @@ export default function AdminPages() {
   const hasUnsavedChanges = Boolean(savedSnapshot) && savedSnapshot !== activePageSnapshot
   const starterTemplates = useMemo(() => (settings.reusableSections || []).filter((template: any) => template.kind === 'layout' || Array.isArray(template.sections)), [settings.reusableSections])
   const starterDemos = useMemo(() => siteDemos.filter((demo: any) => demoStarterSections[demo.slug]), [siteDemos])
-  const applySnapshot = (snapshot: string) => {
+  const applySnapshot = useCallback((snapshot: string) => {
     const parsed = JSON.parse(snapshot)
     if (activeTab === 'Custom Pages') {
       setPageDraft(parsed)
     } else {
       setSettings(prev => ({ ...prev, ...parsed }))
     }
-  }
+  }, [activeTab])
   const recordHistory = () => {
     setUndoStack(current => current[current.length - 1] === activePageSnapshot ? current : [...current.slice(-24), activePageSnapshot])
     setRedoStack([])
   }
-  const undoPageChange = () => {
+  const undoPageChange = useCallback(() => {
     setUndoStack(current => {
       if (current.length === 0) return current
       const previous = current[current.length - 1]
@@ -1755,8 +1787,8 @@ export default function AdminPages() {
       applySnapshot(previous)
       return current.slice(0, -1)
     })
-  }
-  const redoPageChange = () => {
+  }, [activePageSnapshot, applySnapshot])
+  const redoPageChange = useCallback(() => {
     setRedoStack(current => {
       if (current.length === 0) return current
       const next = current[0]
@@ -1764,7 +1796,7 @@ export default function AdminPages() {
       applySnapshot(next)
       return current.slice(1)
     })
-  }
+  }, [activePageSnapshot, applySnapshot])
   const saveCustomPage = async (e: React.FormEvent) => {
     e.preventDefault()
     await saveCustomPageEdits()
@@ -1995,6 +2027,37 @@ export default function AdminPages() {
   }, [])
 
   useEffect(() => {
+    const handleUndoRedoHotkeys = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const tagName = target?.tagName?.toLowerCase()
+      if (
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        tagName === 'select' ||
+        target?.isContentEditable
+      ) return
+
+      const hasPrimaryModifier = event.ctrlKey || event.metaKey
+      if (!hasPrimaryModifier) return
+
+      const normalizedKey = event.key.toLowerCase()
+      if (normalizedKey === 'z' && !event.shiftKey) {
+        event.preventDefault()
+        undoPageChange()
+        return
+      }
+
+      if (normalizedKey === 'y' || (normalizedKey === 'z' && event.shiftKey)) {
+        event.preventDefault()
+        redoPageChange()
+      }
+    }
+
+    window.addEventListener('keydown', handleUndoRedoHotkeys)
+    return () => window.removeEventListener('keydown', handleUndoRedoHotkeys)
+  }, [redoPageChange, undoPageChange])
+
+  useEffect(() => {
     const handleOutlineSelect = (event: Event) => {
       const detail = (event as CustomEvent<{ sectionId?: string }>).detail
       if (!detail?.sectionId) return
@@ -2018,21 +2081,52 @@ export default function AdminPages() {
     }
 
     const handleOutlineRename = (event: Event) => {
+      const detail = (event as CustomEvent<{ sectionId?: string; name?: string }>).detail
+      if (!detail?.sectionId) return
+      const state = outlineActionStateRef.current
+      if (!state) return
+      const context = findSectionContextById(state.activeSections, state.activeSectionsRaw, detail.sectionId)
+      if (!context) return
+      const nextName = String(detail.name || '').trim()
+      if (!nextName) return
+      if (context.kind === 'nested') {
+        state.updateNestedActiveSection(context.topLevelIndex, context.columnIndex ?? 0, context.blockIndex ?? 0, 'outlineLabel', nextName)
+      } else {
+        state.updateActiveSection(context.topLevelIndex, 'outlineLabel', nextName)
+      }
+      state.showToast({ tone: 'success', title: 'Section renamed', message: 'The page outline label was updated.' })
+    }
+
+    const handleOutlineDuplicate = (event: Event) => {
       const detail = (event as CustomEvent<{ sectionId?: string }>).detail
       if (!detail?.sectionId) return
       const state = outlineActionStateRef.current
       if (!state) return
       const context = findSectionContextById(state.activeSections, state.activeSectionsRaw, detail.sectionId)
       if (!context) return
-      const currentName = getSectionTitle(context.rawSection || context.resolvedSection, context.topLevelIndex)
-      const nextName = window.prompt('Rename section', currentName)
-      if (!nextName || !nextName.trim()) return
       if (context.kind === 'nested') {
-        state.updateNestedActiveSection(context.topLevelIndex, context.columnIndex ?? 0, context.blockIndex ?? 0, 'outlineLabel', nextName.trim())
+        state.duplicateNestedActiveSection(context.topLevelIndex, context.columnIndex ?? 0, context.blockIndex ?? 0)
+        state.showToast({ tone: 'success', title: 'Block duplicated', message: 'The nested block was copied.' })
       } else {
-        state.updateActiveSection(context.topLevelIndex, 'outlineLabel', nextName.trim())
+        state.duplicateActiveSection(context.topLevelIndex)
+        state.showToast({ tone: 'success', title: 'Section duplicated', message: 'The section was copied.' })
       }
-      state.showToast({ tone: 'success', title: 'Section renamed', message: 'The page outline label was updated.' })
+    }
+
+    const handleOutlineVisibility = (event: Event) => {
+      const detail = (event as CustomEvent<{ sectionId?: string }>).detail
+      if (!detail?.sectionId) return
+      const state = outlineActionStateRef.current
+      if (!state) return
+      const context = findSectionContextById(state.activeSections, state.activeSectionsRaw, detail.sectionId)
+      if (!context) return
+      if (context.kind === 'nested') {
+        state.toggleNestedActiveSectionVisibility(context.topLevelIndex, context.columnIndex ?? 0, context.blockIndex ?? 0)
+        state.showToast({ tone: 'info', title: 'Block visibility updated', message: 'The nested block visibility changed.' })
+      } else {
+        state.toggleActiveSectionVisibility(context.topLevelIndex)
+        state.showToast({ tone: 'info', title: 'Section visibility updated', message: 'The section visibility changed.' })
+      }
     }
 
     const handleOutlineMove = (event: Event) => {
@@ -2051,11 +2145,15 @@ export default function AdminPages() {
     window.addEventListener('creative-builder-outline-select', handleOutlineSelect as EventListener)
     window.addEventListener('creative-builder-outline-delete', handleOutlineDelete as EventListener)
     window.addEventListener('creative-builder-outline-rename', handleOutlineRename as EventListener)
+    window.addEventListener('creative-builder-outline-duplicate', handleOutlineDuplicate as EventListener)
+    window.addEventListener('creative-builder-outline-visibility', handleOutlineVisibility as EventListener)
     window.addEventListener('creative-builder-outline-move', handleOutlineMove as EventListener)
     return () => {
       window.removeEventListener('creative-builder-outline-select', handleOutlineSelect as EventListener)
       window.removeEventListener('creative-builder-outline-delete', handleOutlineDelete as EventListener)
       window.removeEventListener('creative-builder-outline-rename', handleOutlineRename as EventListener)
+      window.removeEventListener('creative-builder-outline-duplicate', handleOutlineDuplicate as EventListener)
+      window.removeEventListener('creative-builder-outline-visibility', handleOutlineVisibility as EventListener)
       window.removeEventListener('creative-builder-outline-move', handleOutlineMove as EventListener)
     }
   }, [])

@@ -2025,42 +2025,49 @@ function SubscriptionPlansSection({ section }: { section: any }) {
         <SectionHeading section={section} fallbackTitle={productType === 'cms-license' ? 'CMS Licenses' : 'Subscriptions'} />
         <div className="responsive-grid gap-8" style={getResponsiveGridStyle(section, gridColumns)}>
           {visiblePlans.map((plan: any, index: number) => {
-            const isHighlighted = highlightedPlanId && String(plan.id) === highlightedPlanId
+            const isHighlighted = Boolean(
+              highlightedPlanId
+              && [
+                String(plan.id ?? ''),
+                String(plan.sortOrder ?? ''),
+                String(index + 1),
+              ].includes(highlightedPlanId)
+            )
             return (
               <article
                 key={plan.id || index}
-                className={`card relative overflow-hidden transition ${isHighlighted ? 'scale-[1.02] ring-2 ring-blue-600 shadow-2xl' : ''}`}
+                className={`card relative flex h-full flex-col overflow-hidden transition ${isHighlighted ? 'scale-[1.02] ring-2 ring-blue-600 shadow-2xl' : ''}`}
               >
-                <div className="p-8">
+                <div className="flex h-full flex-col p-8">
                   {isHighlighted && highlightBadge && (
                     <div className="absolute right-[-3.2rem] top-5 w-44 rotate-45 bg-blue-600 px-8 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-white shadow-lg">
                       {highlightBadge}
                     </div>
                   )}
-                  <div className="space-y-2">
+                  <div className="min-h-[7.5rem] space-y-2">
                     <div className="flex items-start justify-between gap-4">
                       <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${plan.productType === 'cms-license' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {plan.productType === 'cms-license' ? 'CMS License' : 'Subscription'}
-                    </span>
+                      <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${plan.productType === 'cms-license' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {plan.productType === 'cms-license' ? 'CMS License' : 'Subscription'}
+                      </span>
                     </div>
-                    {plan.description && <p className="text-sm text-gray-600">{plan.description}</p>}
+                    {plan.description && <p className="w-full text-sm leading-6 text-gray-600">{plan.description}</p>}
                   </div>
                   <div className="my-8 flex items-end gap-2">
                     <span className="text-4xl font-bold text-gray-900">${Number(plan.price || 0).toLocaleString()}</span>
                     <span className="pb-1 text-sm text-gray-600">/{plan.billingCycle || 'monthly'}</span>
                   </div>
-                  <div className="space-y-3">
+                  <div className="flex-1 space-y-3">
                     {(Array.isArray(plan.features) ? plan.features : []).map((feature: any, featureIndex: number) => {
                       const featureName = typeof feature === 'string' ? feature : feature?.name
                       const included = typeof feature === 'string' ? true : feature?.included !== false
                       if (!featureName) return null
                       return (
-                        <div key={featureIndex} className="flex items-center gap-3">
-                          <div className={`flex h-5 w-5 items-center justify-center rounded ${included ? 'bg-green-100' : 'bg-gray-100'}`}>
+                        <div key={featureIndex} className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-3">
+                          <div className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded ${included ? 'bg-green-100' : 'bg-gray-100'}`}>
                             {included && <FiCheck className="text-green-600" />}
                           </div>
-                          <span className={included ? 'text-gray-900' : 'text-gray-400 line-through'}>{featureName}</span>
+                          <span className={`block leading-6 ${included ? 'text-gray-900' : 'text-gray-400 line-through'}`}>{featureName}</span>
                         </div>
                       )
                     })}
