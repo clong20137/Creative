@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ElementType, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { FiArrowRight, FiCamera, FiCheck, FiMail, FiMapPin, FiMessageSquare, FiMonitor, FiPenTool, FiPhone, FiVideo } from 'react-icons/fi'
+import { FiArrowDown, FiArrowRight, FiCamera, FiCheck, FiMail, FiMapPin, FiMessageSquare, FiMonitor, FiPenTool, FiPhone, FiVideo } from 'react-icons/fi'
 import Testimonials from './Testimonials'
 import TurnstileWidget from './TurnstileWidget'
 import { contactMessagesAPI, formSubmissionsAPI, pluginsAPI, portfolioAPI, resolveAssetUrl, servicePackagesAPI, siteDemosAPI, siteSettingsAPI } from '../services/api'
@@ -794,6 +794,8 @@ function PageSection({
   if (section.type === 'pricingPackages') return <PricingPackagesSection section={section} />
   if (section.type === 'servicePricing') return <ServicePricingSection section={section} />
   if (section.type === 'faq') return <FaqSection section={section} />
+  if (section.type === 'tabs') return <TabsSection section={section} />
+  if (section.type === 'accordion') return <AccordionSection section={section} />
   if (section.type === 'pluginsList') return <PluginsListSection section={section} />
   if (section.type === 'siteDemos') return <SiteDemosSection section={section} />
   if (section.type === 'contactForm') return <ContactFormSection />
@@ -1894,6 +1896,116 @@ function FaqSection({ section }: { section: any }) {
           {visibleItems.length === 0 && (
             <div className="rounded-lg border border-dashed bg-white p-8 text-center text-gray-600 md:col-span-2">
               No FAQ questions have been added yet.
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function TabsSection({ section }: { section: any }) {
+  const items = Array.isArray(section.items) ? section.items : []
+  const limit = Number(section.itemLimit || items.length || 0)
+  const visibleItems = limit > 0 ? items.slice(0, limit) : items
+  const [activeTabId, setActiveTabId] = useState<string>(String(visibleItems[0]?.id || ''))
+
+  useEffect(() => {
+    const nextFirstId = String(visibleItems[0]?.id || '')
+    if (!nextFirstId) {
+      setActiveTabId('')
+      return
+    }
+    if (!visibleItems.some((item: any) => String(item.id) === activeTabId)) {
+      setActiveTabId(nextFirstId)
+    }
+  }, [visibleItems, activeTabId])
+
+  const activeItem = visibleItems.find((item: any) => String(item.id) === activeTabId) || visibleItems[0]
+
+  return (
+    <section className="py-16">
+      <div className="container max-w-5xl">
+        <SectionHeading section={section} fallbackTitle="Tabbed Content" />
+        {visibleItems.length > 0 ? (
+          <div className="rounded-2xl border bg-white p-4 shadow-sm sm:p-6">
+            <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-4">
+              {visibleItems.map((item: any, index: number) => {
+                const isActive = String(item.id) === String(activeItem?.id)
+                return (
+                  <button
+                    key={item.id || index}
+                    type="button"
+                    onClick={() => setActiveTabId(String(item.id || ''))}
+                    className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${isActive ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  >
+                    {item.title || `Tab ${index + 1}`}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="pt-6">
+              <RichTextContent html={activeItem?.body || ''} className="text-gray-600" />
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed bg-white p-8 text-center text-gray-600">
+            No tabs have been added yet.
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function AccordionSection({ section }: { section: any }) {
+  const items = Array.isArray(section.items) ? section.items : []
+  const limit = Number(section.itemLimit || items.length || 0)
+  const visibleItems = limit > 0 ? items.slice(0, limit) : items
+  const [openItemId, setOpenItemId] = useState<string>(String(visibleItems[0]?.id || ''))
+
+  useEffect(() => {
+    const nextFirstId = String(visibleItems[0]?.id || '')
+    if (!nextFirstId) {
+      setOpenItemId('')
+      return
+    }
+    if (!visibleItems.some((item: any) => String(item.id) === openItemId)) {
+      setOpenItemId(nextFirstId)
+    }
+  }, [visibleItems, openItemId])
+
+  return (
+    <section className="py-16">
+      <div className="container max-w-4xl">
+        <SectionHeading section={section} fallbackTitle="Accordion" />
+        <div className="space-y-3">
+          {visibleItems.map((item: any, index: number) => {
+            const isOpen = String(item.id) === openItemId
+            return (
+              <div key={item.id || index} className="overflow-hidden rounded-xl border bg-white shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setOpenItemId((current) => current === String(item.id) ? '' : String(item.id))}
+                  className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+                  aria-expanded={isOpen}
+                >
+                  <span className="text-base font-bold text-gray-900">{item.title || `Item ${index + 1}`}</span>
+                  <FiArrowDown className={`h-4 w-4 shrink-0 text-gray-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+                <div className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                  <div className="overflow-hidden">
+                    <div className="border-t border-gray-200 px-5 py-4">
+                      <RichTextContent html={item.body || ''} className="text-gray-600" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          {visibleItems.length === 0 && (
+            <div className="rounded-lg border border-dashed bg-white p-8 text-center text-gray-600">
+              No accordion items have been added yet.
             </div>
           )}
         </div>

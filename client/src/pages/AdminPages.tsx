@@ -103,6 +103,8 @@ const sectionTypeOptions = [
   { value: 'pricingPackages', label: 'Pricing Packages', icon: FiGrid },
   { value: 'servicePricing', label: 'A La Carte Pricing', icon: FiGrid },
   { value: 'faq', label: 'FAQ', icon: FiFileText },
+  { value: 'tabs', label: 'Tabs', icon: FiLayout },
+  { value: 'accordion', label: 'Accordion', icon: FiLayout },
   { value: 'pluginsList', label: 'Plugins List', icon: FiGrid },
   { value: 'siteDemos', label: 'Site Demos', icon: FiGrid },
   { value: 'contactForm', label: 'Contact Form', icon: FiFileText },
@@ -309,6 +311,8 @@ function makePageSection(type: string) {
     if (type === 'imageStrip') return [makeImageStripItem()]
     if (type === 'columns') return makeGridCells(2, 1)
     if (type === 'faq') return [{ id: crypto.randomUUID(), q: '', a: '' }]
+    if (type === 'tabs') return [makePanelItem({ title: 'Tab 1', body: '<p>Add tab content here.</p>' }), makePanelItem({ title: 'Tab 2', body: '<p>Add tab content here.</p>' })]
+    if (type === 'accordion') return [makePanelItem({ title: 'Accordion Item 1', body: '<p>Add accordion content here.</p>' }), makePanelItem({ title: 'Accordion Item 2', body: '<p>Add accordion content here.</p>' })]
     if (type === 'button') return [makeButtonItem()]
     return []
   }
@@ -502,6 +506,15 @@ function makeMapPin(overrides: Record<string, any> = {}) {
     pillTextColor: '#111827',
     x: 50,
     y: 50,
+    ...overrides
+  }
+}
+
+function makePanelItem(overrides: Record<string, any> = {}) {
+  return {
+    id: crypto.randomUUID(),
+    title: '',
+    body: '',
     ...overrides
   }
 }
@@ -3879,7 +3892,7 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
           </div>
         )}
 
-        {(section.type === 'paragraph' || section.type === 'section' || section.type === 'services' || section.type === 'map' || section.type === 'youtube' || section.type === 'imageStrip') && (
+        {(section.type === 'paragraph' || section.type === 'section' || section.type === 'services' || section.type === 'map' || section.type === 'youtube' || section.type === 'imageStrip' || section.type === 'tabs' || section.type === 'accordion') && (
           <DeferredRichTextEditorField label="Text content" value={section.body || ''} onChange={(value: string) => updateSection(index, 'body', value)} placeholder="Format certain words, add links, and set colors..." minHeight={160} />
         )}
 
@@ -3948,6 +3961,13 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
           <>
             <ListCountControls section={section} index={index} updateSection={updateSection} titlePlaceholder="FAQ title" maxColumns={2} />
             <FaqItemsEditor section={section} index={index} updateSection={updateSection} />
+          </>
+        )}
+
+        {(section.type === 'tabs' || section.type === 'accordion') && (
+          <>
+            <ListCountControls section={section} index={index} updateSection={updateSection} titlePlaceholder={section.type === 'tabs' ? 'Tabs title' : 'Accordion title'} maxColumns={1} />
+            <PanelItemsEditor section={section} index={index} updateSection={updateSection} />
           </>
         )}
 
@@ -4349,10 +4369,10 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
               </div>
             )}
 
-            {(section.type === 'header' || section.type === 'section' || section.type === 'services' || section.type === 'map' || section.type === 'youtube') && (
-              <div className="mb-3 space-y-3">
-                <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Section title" className="w-full px-4 py-2 border rounded-lg" />
-                {section.type === 'header' && (
+        {(section.type === 'header' || section.type === 'section' || section.type === 'services' || section.type === 'map' || section.type === 'youtube' || section.type === 'tabs' || section.type === 'accordion') && (
+          <div className="mb-3 space-y-3">
+            <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Section title" className="w-full px-4 py-2 border rounded-lg" />
+            {section.type === 'header' && (
                   <select value={section.headingTag || 'h2'} onChange={(e) => updateSection(index, 'headingTag', e.target.value)} className="w-full px-4 py-2 border rounded-lg">
                     <option value="h1">H1</option>
                     <option value="h2">H2</option>
@@ -4432,6 +4452,18 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
                   <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updateSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Questions to show" className="px-4 py-2 border rounded-lg md:col-span-2" />
                 </div>
                 <FaqItemsEditor section={section} index={index} updateSection={updateSection} />
+              </>
+            )}
+
+            {(section.type === 'tabs' || section.type === 'accordion') && (
+              <>
+                <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder={section.type === 'tabs' ? 'Tabs title' : 'Accordion title'} className="px-4 py-2 border rounded-lg" />
+                  <input type="number" min="1" max="1" value={section.columns || 1} placeholder="Columns" className="px-4 py-2 border rounded-lg" disabled />
+                  <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder={section.type === 'tabs' ? 'Tabs description' : 'Accordion description'} rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                  <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updateSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder={section.type === 'tabs' ? 'Tabs to show' : 'Items to show'} className="px-4 py-2 border rounded-lg md:col-span-2" />
+                </div>
+                <PanelItemsEditor section={section} index={index} updateSection={updateSection} />
               </>
             )}
 
@@ -4629,8 +4661,8 @@ function ColumnsEditor({ section, index, updateSection, uploadImageToField, open
 }
 
 function NestedBlockEditor({ block, columnIndex, blockIndex, updateBlock, removeBlock, uploadImageToField, openMediaPicker }: any) {
-  const hasTitle = ['header', 'imageCard', 'hero', 'banner', 'cta', 'imageOverlay', 'section', 'services', 'map', 'youtube', 'pluginsList', 'siteDemos', 'faq', 'customForm', 'imageStrip', 'columns'].includes(block.type)
-  const hasBody = ['paragraph', 'header', 'hero', 'banner', 'cta', 'imageOverlay', 'section', 'services', 'map', 'youtube', 'pluginsList', 'siteDemos', 'faq', 'customForm', 'imageStrip', 'columns'].includes(block.type)
+  const hasTitle = ['header', 'imageCard', 'hero', 'banner', 'cta', 'imageOverlay', 'section', 'services', 'map', 'youtube', 'pluginsList', 'siteDemos', 'faq', 'tabs', 'accordion', 'customForm', 'imageStrip', 'columns'].includes(block.type)
+  const hasBody = ['paragraph', 'header', 'hero', 'banner', 'cta', 'imageOverlay', 'section', 'services', 'map', 'youtube', 'pluginsList', 'siteDemos', 'faq', 'tabs', 'accordion', 'customForm', 'imageStrip', 'columns'].includes(block.type)
   const hasButton = ['button', 'hero', 'banner', 'cta', 'imageOverlay'].includes(block.type)
 
   return (
@@ -4720,6 +4752,9 @@ function NestedBlockEditor({ block, columnIndex, blockIndex, updateBlock, remove
           </div>
           <NestedImageStripItemsEditor block={block} columnIndex={columnIndex} blockIndex={blockIndex} updateBlock={updateBlock} uploadImageToField={uploadImageToField} openMediaPicker={openMediaPicker} />
         </>
+      )}
+      {(block.type === 'tabs' || block.type === 'accordion') && (
+        <NestedPanelItemsEditor block={block} columnIndex={columnIndex} blockIndex={blockIndex} updateBlock={updateBlock} />
       )}
       {block.type === 'columns' && (
         <NestedColumnsEditor block={block} columnIndex={columnIndex} blockIndex={blockIndex} updateBlock={updateBlock} uploadImageToField={uploadImageToField} openMediaPicker={openMediaPicker} />
@@ -4868,6 +4903,59 @@ function NestedImageStripItemsEditor({ block, columnIndex, blockIndex, updateBlo
         </div>
       ))}
       {items.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-gray-600">No strip images yet.</div>}
+    </div>
+  )
+}
+
+function NestedPanelItemsEditor({ block, columnIndex, blockIndex, updateBlock }: any) {
+  const items = Array.isArray(block.items) ? block.items : []
+  const isTabs = block.type === 'tabs'
+  const label = isTabs ? 'Tab' : 'Item'
+  const titleLabel = isTabs ? 'Tab label' : 'Accordion heading'
+  const updateItem = (itemIndex: number, field: string, value: any) => {
+    updateBlock(
+      columnIndex,
+      blockIndex,
+      'items',
+      items.map((item: any, currentIndex: number) => currentIndex === itemIndex ? { ...item, [field]: value } : item)
+    )
+  }
+  const addItem = () => updateBlock(
+    columnIndex,
+    blockIndex,
+    'items',
+    [...items, makePanelItem({ title: `${label} ${items.length + 1}`, body: `<p>Add ${label.toLowerCase()} content here.</p>` })]
+  )
+  const removeItem = (itemIndex: number) => updateBlock(
+    columnIndex,
+    blockIndex,
+    'items',
+    items.filter((_: any, currentIndex: number) => currentIndex !== itemIndex)
+  )
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h4 className="font-bold text-gray-900">{isTabs ? 'Tabs' : 'Accordion Items'}</h4>
+          <p className="text-sm text-gray-600">Add labeled content panels inside this block.</p>
+        </div>
+        <button type="button" onClick={addItem} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add {label}</button>
+      </div>
+      {items.map((item: any, itemIndex: number) => (
+        <div key={item.id || itemIndex} className="grid grid-cols-1 gap-3 rounded-lg border p-3">
+          <input value={item.title || ''} onChange={(e) => updateItem(itemIndex, 'title', e.target.value)} placeholder={titleLabel} className="px-4 py-2 border rounded-lg" />
+          <DeferredRichTextEditorField
+            label={isTabs ? 'Tab content' : 'Accordion content'}
+            value={item.body || ''}
+            onChange={(value: string) => updateItem(itemIndex, 'body', value)}
+            placeholder="Body content, links, and inline buttons..."
+            minHeight={120}
+          />
+          <button type="button" onClick={() => removeItem(itemIndex)} className="rounded-lg border px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Remove {label}</button>
+        </div>
+      ))}
+      {items.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-gray-600">No {isTabs ? 'tabs' : 'accordion items'} yet.</div>}
     </div>
   )
 }
@@ -5128,6 +5216,52 @@ function FaqItemsEditor({ section, index, updateSection }: any) {
         </div>
       ))}
       {items.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-gray-600">No questions yet. Add your first question and answer.</div>}
+    </div>
+  )
+}
+
+function PanelItemsEditor({ section, index, updateSection }: any) {
+  const items = Array.isArray(section.items) ? section.items : []
+  const isTabs = section.type === 'tabs'
+  const label = isTabs ? 'Tab' : 'Item'
+  const titleLabel = isTabs ? 'Tab label' : 'Accordion heading'
+  const addItem = () => updateSection(index, 'items', [
+    ...items,
+    makePanelItem({
+      title: `${label} ${items.length + 1}`,
+      body: `<p>Add ${label.toLowerCase()} content here.</p>`
+    })
+  ])
+  const updateItem = (itemIndex: number, field: string, value: any) => {
+    updateSection(index, 'items', items.map((item: any, currentIndex: number) => currentIndex === itemIndex ? { ...item, [field]: value } : item))
+  }
+  const removeItem = (itemIndex: number) => updateSection(index, 'items', items.filter((_: any, currentIndex: number) => currentIndex !== itemIndex))
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h4 className="font-bold text-gray-900">{isTabs ? 'Tabs' : 'Accordion Items'}</h4>
+        <button type="button" onClick={addItem} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add {label}</button>
+      </div>
+      {items.map((item: any, itemIndex: number) => (
+        <div key={item.id || itemIndex} className="grid grid-cols-1 gap-3 rounded-lg border p-3">
+          <input
+            value={item.title || ''}
+            onChange={(e) => updateItem(itemIndex, 'title', e.target.value)}
+            placeholder={titleLabel}
+            className="px-4 py-2 border rounded-lg"
+          />
+          <DeferredRichTextEditorField
+            label={isTabs ? 'Tab content' : 'Accordion content'}
+            value={item.body || ''}
+            onChange={(value: string) => updateItem(itemIndex, 'body', value)}
+            placeholder="Body content, links, and inline buttons..."
+            minHeight={140}
+          />
+          <button type="button" onClick={() => removeItem(itemIndex)} className="rounded-lg border px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Remove {label}</button>
+        </div>
+      ))}
+      {items.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-gray-600">No {isTabs ? 'tabs' : 'accordion items'} yet. Add your first one above.</div>}
     </div>
   )
 }
