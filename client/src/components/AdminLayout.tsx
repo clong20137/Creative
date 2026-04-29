@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { FiAlertCircle, FiArrowLeft, FiArrowRight, FiBarChart, FiBell, FiCheckCircle, FiChevronDown, FiChevronRight, FiCreditCard, FiFileText, FiGrid, FiHelpCircle, FiHome, FiImage, FiInbox, FiLogOut, FiMenu, FiMonitor, FiMoon, FiSearch, FiSettings, FiSun, FiUsers, FiX } from 'react-icons/fi'
+import { FiAlertCircle, FiArrowLeft, FiArrowRight, FiBarChart, FiBell, FiCheckCircle, FiChevronDown, FiChevronRight, FiCreditCard, FiEdit2, FiFileText, FiGrid, FiHelpCircle, FiHome, FiImage, FiInbox, FiLogOut, FiMenu, FiMonitor, FiMoon, FiMove, FiSearch, FiSettings, FiSun, FiTrash2, FiUsers, FiX } from 'react-icons/fi'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { adminAPI, resolveAssetUrl, ticketsAPI } from '../services/api'
@@ -247,6 +247,34 @@ function PageScoreBadge({ score, inverse = false }: { score: number; inverse?: b
   )
 }
 
+function getOutlineSectionTitle(section: any, index: number) {
+  const fallback = typeof section?.type === 'string'
+    ? section.type.replace(/([A-Z])/g, ' $1').replace(/^./, (value: string) => value.toUpperCase())
+    : 'Section'
+  return String(section?.outlineLabel || section?.title || section?.buttonLabel || `${fallback} ${index + 1}`)
+}
+
+function getOutlineSectionsForPage({
+  location,
+  siteSettings,
+  customPages
+}: {
+  location: ReturnType<typeof useLocation>
+  siteSettings: any
+  customPages: any[]
+}) {
+  if (location.pathname !== '/admin/pages') return []
+  const params = new URLSearchParams(location.search)
+  const builtInPage = params.get('page')
+  const customPageId = params.get('custom')
+  if (customPageId) {
+    const matchedPage = customPages.find((page: any) => String(page.id) === String(customPageId))
+    return Array.isArray(matchedPage?.sections) ? matchedPage.sections : []
+  }
+  if (!builtInPage || builtInPage === 'new') return []
+  return Array.isArray(siteSettings?.pageSections?.[builtInPage]) ? siteSettings.pageSections[builtInPage] : []
+}
+
 export default function AdminLayout({ title, children, headerActions }: { title: string; children: ReactNode; headerActions?: ReactNode }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -254,6 +282,7 @@ export default function AdminLayout({ title, children, headerActions }: { title:
   const [notifications, setNotifications] = useState({ newMessages: 0, newTickets: 0, total: 0 })
   const [customPages, setCustomPages] = useState<any[]>([])
   const [siteSettings, setSiteSettings] = useState<any>({})
+  const [builderOutlineState, setBuilderOutlineState] = useState<{ pageKey: string; sections: any[] }>({ pageKey: '', sections: [] })
   const [theme, setTheme] = useState(() => localStorage.getItem('siteTheme') || 'light')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -374,6 +403,19 @@ export default function AdminLayout({ title, children, headerActions }: { title:
     }
   }, [])
 
+  useEffect(() => {
+    const handleOutlineSync = (event: Event) => {
+      const detail = (event as CustomEvent<{ pageKey?: string; sections?: any[] }>).detail
+      setBuilderOutlineState({
+        pageKey: String(detail?.pageKey || ''),
+        sections: Array.isArray(detail?.sections) ? detail.sections : []
+      })
+    }
+
+    window.addEventListener('creative-builder-outline-sync', handleOutlineSync as EventListener)
+    return () => window.removeEventListener('creative-builder-outline-sync', handleOutlineSync as EventListener)
+  }, [])
+
   const handleLogout = () => {
     localStorage.removeItem('authToken')
     localStorage.removeItem('userId')
@@ -431,6 +473,16 @@ export default function AdminLayout({ title, children, headerActions }: { title:
     isPublished: page.isPublished !== false,
     seoScore: computeNavSeoScore(page, Array.isArray(page.sections) ? page.sections : [])
   }))
+  const activePageParams = new URLSearchParams(location.search)
+  const activePageKey = activePageParams.get('custom')
+    ? `custom:${activePageParams.get('custom')}`
+    : `builtIn:${activePageParams.get('page') || 'home'}`
+  const fallbackOutlineSections = getOutlineSectionsForPage({ location, siteSettings, customPages })
+  const currentOutlineSections = builderOutlineState.pageKey === activePageKey ? builderOutlineState.sections : fallbackOutlineSections
+
+  const emitBuilderOutlineEvent = useCallback((name: string, detail: Record<string, any>) => {
+    window.dispatchEvent(new CustomEvent(name, { detail }))
+  }, [])
 
   const sidebarLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ease-in-out ${
@@ -501,6 +553,103 @@ export default function AdminLayout({ title, children, headerActions }: { title:
     setSetupBannerDismissed(true)
     window.localStorage.setItem(ONBOARDING_BANNER_DISMISSED_KEY, 'true')
   }, [])
+
+  const renderPageOutline = (pageLink: PageNavLink) => {
+    if (location.pathname !== '/admin/pages' || !pageLink.active || pageLink.isAction || currentOutlineSections.length === 0) return null
+    return (
+      <div className="mt-2 ml-4 space-y-1 border-l border-gray-200 pl-3">
+        {currentOutlineSections.map((section: any, index: number) => {
+          const sectionId = String(section?.id || index)
+          const nestedBlocks = section?.type === 'columns'
+            ? (Array.isArray(section?.items) ? section.items.flatMap((item: any) => Array.isArray(item?.sections) ? item.sections : []) : [])
+            : []
+          return (
+            <div key={sectionId} className="space-y-1">
+              <div
+                draggable
+                onDragStart={(event) => {
+                  event.dataTransfer.setData('application/x-outline-section-id', sectionId)
+                  event.dataTransfer.effectAllowed = 'move'
+                }}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  const sourceId = event.dataTransfer.getData('application/x-outline-section-id')
+                  if (!sourceId || sourceId === sectionId) return
+                  emitBuilderOutlineEvent('creative-builder-outline-move', { sourceId, targetId: sectionId })
+                }}
+                className="group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
+              >
+                <button
+                  type="button"
+                  onClick={() => emitBuilderOutlineEvent('creative-builder-outline-select', { sectionId })}
+                  className="min-w-0 flex flex-1 items-center gap-2 text-left"
+                >
+                  <FiMove className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                  <span className="truncate">{getOutlineSectionTitle(section, index)}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => emitBuilderOutlineEvent('creative-builder-outline-rename', { sectionId })}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition hover:bg-white hover:text-blue-700"
+                  aria-label="Rename section"
+                  title="Rename section"
+                >
+                  <FiEdit2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => emitBuilderOutlineEvent('creative-builder-outline-delete', { sectionId })}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-red-400 transition hover:bg-red-50 hover:text-red-600"
+                  aria-label="Delete section"
+                  title="Delete section"
+                >
+                  <FiTrash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {nestedBlocks.length > 0 && (
+                <div className="ml-4 space-y-1 border-l border-gray-100 pl-3">
+                  {nestedBlocks.map((block: any, blockIndex: number) => {
+                    const blockId = String(block?.id || `${sectionId}-nested-${blockIndex}`)
+                    return (
+                      <div key={blockId} className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-gray-500 transition hover:bg-gray-50 hover:text-gray-700">
+                        <button
+                          type="button"
+                          onClick={() => emitBuilderOutlineEvent('creative-builder-outline-select', { sectionId: blockId })}
+                          className="min-w-0 flex flex-1 items-center gap-2 text-left"
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+                          <span className="truncate">{getOutlineSectionTitle(block, blockIndex)}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => emitBuilderOutlineEvent('creative-builder-outline-rename', { sectionId: blockId })}
+                          className="inline-flex h-6 w-6 items-center justify-center rounded text-gray-400 transition hover:bg-white hover:text-blue-700"
+                          aria-label="Rename block"
+                          title="Rename block"
+                        >
+                          <FiEdit2 className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => emitBuilderOutlineEvent('creative-builder-outline-delete', { sectionId: blockId })}
+                          className="inline-flex h-6 w-6 items-center justify-center rounded text-red-400 transition hover:bg-red-50 hover:text-red-600"
+                          aria-label="Delete block"
+                          title="Delete block"
+                        >
+                          <FiTrash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <div className="admin-shell min-h-screen bg-gray-50 lg:flex">
@@ -620,18 +769,20 @@ export default function AdminLayout({ title, children, headerActions }: { title:
                       {group.label === 'Pages' && filteredPageLinks.length > 0 && (
                         <div className="grid gap-2">
                           {filteredPageLinks.map((link) => (
-                            <Link
-                              key={link.path}
-                              to={link.path}
-                              onClick={() => setMobileSidebarOpen(false)}
-                              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${
-                                link.active ? 'bg-blue-600 text-white' : link.isAction ? 'border border-dashed border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-gray-50 text-gray-700 hover:bg-blue-50 hover:text-blue-700'
-                              }`}
-                            >
-                              {link.isAction ? <FiFileText size={16} /> : link.isPublished === false ? <FiAlertCircle size={16} className="shrink-0 text-red-500" /> : <FiCheckCircle size={16} className="shrink-0 text-green-500" />}
-                              <span className="min-w-0 flex-1 truncate">{link.title}</span>
-                              {!link.isAction && typeof link.seoScore === 'number' && <PageScoreBadge score={link.seoScore} inverse={link.active} />}
-                            </Link>
+                            <div key={link.path}>
+                              <Link
+                                to={link.path}
+                                onClick={() => setMobileSidebarOpen(false)}
+                                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${
+                                  link.active ? 'bg-blue-600 text-white' : link.isAction ? 'border border-dashed border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-gray-50 text-gray-700 hover:bg-blue-50 hover:text-blue-700'
+                                }`}
+                              >
+                                {link.isAction ? <FiFileText size={16} /> : link.isPublished === false ? <FiAlertCircle size={16} className="shrink-0 text-red-500" /> : <FiCheckCircle size={16} className="shrink-0 text-green-500" />}
+                                <span className="min-w-0 flex-1 truncate">{link.title}</span>
+                                {!link.isAction && typeof link.seoScore === 'number' && <PageScoreBadge score={link.seoScore} inverse={link.active} />}
+                              </Link>
+                              {renderPageOutline(link)}
+                            </div>
                           ))}
                         </div>
                       )}
@@ -809,20 +960,22 @@ export default function AdminLayout({ title, children, headerActions }: { title:
                       )}
                       <div className="max-h-[22rem] space-y-1 overflow-y-auto pr-1">
                       {filteredPageLinks.filter(link => !link.isAction).map(link => (
-                        <Link
-                          key={link.path}
-                          to={link.path}
-                          onClick={() => setMobileSidebarOpen(false)}
-                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                            link.active
-                              ? 'bg-blue-600 text-white'
-                              : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
-                          }`}
-                        >
-                          {link.isPublished === false ? <FiAlertCircle size={16} className={`shrink-0 ${link.active ? 'text-white' : 'text-red-500'}`} /> : <FiCheckCircle size={16} className={`shrink-0 ${link.active ? 'text-white' : 'text-green-500'}`} />}
-                          <span className="min-w-0 flex-1 truncate">{link.title}</span>
-                          {typeof link.seoScore === 'number' && <PageScoreBadge score={link.seoScore} inverse={link.active} />}
-                        </Link>
+                        <div key={link.path}>
+                          <Link
+                            to={link.path}
+                            onClick={() => setMobileSidebarOpen(false)}
+                            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                              link.active
+                                ? 'bg-blue-600 text-white'
+                                : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
+                            }`}
+                          >
+                            {link.isPublished === false ? <FiAlertCircle size={16} className={`shrink-0 ${link.active ? 'text-white' : 'text-red-500'}`} /> : <FiCheckCircle size={16} className={`shrink-0 ${link.active ? 'text-white' : 'text-green-500'}`} />}
+                            <span className="min-w-0 flex-1 truncate">{link.title}</span>
+                            {typeof link.seoScore === 'number' && <PageScoreBadge score={link.seoScore} inverse={link.active} />}
+                          </Link>
+                          {renderPageOutline(link)}
+                        </div>
                       ))}
                       </div>
                     </div>

@@ -2029,33 +2029,27 @@ function SubscriptionPlansSection({ section }: { section: any }) {
             return (
               <article
                 key={plan.id || index}
-                className={`card overflow-hidden transition ${isHighlighted ? 'scale-[1.02] ring-2 ring-blue-600 shadow-2xl' : ''}`}
+                className={`card relative overflow-hidden transition ${isHighlighted ? 'scale-[1.02] ring-2 ring-blue-600 shadow-2xl' : ''}`}
               >
-                {isHighlighted && (
-                  <div className="bg-blue-600 px-4 py-2 text-center text-sm font-bold uppercase tracking-wide text-white">
-                    {highlightBadge}
-                  </div>
-                )}
                 <div className="p-8">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
-                      {plan.description && <p className="mt-2 text-sm text-gray-600">{plan.description}</p>}
+                  {isHighlighted && highlightBadge && (
+                    <div className="absolute right-[-3.2rem] top-5 w-44 rotate-45 bg-blue-600 px-8 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-white shadow-lg">
+                      {highlightBadge}
                     </div>
+                  )}
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-4">
+                      <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
                     <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${plan.productType === 'cms-license' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
                       {plan.productType === 'cms-license' ? 'CMS License' : 'Subscription'}
                     </span>
+                    </div>
+                    {plan.description && <p className="text-sm text-gray-600">{plan.description}</p>}
                   </div>
                   <div className="my-8 flex items-end gap-2">
                     <span className="text-4xl font-bold text-gray-900">${Number(plan.price || 0).toLocaleString()}</span>
                     <span className="pb-1 text-sm text-gray-600">/{plan.billingCycle || 'monthly'}</span>
                   </div>
-                  <SectionLinkButton
-                    href={buttonUrl}
-                    className={`mb-8 block w-full rounded-lg py-3 text-center font-bold transition ${isHighlighted ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}
-                  >
-                    {buttonLabel}
-                  </SectionLinkButton>
                   <div className="space-y-3">
                     {(Array.isArray(plan.features) ? plan.features : []).map((feature: any, featureIndex: number) => {
                       const featureName = typeof feature === 'string' ? feature : feature?.name
@@ -2071,6 +2065,12 @@ function SubscriptionPlansSection({ section }: { section: any }) {
                       )
                     })}
                   </div>
+                  <SectionLinkButton
+                    href={buttonUrl}
+                    className={`mt-8 block w-full rounded-lg py-3 text-center font-bold transition ${isHighlighted ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}
+                  >
+                    {buttonLabel}
+                  </SectionLinkButton>
                 </div>
               </article>
             )

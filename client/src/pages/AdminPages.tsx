@@ -646,7 +646,41 @@ function getGridCells(section: any) {
 
 function getSectionTitle(section: any, index: number) {
   const typeLabel = sectionTypeOptions.find(option => option.value === section.type)?.label || 'Section'
-  return section.title || `${typeLabel} ${index + 1}`
+  return section.outlineLabel || section.title || `${typeLabel} ${index + 1}`
+}
+
+function findSectionContextById(activeSections: any[], activeSectionsRaw: any[], sectionId: string) {
+  for (let topLevelIndex = 0; topLevelIndex < activeSections.length; topLevelIndex += 1) {
+    const resolvedSection = activeSections[topLevelIndex]
+    const rawSection = activeSectionsRaw[topLevelIndex]
+    const topLevelId = String(resolvedSection?.id || topLevelIndex)
+    if (topLevelId === sectionId) {
+      return { kind: 'top', topLevelIndex, topLevelId, resolvedSection, rawSection }
+    }
+    if (resolvedSection?.type === 'columns' && Array.isArray(resolvedSection?.items)) {
+      for (let columnIndex = 0; columnIndex < resolvedSection.items.length; columnIndex += 1) {
+        const resolvedColumn = resolvedSection.items[columnIndex]
+        const rawColumn = rawSection?.items?.[columnIndex]
+        const blocks = Array.isArray(resolvedColumn?.sections) ? resolvedColumn.sections : []
+        for (let blockIndex = 0; blockIndex < blocks.length; blockIndex += 1) {
+          const resolvedBlock = blocks[blockIndex]
+          const blockId = String(resolvedBlock?.id || '')
+          if (blockId && blockId === sectionId) {
+            return {
+              kind: 'nested',
+              topLevelIndex,
+              topLevelId,
+              columnIndex,
+              blockIndex,
+              resolvedSection: resolvedBlock,
+              rawSection: rawColumn?.sections?.[blockIndex] || resolvedBlock
+            }
+          }
+        }
+      }
+    }
+  }
+  return null
 }
 
 function stripSyncedBlockMeta(section: any) {
@@ -1012,6 +1046,7 @@ export default function AdminPages() {
   const [highlightedSectionId, setHighlightedSectionId] = useState('')
   const [previewMode, setPreviewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const [sectionsPanelOpen, setSectionsPanelOpen] = useState(true)
+  const [libraryPanelOpen, setLibraryPanelOpen] = useState(true)
   const [rightPanelWidth, setRightPanelWidth] = useState(() => readStoredPanelWidth(RIGHT_PANEL_WIDTH_KEY, DEFAULT_RIGHT_PANEL_WIDTH))
   const [seoModalOpen, setSeoModalOpen] = useState(false)
   const [savedSnapshot, setSavedSnapshot] = useState('')
@@ -1027,6 +1062,7 @@ export default function AdminPages() {
   const autosaveTimerRef = useRef<number | null>(null)
   const resizeStateRef = useRef<{ panel: 'right' | null; startX: number; startWidth: number }>({ panel: null, startX: 0, startWidth: 0 })
   const deleteKeyStateRef = useRef<any>(null)
+  const outlineActionStateRef = useRef<any>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1446,11 +1482,39 @@ export default function AdminPages() {
     () => activeSectionsRaw.map((section: any) => resolveSyncedSection(section, settings.reusableSections || [])),
     [activeSectionsRaw, settings.reusableSections]
   )
+  useEffect(() => {
+    const pageKey = activeTab === 'Custom Pages' ? `custom:${selectedPageId}` : `builtIn:${activeBuiltInPageKey || 'home'}`
+    window.dispatchEvent(new CustomEvent('creative-builder-outline-sync', {
+      detail: {
+        pageKey,
+        sections: activeSections
+      }
+    }))
+    return () => {
+      window.dispatchEvent(new CustomEvent('creative-builder-outline-sync', {
+        detail: {
+          pageKey,
+          sections: []
+        }
+      }))
+    }
+  }, [activeBuiltInPageKey, activeSections, activeTab, selectedPageId])
   const activePageLabel = activeTab === 'Custom Pages'
     ? (selectedPageId === 'new' ? 'New Custom Page' : pageDraft.title || 'Custom Page')
     : activeBuiltInPageKey === 'home'
       ? 'Homepage'
       : pageHeaderLabels[activeBuiltInPageKey] || 'Page'
+  const focusSectionFromOutline = (sectionId: string) => {
+    const context = findSectionContextById(activeSections, activeSectionsRaw, sectionId)
+    if (!context) return
+    const highlightId = context.kind === 'nested' ? context.topLevelId : String(sectionId)
+    setEditingSectionId(sectionId)
+    setHighlightedSectionId(highlightId)
+    window.setTimeout(() => {
+      document.getElementById(`preview-section-${highlightId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 80)
+    window.setTimeout(() => setHighlightedSectionId((current) => current === highlightId ? '' : current), 1800)
+  }
   const addActiveSection = (type: string) => activeTab === 'Custom Pages' ? addPageSection(type) : addBuiltInSection(activeBuiltInPageKey, type)
   const insertActiveSectionAt = (insertIndex: number, type: string) => activeTab === 'Custom Pages'
     ? insertPageSectionAt(insertIndex, type)
@@ -1595,6 +1659,17 @@ export default function AdminPages() {
     updateActiveSection(topLevelIndex, 'items', nextColumns)
     setEditingSectionId(sourceSection?.id || String(topLevelIndex))
   }
+  outlineActionStateRef.current = {
+    activeSections,
+    activeSectionsRaw,
+    removeActiveSection,
+    removeNestedActiveSection,
+    updateActiveSection,
+    updateNestedActiveSection,
+    moveActiveSection,
+    focusSectionFromOutline,
+    showToast
+  }
   const handlePreviewDrop = (e: React.DragEvent) => {
     e.preventDefault()
     const sectionType = e.dataTransfer.getData('application/x-section-type')
@@ -1620,39 +1695,10 @@ export default function AdminPages() {
       setDraggingSectionIndex(null)
     }
   }
-  const selectedSectionContext = useMemo(() => {
-    for (let topLevelIndex = 0; topLevelIndex < activeSections.length; topLevelIndex += 1) {
-      const resolvedSection = activeSections[topLevelIndex]
-      const rawSection = activeSectionsRaw[topLevelIndex]
-      const topLevelId = String(resolvedSection?.id || topLevelIndex)
-      if (topLevelId === editingSectionId) {
-        return { kind: 'top', topLevelIndex, topLevelId, resolvedSection, rawSection }
-      }
-      if (resolvedSection?.type === 'columns' && Array.isArray(resolvedSection?.items)) {
-        for (let columnIndex = 0; columnIndex < resolvedSection.items.length; columnIndex += 1) {
-          const resolvedColumn = resolvedSection.items[columnIndex]
-          const rawColumn = rawSection?.items?.[columnIndex]
-          const blocks = Array.isArray(resolvedColumn?.sections) ? resolvedColumn.sections : []
-          for (let blockIndex = 0; blockIndex < blocks.length; blockIndex += 1) {
-            const resolvedBlock = blocks[blockIndex]
-            const blockId = String(resolvedBlock?.id || '')
-            if (blockId && blockId === editingSectionId) {
-              return {
-                kind: 'nested',
-                topLevelIndex,
-                topLevelId,
-                columnIndex,
-                blockIndex,
-                resolvedSection: resolvedBlock,
-                rawSection: rawColumn?.sections?.[blockIndex] || resolvedBlock
-              }
-            }
-          }
-        }
-      }
-    }
-    return null
-  }, [activeSections, activeSectionsRaw, editingSectionId])
+  const selectedSectionContext = useMemo(
+    () => findSectionContextById(activeSections, activeSectionsRaw, editingSectionId),
+    [activeSections, activeSectionsRaw, editingSectionId]
+  )
   const selectedSectionIndex = selectedSectionContext?.topLevelIndex ?? -1
   const selectedSection = selectedSectionContext?.resolvedSection || null
   const selectedSectionRaw = selectedSectionContext?.rawSection || null
@@ -1948,6 +1994,72 @@ export default function AdminPages() {
     return () => window.removeEventListener('keydown', handleDeleteKey)
   }, [])
 
+  useEffect(() => {
+    const handleOutlineSelect = (event: Event) => {
+      const detail = (event as CustomEvent<{ sectionId?: string }>).detail
+      if (!detail?.sectionId) return
+      outlineActionStateRef.current?.focusSectionFromOutline?.(detail.sectionId)
+    }
+
+    const handleOutlineDelete = (event: Event) => {
+      const detail = (event as CustomEvent<{ sectionId?: string }>).detail
+      if (!detail?.sectionId) return
+      const state = outlineActionStateRef.current
+      if (!state) return
+      const context = findSectionContextById(state.activeSections, state.activeSectionsRaw, detail.sectionId)
+      if (!context) return
+      if (context.kind === 'nested') {
+        state.removeNestedActiveSection(context.topLevelIndex, context.columnIndex ?? 0, context.blockIndex ?? 0)
+        state.showToast({ tone: 'info', title: 'Block removed', message: 'The selected nested block was deleted.' })
+      } else {
+        state.removeActiveSection(context.topLevelIndex)
+        state.showToast({ tone: 'info', title: 'Section removed', message: 'The selected section was deleted.' })
+      }
+    }
+
+    const handleOutlineRename = (event: Event) => {
+      const detail = (event as CustomEvent<{ sectionId?: string }>).detail
+      if (!detail?.sectionId) return
+      const state = outlineActionStateRef.current
+      if (!state) return
+      const context = findSectionContextById(state.activeSections, state.activeSectionsRaw, detail.sectionId)
+      if (!context) return
+      const currentName = getSectionTitle(context.rawSection || context.resolvedSection, context.topLevelIndex)
+      const nextName = window.prompt('Rename section', currentName)
+      if (!nextName || !nextName.trim()) return
+      if (context.kind === 'nested') {
+        state.updateNestedActiveSection(context.topLevelIndex, context.columnIndex ?? 0, context.blockIndex ?? 0, 'outlineLabel', nextName.trim())
+      } else {
+        state.updateActiveSection(context.topLevelIndex, 'outlineLabel', nextName.trim())
+      }
+      state.showToast({ tone: 'success', title: 'Section renamed', message: 'The page outline label was updated.' })
+    }
+
+    const handleOutlineMove = (event: Event) => {
+      const detail = (event as CustomEvent<{ sourceId?: string; targetId?: string }>).detail
+      if (!detail?.sourceId || !detail?.targetId || detail.sourceId === detail.targetId) return
+      const state = outlineActionStateRef.current
+      if (!state) return
+      const sourceContext = findSectionContextById(state.activeSections, state.activeSectionsRaw, detail.sourceId)
+      const targetContext = findSectionContextById(state.activeSections, state.activeSectionsRaw, detail.targetId)
+      if (!sourceContext || !targetContext) return
+      if (sourceContext.kind !== 'top' || targetContext.kind !== 'top') return
+      state.moveActiveSection(sourceContext.topLevelIndex, targetContext.topLevelIndex)
+      window.setTimeout(() => state.focusSectionFromOutline?.(detail.sourceId || ''), 60)
+    }
+
+    window.addEventListener('creative-builder-outline-select', handleOutlineSelect as EventListener)
+    window.addEventListener('creative-builder-outline-delete', handleOutlineDelete as EventListener)
+    window.addEventListener('creative-builder-outline-rename', handleOutlineRename as EventListener)
+    window.addEventListener('creative-builder-outline-move', handleOutlineMove as EventListener)
+    return () => {
+      window.removeEventListener('creative-builder-outline-select', handleOutlineSelect as EventListener)
+      window.removeEventListener('creative-builder-outline-delete', handleOutlineDelete as EventListener)
+      window.removeEventListener('creative-builder-outline-rename', handleOutlineRename as EventListener)
+      window.removeEventListener('creative-builder-outline-move', handleOutlineMove as EventListener)
+    }
+  }, [])
+
   const buildPrivatePreviewUrl = (token?: string) => {
     if (!token || typeof window === 'undefined') return ''
     return `${window.location.origin}/preview/page/${token}`
@@ -2085,10 +2197,8 @@ export default function AdminPages() {
                 deleteReusableSection={deleteReusableSection}
                 hasSelectedSection={Boolean(selectedSection)}
                 hasSections={activeSectionsRaw.length > 0}
-                sections={activeSections}
-                selectedSectionId={editingSectionId}
-                onSelectSection={setEditingSectionId}
-                moveSection={moveActiveSection}
+                isOpen={libraryPanelOpen}
+                onToggleOpen={() => setLibraryPanelOpen((open) => !open)}
               />
             </section>
 
@@ -3666,12 +3776,11 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
   )
 }
 
-function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSection, saveSelectedSectionAsTemplate, saveSelectedSectionAsSyncedBlock, saveCurrentPageAsTemplate, deleteReusableSection, hasSelectedSection, hasSections, sections = [], selectedSectionId = '', onSelectSection, moveSection }: any) {
+function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSection, saveSelectedSectionAsTemplate, saveSelectedSectionAsSyncedBlock, saveCurrentPageAsTemplate, deleteReusableSection, hasSelectedSection, hasSections, isOpen = true, onToggleOpen = () => {} }: any) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const saveMenuRef = useRef<HTMLDivElement | null>(null)
   const [sectionSearch, setSectionSearch] = useState('')
   const [saveMenuOpen, setSaveMenuOpen] = useState(false)
-  const [draggedOutlineIndex, setDraggedOutlineIndex] = useState<number | null>(null)
   const filteredSections = sectionTypeOptions.filter(option => option.label.toLowerCase().includes(sectionSearch.trim().toLowerCase()))
   const filteredTemplates = reusableSections.filter((template: any) => {
     const search = sectionSearch.trim().toLowerCase()
@@ -3691,13 +3800,23 @@ function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSec
       closeSaveMenu()
     }
   }
-  const outlineSections = Array.isArray(sections) ? sections : []
 
   return (
     <div className="min-w-0">
       <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Sections</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-900">Sections</h2>
+            <button
+              type="button"
+              onClick={onToggleOpen}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border bg-white text-gray-700 transition hover:bg-gray-50"
+              aria-label={isOpen ? 'Collapse sections panel' : 'Expand sections panel'}
+              title={isOpen ? 'Collapse sections panel' : 'Expand sections panel'}
+            >
+              <FiChevronDown className={`h-5 w-5 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+            </button>
+          </div>
           <p className="text-sm text-gray-600">Drag into the preview or click to add.</p>
         </div>
         <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row">
@@ -3705,13 +3824,13 @@ function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSec
             <button
               type="button"
               onClick={() => setSaveMenuOpen((open) => !open)}
-              className="inline-flex h-11 w-full items-center justify-center gap-1 rounded-lg border bg-white px-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus-visible:outline-none focus-visible:ring-0 lg:w-12"
+              className="inline-flex h-12 w-full items-center justify-center gap-1.5 rounded-lg border bg-white px-4 text-sm font-bold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus-visible:outline-none focus-visible:ring-0 lg:w-16"
               aria-haspopup="menu"
               aria-expanded={saveMenuOpen}
               aria-label="Open save options"
               title="Open save options"
             >
-              <FiSave className="h-4 w-4" />
+              <FiSave className="h-5 w-5" />
               <FiChevronDown className={`h-4 w-4 transition-transform ${saveMenuOpen ? 'rotate-180' : ''}`} />
             </button>
             {saveMenuOpen && (
@@ -3766,6 +3885,8 @@ function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSec
           </label>
         </div>
       </div>
+      {isOpen && (
+        <>
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => scrollSections('left')} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-white text-gray-700 transition hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus-visible:outline-none focus-visible:ring-0" aria-label="Scroll sections left">
           <FiArrowLeft />
@@ -3836,66 +3957,7 @@ function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSec
           </div>
         </div>
       )}
-      {outlineSections.length > 0 && (
-        <div className="mt-4 border-t pt-4">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-bold text-gray-900">Page Outline</h3>
-            <span className="text-xs font-semibold text-gray-500">{outlineSections.length} sections</span>
-          </div>
-          <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
-            {outlineSections.map((section: any, index: number) => {
-              const sectionId = String(section?.id || index)
-              const isActive = selectedSectionId === sectionId
-              const nestedBlocks = section?.type === 'columns'
-                ? (Array.isArray(section?.items) ? section.items.flatMap((item: any) => Array.isArray(item?.sections) ? item.sections : []) : [])
-                : []
-              return (
-                <div key={sectionId} className="space-y-1">
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={(event) => {
-                      setDraggedOutlineIndex(index)
-                      event.dataTransfer.effectAllowed = 'move'
-                    }}
-                    onDragEnd={() => setDraggedOutlineIndex(null)}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={(event) => {
-                      event.preventDefault()
-                      if (draggedOutlineIndex === null || draggedOutlineIndex === index) return
-                      moveSection?.(draggedOutlineIndex, index)
-                      setDraggedOutlineIndex(null)
-                    }}
-                    onClick={() => onSelectSection?.(sectionId)}
-                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition ${isActive ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-50 text-gray-700 hover:bg-blue-50 hover:text-blue-700'} ${draggedOutlineIndex === index ? 'opacity-60 ring-2 ring-blue-400' : ''}`}
-                  >
-                    <FiMove className="h-4 w-4 shrink-0 opacity-70" />
-                    <span className="min-w-0 flex-1 truncate">{getSectionTitle(section, index)}</span>
-                  </button>
-                  {nestedBlocks.length > 0 && (
-                    <div className="ml-5 border-l border-gray-200 pl-3">
-                      {nestedBlocks.map((block: any, blockIndex: number) => {
-                        const blockId = String(block?.id || `${sectionId}-nested-${blockIndex}`)
-                        const blockActive = selectedSectionId === blockId
-                        return (
-                          <button
-                            key={blockId}
-                            type="button"
-                            onClick={() => onSelectSection?.(blockId)}
-                            className={`mt-1 flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-xs font-semibold transition ${blockActive ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}
-                          >
-                            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
-                            <span className="min-w-0 flex-1 truncate">{block.title || block.buttonLabel || block.type || `Block ${blockIndex + 1}`}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        </>
       )}
     </div>
   )
