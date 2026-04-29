@@ -122,6 +122,16 @@ const buttonIconOptions = [
   { value: 'monitor', label: 'Monitor', icon: FiMonitor }
 ]
 
+const mapPinIconOptions = [
+  { value: 'pin', label: 'Pin' },
+  { value: 'home', label: 'Home' },
+  { value: 'office', label: 'Office' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'message', label: 'Message' },
+  { value: 'search', label: 'Inspection' },
+  { value: 'star', label: 'Star' }
+]
+
 const gridBlockOptions = [
   ...sectionTypeOptions,
   { value: 'imageCard', label: 'Image Card', icon: FiGrid }
@@ -331,6 +341,7 @@ function makePageSection(type: string) {
     mapHeight: type === 'map' ? 420 : '',
     mapZoom: type === 'map' ? 14 : '',
     mapPins: [],
+    mapRegions: [],
     videoUrl: '',
     videoHeight: type === 'youtube' ? 420 : '',
     imageStripJustify: 'center',
@@ -501,11 +512,28 @@ function makeMapPin(overrides: Record<string, any> = {}) {
     query: '',
     lat: '',
     lng: '',
+    icon: 'pin',
+    description: '',
+    showPopupCard: false,
+    popupButtonLabel: '',
+    popupButtonUrl: '',
     pinColor: '#2563eb',
     pillBackgroundColor: '#ffffff',
     pillTextColor: '#111827',
     x: 50,
     y: 50,
+    ...overrides
+  }
+}
+
+function makeMapRegion(overrides: Record<string, any> = {}) {
+  return {
+    id: crypto.randomUUID(),
+    label: 'Region',
+    strokeColor: '#2563eb',
+    fillColor: '#bfdbfe',
+    fillOpacity: 0.22,
+    points: '',
     ...overrides
   }
 }
@@ -4059,6 +4087,7 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
               </div>
             </label>
             <MapPinsEditor section={section} index={index} updateSection={updateSection} />
+            <MapRegionsEditor section={section} index={index} updateSection={updateSection} />
           </div>
         )}
 
@@ -5266,6 +5295,63 @@ function PanelItemsEditor({ section, index, updateSection }: any) {
   )
 }
 
+function MapRegionsEditor({ section, index, updateSection }: any) {
+  const regions = Array.isArray(section.mapRegions) ? section.mapRegions : []
+  const updateRegion = (regionIndex: number, field: string, value: any) => {
+    updateSection(index, 'mapRegions', regions.map((item: any, currentIndex: number) => currentIndex === regionIndex ? { ...item, [field]: value } : item))
+  }
+  const addRegion = () => updateSection(index, 'mapRegions', [...regions, makeMapRegion({ label: `Region ${regions.length + 1}` })])
+  const removeRegion = (regionIndex: number) => updateSection(index, 'mapRegions', regions.filter((_: any, currentIndex: number) => currentIndex !== regionIndex))
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h4 className="font-bold text-gray-900">Boundary Regions</h4>
+          <p className="text-sm text-gray-600">Draw service areas with polygon coordinates. Use one `lat,lng` pair per line.</p>
+        </div>
+        <button type="button" onClick={addRegion} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add Region</button>
+      </div>
+      {regions.map((region: any, regionIndex: number) => (
+        <div key={region.id || regionIndex} className="space-y-3 rounded-lg border p-3">
+          <input value={region.label || ''} onChange={(e) => updateRegion(regionIndex, 'label', e.target.value)} placeholder="Region label" className="w-full rounded-lg border px-4 py-2" />
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <label className="rounded-xl border border-gray-200 bg-gray-50/70 p-3 text-sm font-semibold text-gray-700">
+              <span>Outline</span>
+              <div className="mt-2 flex items-center gap-2">
+                <input type="color" value={region.strokeColor || '#2563eb'} onChange={(e) => updateRegion(regionIndex, 'strokeColor', e.target.value)} className="h-11 w-14 shrink-0 rounded border p-1" />
+                <input value={region.strokeColor || '#2563eb'} onChange={(e) => updateRegion(regionIndex, 'strokeColor', e.target.value)} className="min-w-0 flex-1 rounded-lg border px-3 py-2 font-normal" />
+              </div>
+            </label>
+            <label className="rounded-xl border border-gray-200 bg-gray-50/70 p-3 text-sm font-semibold text-gray-700">
+              <span>Fill</span>
+              <div className="mt-2 flex items-center gap-2">
+                <input type="color" value={region.fillColor || '#bfdbfe'} onChange={(e) => updateRegion(regionIndex, 'fillColor', e.target.value)} className="h-11 w-14 shrink-0 rounded border p-1" />
+                <input value={region.fillColor || '#bfdbfe'} onChange={(e) => updateRegion(regionIndex, 'fillColor', e.target.value)} className="min-w-0 flex-1 rounded-lg border px-3 py-2 font-normal" />
+              </div>
+            </label>
+            <label className="grid grid-cols-[4rem_1fr_5rem] items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/70 p-3 text-sm font-semibold text-gray-700">
+              <span>Fill</span>
+              <input type="range" min="0" max="0.8" step="0.02" value={Number(region.fillOpacity ?? 0.22)} onChange={(e) => updateRegion(regionIndex, 'fillOpacity', e.target.value)} className="w-full accent-blue-600" />
+              <input type="number" min="0" max="0.8" step="0.02" value={region.fillOpacity ?? 0.22} onChange={(e) => updateRegion(regionIndex, 'fillOpacity', e.target.value)} className="w-full rounded-lg border px-2 py-1 text-right font-normal" />
+            </label>
+          </div>
+          <textarea
+            value={region.points || ''}
+            onChange={(e) => updateRegion(regionIndex, 'points', e.target.value)}
+            placeholder={`41.1738,-85.0130\n41.2001,-84.9900\n41.2250,-85.0400`}
+            rows={5}
+            className="w-full rounded-lg border px-4 py-2 font-mono text-sm"
+          />
+          <p className="text-xs text-gray-500">Each line should be `latitude,longitude`. Three or more points will draw a polygon on the public map.</p>
+          <button type="button" onClick={() => removeRegion(regionIndex)} className="rounded-lg border px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Remove Region</button>
+        </div>
+      ))}
+      {regions.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-gray-600">No regions yet. Add one to outline a service area.</div>}
+    </div>
+  )
+}
+
 function MapPinsEditor({ section, index, updateSection }: any) {
   const pins = Array.isArray(section.mapPins) ? section.mapPins : []
   const [collapsedPins, setCollapsedPins] = useState<Record<string, boolean>>({})
@@ -5311,10 +5397,29 @@ function MapPinsEditor({ section, index, updateSection }: any) {
               <div className="space-y-3 border-t px-4 py-4">
                 <input value={pin.label || ''} onChange={(e) => updatePin(pinIndex, 'label', e.target.value)} placeholder="Place name" className="w-full rounded-lg border px-4 py-2" />
                 <input value={pin.query || ''} onChange={(e) => updatePin(pinIndex, 'query', e.target.value)} placeholder="Address or place search used to lock this pin" className="w-full rounded-lg border px-4 py-2" />
+                <textarea value={pin.description || ''} onChange={(e) => updatePin(pinIndex, 'description', e.target.value)} placeholder="Optional hover card description" rows={3} className="w-full rounded-lg border px-4 py-2" />
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <label className="space-y-2 text-sm text-gray-700">
+                    <span className="block font-semibold">Pin icon</span>
+                    <select value={pin.icon || 'pin'} onChange={(e) => updatePin(pinIndex, 'icon', e.target.value)} className="w-full rounded-lg border px-4 py-2">
+                      {mapPinIconOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="inline-flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-semibold text-gray-700">
+                    <input type="checkbox" checked={Boolean(pin.showPopupCard)} onChange={(e) => updatePin(pinIndex, 'showPopupCard', e.target.checked)} />
+                    Show popup card on hover
+                  </label>
+                </div>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <input value={pin.lat ?? ''} onChange={(e) => updatePin(pinIndex, 'lat', e.target.value)} placeholder="Latitude (optional override)" className="w-full rounded-lg border px-4 py-2" />
                   <input value={pin.lng ?? ''} onChange={(e) => updatePin(pinIndex, 'lng', e.target.value)} placeholder="Longitude (optional override)" className="w-full rounded-lg border px-4 py-2" />
                 </div>
+                {pin.showPopupCard && (
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <input value={pin.popupButtonLabel || ''} onChange={(e) => updatePin(pinIndex, 'popupButtonLabel', e.target.value)} placeholder="Popup button label (optional)" className="w-full rounded-lg border px-4 py-2" />
+                    <input value={pin.popupButtonUrl || ''} onChange={(e) => updatePin(pinIndex, 'popupButtonUrl', e.target.value)} placeholder="Popup button URL (optional)" className="w-full rounded-lg border px-4 py-2" />
+                  </div>
+                )}
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
                   <label className="rounded-xl border border-gray-200 bg-gray-50/70 p-3 text-sm font-semibold text-gray-700">
                     <span>Pin color</span>

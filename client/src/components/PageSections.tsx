@@ -36,6 +36,30 @@ function escapeHtmlForAttribute(value: string) {
     .replace(/>/g, '&gt;')
 }
 
+function getMapPinIconGlyph(value?: string) {
+  if (value === 'home') return 'H'
+  if (value === 'office') return 'O'
+  if (value === 'phone') return 'P'
+  if (value === 'message') return 'M'
+  if (value === 'search') return 'I'
+  if (value === 'star') return '★'
+  return ''
+}
+
+function parseRegionPoints(value: string) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [latRaw, lngRaw] = line.split(',').map((part) => part.trim())
+      const lat = Number(latRaw)
+      const lng = Number(lngRaw)
+      return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] as [number, number] : null
+    })
+    .filter(Boolean) as [number, number][]
+}
+
 function loadLeafletLibrary() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Leaflet can only load in the browser'))
   if (window.L) return Promise.resolve(window.L)
@@ -1034,6 +1058,7 @@ function LeafletLocationMap({ section, height }: { section: any; height: number 
   const mapElementRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<any>(null)
   const markerLayerRef = useRef<any>(null)
+  const regionLayerRef = useRef<any>(null)
   const zoomSyncRef = useRef<number | null>(null)
   const [ready, setReady] = useState(false)
   const [resolvedLocations, setResolvedLocations] = useState<any[]>([])
@@ -1041,6 +1066,7 @@ function LeafletLocationMap({ section, height }: { section: any; height: number 
   const targetZoom = Math.min(19, Math.max(2, Number(section?.mapZoom || 14)))
 
   const pins = useMemo(() => Array.isArray(section.mapPins) ? section.mapPins : [], [section.mapPins])
+  const regions = useMemo(() => Array.isArray(section.mapRegions) ? section.mapRegions : [], [section.mapRegions])
 
   useEffect(() => {
     let isMounted = true
@@ -1092,6 +1118,7 @@ function LeafletLocationMap({ section, height }: { section: any; height: number 
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(mapRef.current)
       markerLayerRef.current = window.L.layerGroup().addTo(mapRef.current)
+      regionLayerRef.current = window.L.layerGroup().addTo(mapRef.current)
       mapRef.current.on('zoomend', () => {
         const nextZoom = Number(mapRef.current?.getZoom?.())
         if (!Number.isFinite(nextZoom) || zoomSyncRef.current === nextZoom) return
@@ -1102,18 +1129,42 @@ function LeafletLocationMap({ section, height }: { section: any; height: number 
 
     const map = mapRef.current
     const markerLayer = markerLayerRef.current
+    const regionLayer = regionLayerRef.current
     markerLayer.clearLayers()
+    regionLayer.clearLayers()
 
     const points = resolvedLocations
       .map((pin: any) => [Number(pin.lat), Number(pin.lng)] as [number, number])
       .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng))
+    const regionPoints = regions.flatMap((region: any) => parseRegionPoints(region.points || ''))
+
+    regions.forEach((region: any) => {
+      const polygonPoints = parseRegionPoints(region.points || '')
+      if (polygonPoints.length < 3) return
+      const polygon = window.L.polygon(polygonPoints, {
+        color: region.strokeColor || '#2563eb',
+        weight: 2,
+        fillColor: region.fillColor || '#bfdbfe',
+        fillOpacity: Math.max(0, Math.min(0.9, Number(region.fillOpacity ?? 0.22)))
+      }).addTo(regionLayer)
+
+      if (region.label) {
+        polygon.bindTooltip(escapeHtmlForAttribute(region.label), {
+          sticky: true,
+          direction: 'center',
+          className: 'creativecms-map-region-tooltip',
+          opacity: 1
+        })
+      }
+    })
 
     resolvedLocations.forEach((pin: any) => {
       if (!Number.isFinite(pin.lat) || !Number.isFinite(pin.lng)) return
+      const iconGlyph = getMapPinIconGlyph(pin.icon)
       const marker = window.L.marker([pin.lat, pin.lng], {
         icon: window.L.divIcon({
           className: 'creativecms-leaflet-pin-wrap',
-          html: `<span class="creativecms-leaflet-pin" style="--map-pin-color:${escapeHtmlForAttribute(pin.pinColor || '#2563eb')}"><span class="creativecms-leaflet-pin-dot"></span></span>`,
+          html: `<span class="creativecms-leaflet-pin" style="--map-pin-color:${escapeHtmlForAttribute(pin.pinColor || '#2563eb')}"><span class="creativecms-leaflet-pin-glyph">${escapeHtmlForAttribute(iconGlyph)}</span><span class="creativecms-leaflet-pin-dot"></span></span>`,
           iconSize: [28, 36],
           iconAnchor: [14, 34],
           tooltipAnchor: [0, -26]
@@ -1128,13 +1179,35 @@ function LeafletLocationMap({ section, height }: { section: any; height: number 
         className: 'creativecms-map-pill',
         opacity: 1
       })
+
+      if (pin.showPopupCard) {
+        const popupButtonLabel = String(pin.popupButtonLabel || '').trim()
+        const popupButtonUrl = String(pin.popupButtonUrl || '').trim()
+        const popupButtonHtml = popupButtonLabel && popupButtonUrl
+          ? (isExternalOrSpecialUrl(popupButtonUrl)
+              ? `<a href="${escapeHtmlForAttribute(popupButtonUrl)}" class="creativecms-map-popup-button" ${popupButtonUrl.startsWith('http') ? 'target="_blank" rel="noreferrer noopener"' : ''}>${escapeHtmlForAttribute(popupButtonLabel)}</a>`
+              : `<a href="${escapeHtmlForAttribute(popupButtonUrl)}" class="creativecms-map-popup-button">${escapeHtmlForAttribute(popupButtonLabel)}</a>`)
+          : ''
+        marker.bindPopup(
+          `<div class="creativecms-map-popup-card">
+            <p class="creativecms-map-popup-title">${escapeHtmlForAttribute(pin.label || 'Location')}</p>
+            ${pin.description ? `<p class="creativecms-map-popup-body">${escapeHtmlForAttribute(pin.description)}</p>` : ''}
+            ${popupButtonHtml}
+          </div>`,
+          { closeButton: false, autoClose: false, closeOnClick: false, className: 'creativecms-map-popup-shell', offset: [0, -18] }
+        )
+        marker.on('mouseover', () => marker.openPopup())
+        marker.on('mouseout', () => marker.closePopup())
+      }
     })
 
-    if (points.length > 1) {
-      map.fitBounds(points, { padding: [30, 30] })
+    const allPoints = [...points, ...regionPoints]
+
+    if (allPoints.length > 1) {
+      map.fitBounds(allPoints, { padding: [30, 30] })
       if (Number.isFinite(targetZoom)) map.setZoom(targetZoom)
-    } else if (points.length === 1) {
-      map.setView(points[0], targetZoom)
+    } else if (allPoints.length === 1) {
+      map.setView(allPoints[0], targetZoom)
     } else if (section.mapQuery) {
       geocodeLocation(section.mapQuery).then((center) => {
         if (center) map.setView([center.lat, center.lng], targetZoom)
@@ -1148,14 +1221,16 @@ function LeafletLocationMap({ section, height }: { section: any; height: number 
 
     return () => {
       if (markerLayerRef.current) markerLayerRef.current.clearLayers()
+      if (regionLayerRef.current) regionLayerRef.current.clearLayers()
     }
-  }, [ready, resolvedLocations, section.mapQuery, targetZoom, onZoomChange])
+  }, [ready, resolvedLocations, regions, section.mapQuery, targetZoom, onZoomChange])
 
   useEffect(() => () => {
     if (mapRef.current) {
       mapRef.current.remove()
       mapRef.current = null
       markerLayerRef.current = null
+      regionLayerRef.current = null
     }
   }, [])
 
@@ -1254,6 +1329,7 @@ function InteractiveMapSection({ section, inColumn = false }: { section: any; in
               {pins.map((pin: any, index: number) => {
                 const left = Math.min(95, Math.max(5, Number(pin.x || 50)))
                 const top = Math.min(92, Math.max(8, Number(pin.y || 50)))
+                const iconGlyph = getMapPinIconGlyph(pin.icon)
                 return (
                   <div
                     key={pin.id || index}
@@ -1267,7 +1343,7 @@ function InteractiveMapSection({ section, inColumn = false }: { section: any; in
                         color: pin.pillTextColor || '#111827'
                       }}
                     >
-                      <FiMapPin style={{ color: pin.pinColor || '#2563eb' }} />
+                      {iconGlyph ? <span className="text-[0.7rem] font-black" style={{ color: pin.pinColor || '#2563eb' }}>{iconGlyph}</span> : <FiMapPin style={{ color: pin.pinColor || '#2563eb' }} />}
                       <span>{pin.label || 'Location'}</span>
                     </div>
                   </div>
