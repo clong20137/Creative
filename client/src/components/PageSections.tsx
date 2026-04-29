@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { FiArrowDown, FiArrowRight, FiCamera, FiCheck, FiMail, FiMapPin, FiMessageSquare, FiMonitor, FiPenTool, FiPhone, FiVideo } from 'react-icons/fi'
 import Testimonials from './Testimonials'
 import TurnstileWidget from './TurnstileWidget'
-import { contactMessagesAPI, formSubmissionsAPI, pluginsAPI, portfolioAPI, resolveAssetUrl, servicePackagesAPI, siteDemosAPI, siteSettingsAPI } from '../services/api'
+import { contactMessagesAPI, formSubmissionsAPI, pluginsAPI, portfolioAPI, resolveAssetUrl, servicePackagesAPI, siteDemosAPI, siteSettingsAPI, subscriptionsAPI } from '../services/api'
 import { normalizeRichTextHtml, sanitizeRichTextHtml } from '../utils/richText'
 
 declare global {
@@ -845,6 +845,7 @@ function PageSection({
   if (section.type === 'portfolioGallery') return <PortfolioGallerySection section={section} />
   if (section.type === 'servicesList') return <ServicesListSection section={section} />
   if (section.type === 'pricingPackages') return <PricingPackagesSection section={section} />
+  if (section.type === 'subscriptionPlans') return <SubscriptionPlansSection section={section} />
   if (section.type === 'servicePricing') return <ServicePricingSection section={section} />
   if (section.type === 'faq') return <FaqSection section={section} />
   if (section.type === 'tabs') return <TabsSection section={section} />
@@ -1078,6 +1079,12 @@ function ButtonSection({ section }: { section: any }) {
       </div>
     </section>
   )
+}
+
+function SectionLinkButton({ href, className, children }: { href: string; className: string; children: ReactNode }) {
+  return isExternalOrSpecialUrl(href)
+    ? <a href={href} className={className} {...(href.startsWith('http') ? { target: '_blank', rel: 'noreferrer noopener' } : {})}>{children}</a>
+    : <Link to={href} className={className}>{children}</Link>
 }
 
 function getMapEmbedSrc(section: any) {
@@ -1978,6 +1985,100 @@ function PricingPackagesSection({ section }: { section: any }) {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SubscriptionPlansSection({ section }: { section: any }) {
+  const [plans, setPlans] = useState<any[]>([])
+  const productType = section.productType === 'cms-license' ? 'cms-license' : 'service'
+  const highlightedPlanId = String(section.highlightedPlanId || '')
+  const highlightBadge = String(section.highlightBadge || '').trim() || 'Recommended'
+  const buttonLabel = String(section.buttonLabel || '').trim() || 'Get Started'
+  const buttonUrl = String(section.buttonUrl || '').trim() || '/contact'
+  const limit = Number(section.itemLimit || 0)
+  const visiblePlans = limit > 0 ? plans.slice(0, limit) : plans
+  const gridColumns = clampColumns(section?.columns, Math.min(3, Math.max(1, visiblePlans.length || 3)))
+
+  useEffect(() => {
+    let isMounted = true
+    subscriptionsAPI.getPublicPlans(productType)
+      .then((items) => {
+        if (!isMounted) return
+        setPlans(Array.isArray(items) ? items : [])
+      })
+      .catch(() => {
+        if (!isMounted) return
+        setPlans([])
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [productType])
+
+  return (
+    <section className="py-16">
+      <div className="container">
+        <SectionHeading section={section} fallbackTitle={productType === 'cms-license' ? 'CMS Licenses' : 'Subscriptions'} />
+        <div className="responsive-grid gap-8" style={getResponsiveGridStyle(section, gridColumns)}>
+          {visiblePlans.map((plan: any, index: number) => {
+            const isHighlighted = highlightedPlanId && String(plan.id) === highlightedPlanId
+            return (
+              <article
+                key={plan.id || index}
+                className={`card overflow-hidden transition ${isHighlighted ? 'scale-[1.02] ring-2 ring-blue-600 shadow-2xl' : ''}`}
+              >
+                {isHighlighted && (
+                  <div className="bg-blue-600 px-4 py-2 text-center text-sm font-bold uppercase tracking-wide text-white">
+                    {highlightBadge}
+                  </div>
+                )}
+                <div className="p-8">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
+                      {plan.description && <p className="mt-2 text-sm text-gray-600">{plan.description}</p>}
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${plan.productType === 'cms-license' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {plan.productType === 'cms-license' ? 'CMS License' : 'Subscription'}
+                    </span>
+                  </div>
+                  <div className="my-8 flex items-end gap-2">
+                    <span className="text-4xl font-bold text-gray-900">${Number(plan.price || 0).toLocaleString()}</span>
+                    <span className="pb-1 text-sm text-gray-600">/{plan.billingCycle || 'monthly'}</span>
+                  </div>
+                  <SectionLinkButton
+                    href={buttonUrl}
+                    className={`mb-8 block w-full rounded-lg py-3 text-center font-bold transition ${isHighlighted ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}
+                  >
+                    {buttonLabel}
+                  </SectionLinkButton>
+                  <div className="space-y-3">
+                    {(Array.isArray(plan.features) ? plan.features : []).map((feature: any, featureIndex: number) => {
+                      const featureName = typeof feature === 'string' ? feature : feature?.name
+                      const included = typeof feature === 'string' ? true : feature?.included !== false
+                      if (!featureName) return null
+                      return (
+                        <div key={featureIndex} className="flex items-center gap-3">
+                          <div className={`flex h-5 w-5 items-center justify-center rounded ${included ? 'bg-green-100' : 'bg-gray-100'}`}>
+                            {included && <FiCheck className="text-green-600" />}
+                          </div>
+                          <span className={included ? 'text-gray-900' : 'text-gray-400 line-through'}>{featureName}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </article>
+            )
+          })}
+          {visiblePlans.length === 0 && (
+            <div className="rounded-lg border p-6 text-center text-gray-600 md:col-span-2 lg:col-span-3">
+              No active {productType === 'cms-license' ? 'license' : 'subscription'} plans have been added yet.
+            </div>
+          )}
         </div>
       </div>
     </section>

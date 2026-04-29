@@ -101,6 +101,7 @@ const sectionTypeOptions = [
   { value: 'portfolioGallery', label: 'Portfolio Gallery', icon: FiImage },
   { value: 'servicesList', label: 'Services List', icon: FiGrid },
   { value: 'pricingPackages', label: 'Pricing Packages', icon: FiGrid },
+  { value: 'subscriptionPlans', label: 'Subscriptions', icon: FiGrid },
   { value: 'servicePricing', label: 'A La Carte Pricing', icon: FiGrid },
   { value: 'faq', label: 'FAQ', icon: FiFileText },
   { value: 'tabs', label: 'Tabs', icon: FiLayout },
@@ -393,6 +394,9 @@ function makePageSection(type: string) {
     buttonPaddingX: '',
     buttonPaddingY: '',
     buttonHoverEffect: 'lift',
+    productType: type === 'subscriptionPlans' ? 'service' : 'service',
+    highlightedPlanId: '',
+    highlightBadge: type === 'subscriptionPlans' ? 'Recommended' : '',
     contentVerticalAlign: type === 'section' ? 'center' : '',
     heroFormEnabled: false,
     heroHeight: '',
@@ -4044,7 +4048,7 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
           </div>
         )}
 
-        {(section.type === 'paragraph' || section.type === 'section' || section.type === 'services' || section.type === 'map' || section.type === 'youtube' || section.type === 'imageStrip' || section.type === 'tabs' || section.type === 'accordion') && (
+        {(section.type === 'paragraph' || section.type === 'section' || section.type === 'services' || section.type === 'map' || section.type === 'youtube' || section.type === 'imageStrip' || section.type === 'tabs' || section.type === 'accordion' || section.type === 'subscriptionPlans') && (
           <DeferredRichTextEditorField label="Text content" value={section.body || ''} onChange={(value: string) => updateSection(index, 'body', value)} placeholder="Format certain words, add links, and set colors..." minHeight={160} />
         )}
 
@@ -4121,6 +4125,34 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
             <ListCountControls section={section} index={index} updateSection={updateSection} titlePlaceholder={section.type === 'tabs' ? 'Tabs title' : 'Accordion title'} maxColumns={1} />
             <PanelItemsEditor section={section} index={index} updateSection={updateSection} />
           </>
+        )}
+
+        {section.type === 'subscriptionPlans' && (
+          <div className="space-y-3 rounded-lg border bg-gray-50 p-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label className="space-y-2 text-sm text-gray-700">
+                <span className="block font-semibold">Plan type</span>
+                <select value={section.productType || 'service'} onChange={(e) => updateSection(index, 'productType', e.target.value)} className="w-full rounded-lg border px-4 py-2">
+                  <option value="service">Service subscriptions</option>
+                  <option value="cms-license">CMS licenses</option>
+                </select>
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                <span className="block font-semibold">Highlighted plan ID</span>
+                <input value={section.highlightedPlanId || ''} onChange={(e) => updateSection(index, 'highlightedPlanId', e.target.value)} placeholder="Example: 3" className="w-full rounded-lg border px-4 py-2" />
+              </label>
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <input value={section.highlightBadge || ''} onChange={(e) => updateSection(index, 'highlightBadge', e.target.value)} placeholder="Highlighted badge text" className="w-full rounded-lg border px-4 py-2" />
+              <input type="number" min="1" value={section.itemLimit || ''} onChange={(e) => updateSection(index, 'itemLimit', Number(e.target.value || 0))} placeholder="Plans to show" className="w-full rounded-lg border px-4 py-2" />
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <input type="number" min="1" max="4" value={section.columns || ''} onChange={(e) => updateSection(index, 'columns', Number(e.target.value || 0))} placeholder="Columns" className="w-full rounded-lg border px-4 py-2" />
+              <input value={section.buttonLabel || ''} onChange={(e) => updateSection(index, 'buttonLabel', e.target.value)} placeholder="CTA button label" className="w-full rounded-lg border px-4 py-2" />
+            </div>
+            <input value={section.buttonUrl || ''} onChange={(e) => updateSection(index, 'buttonUrl', e.target.value)} placeholder="CTA button URL" className="w-full rounded-lg border px-4 py-2" />
+            <p className="text-xs text-gray-500">Use the highlighted plan ID from Admin &gt; Subscriptions to mark a specific plan as recommended.</p>
+          </div>
         )}
 
         {section.type === 'divider' && (
@@ -4815,8 +4847,8 @@ function ColumnsEditor({ section, index, updateSection, uploadImageToField, open
 }
 
 function NestedBlockEditor({ block, columnIndex, blockIndex, updateBlock, removeBlock, uploadImageToField, openMediaPicker }: any) {
-  const hasTitle = ['header', 'imageCard', 'hero', 'banner', 'cta', 'imageOverlay', 'section', 'services', 'map', 'youtube', 'pluginsList', 'siteDemos', 'faq', 'tabs', 'accordion', 'customForm', 'imageStrip', 'columns'].includes(block.type)
-  const hasBody = ['paragraph', 'header', 'hero', 'banner', 'cta', 'imageOverlay', 'section', 'services', 'map', 'youtube', 'pluginsList', 'siteDemos', 'faq', 'tabs', 'accordion', 'customForm', 'imageStrip', 'columns'].includes(block.type)
+  const hasTitle = ['header', 'imageCard', 'hero', 'banner', 'cta', 'imageOverlay', 'section', 'services', 'map', 'youtube', 'pluginsList', 'siteDemos', 'faq', 'tabs', 'accordion', 'customForm', 'imageStrip', 'columns', 'subscriptionPlans'].includes(block.type)
+  const hasBody = ['paragraph', 'header', 'hero', 'banner', 'cta', 'imageOverlay', 'section', 'services', 'map', 'youtube', 'pluginsList', 'siteDemos', 'faq', 'tabs', 'accordion', 'customForm', 'imageStrip', 'columns', 'subscriptionPlans'].includes(block.type)
   const hasButton = ['button', 'hero', 'banner', 'cta', 'imageOverlay'].includes(block.type)
   const updateNestedSection = useCallback((_: number, field: string, value: any) => {
     updateBlock(columnIndex, blockIndex, field, value)
@@ -4860,6 +4892,26 @@ function NestedBlockEditor({ block, columnIndex, blockIndex, updateBlock, remove
             <input type="number" min="1" max="6" value={block.columns || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'columns', Number(e.target.value || 0))} placeholder="Columns" className="w-full px-4 py-2 border rounded-lg" />
             <input type="number" min="1" value={block.itemLimit || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'itemLimit', Number(e.target.value || 0))} placeholder={block.type === 'siteDemos' ? 'Demos to show' : 'Plugins to show'} className="w-full px-4 py-2 border rounded-lg" />
           </div>
+        </>
+      )}
+      {block.type === 'subscriptionPlans' && (
+        <>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <select value={block.productType || 'service'} onChange={(e) => updateBlock(columnIndex, blockIndex, 'productType', e.target.value)} className="w-full px-4 py-2 border rounded-lg bg-white">
+              <option value="service">Service subscriptions</option>
+              <option value="cms-license">CMS licenses</option>
+            </select>
+            <input value={block.highlightedPlanId || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'highlightedPlanId', e.target.value)} placeholder="Highlighted plan ID" className="w-full px-4 py-2 border rounded-lg" />
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <input value={block.highlightBadge || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'highlightBadge', e.target.value)} placeholder="Highlighted badge text" className="w-full px-4 py-2 border rounded-lg" />
+            <input type="number" min="1" max="4" value={block.columns || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'columns', Number(e.target.value || 0))} placeholder="Columns" className="w-full px-4 py-2 border rounded-lg" />
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <input type="number" min="1" value={block.itemLimit || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'itemLimit', Number(e.target.value || 0))} placeholder="Plans to show" className="w-full px-4 py-2 border rounded-lg" />
+            <input value={block.buttonLabel || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'buttonLabel', e.target.value)} placeholder="CTA button label" className="w-full px-4 py-2 border rounded-lg" />
+          </div>
+          <input value={block.buttonUrl || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'buttonUrl', e.target.value)} placeholder="CTA button URL" className="w-full px-4 py-2 border rounded-lg" />
         </>
       )}
       {block.type === 'imageCard' && <textarea value={block.description || ''} onChange={(e) => updateBlock(columnIndex, blockIndex, 'description', e.target.value)} placeholder="Subtext" rows={2} className="w-full px-4 py-2 border rounded-lg" />}
@@ -5709,7 +5761,7 @@ function SectionResponsiveControls({ section, index, updateSection }: any) {
     { key: 'paddingTop', label: 'Padding top' },
     { key: 'paddingBottom', label: 'Padding bottom' }
   ]
-  const hasColumns = ['columns', 'gallery', 'imageCards', 'portfolio', 'siteDemos', 'pluginsList', 'faq'].includes(section.type)
+  const hasColumns = ['columns', 'gallery', 'imageCards', 'portfolio', 'siteDemos', 'pluginsList', 'faq', 'subscriptionPlans'].includes(section.type)
   const hasImageSizing = section.type === 'image'
   const hasTypography = !['divider'].includes(section.type)
   const getFieldKey = (device: 'tablet' | 'mobile', key: string) => `${device}${key.charAt(0).toUpperCase()}${key.slice(1)}`
@@ -6205,10 +6257,10 @@ function SectionTypographyControls({ section, index, updateSection }: any) {
           {sizeControl('buttonFontSize', 'Button', 12, 28)}
         </div>
 
-        {section.type === 'siteDemos' && (
+        {(section.type === 'siteDemos' || section.type === 'subscriptionPlans') && (
           <div className="space-y-3 border-t pt-4">
-            <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500">Demo Card Text</h4>
-            {sizeControl('cardMetaFontSize', 'Category', 10, 22)}
+            <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500">{section.type === 'subscriptionPlans' ? 'Plan Card Text' : 'Demo Card Text'}</h4>
+            {section.type === 'siteDemos' && sizeControl('cardMetaFontSize', 'Category', 10, 22)}
             {sizeControl('cardHeadingFontSize', 'Card title', 14, 48)}
             {sizeControl('cardBodyFontSize', 'Card body', 12, 28)}
           </div>
@@ -6219,9 +6271,9 @@ function SectionTypographyControls({ section, index, updateSection }: any) {
           {textShadowControl('headingTextShadow', 'Heading')}
           {textShadowControl('bodyTextShadow', 'Body')}
           {textShadowControl('buttonTextShadow', 'Button')}
-          {section.type === 'siteDemos' && (
+          {(section.type === 'siteDemos' || section.type === 'subscriptionPlans') && (
             <>
-              {textShadowControl('cardMetaTextShadow', 'Category')}
+              {section.type === 'siteDemos' && textShadowControl('cardMetaTextShadow', 'Category')}
               {textShadowControl('cardHeadingTextShadow', 'Card title')}
               {textShadowControl('cardBodyTextShadow', 'Card body')}
             </>
@@ -6234,7 +6286,7 @@ function SectionTypographyControls({ section, index, updateSection }: any) {
             ['headingFontWeight', 'Heading'],
             ['bodyFontWeight', 'Body'],
             ['buttonFontWeight', 'Button'],
-            ...(section.type === 'siteDemos' ? [['cardHeadingFontWeight', 'Card title'], ['cardBodyFontWeight', 'Card body']] : [])
+            ...(section.type === 'siteDemos' || section.type === 'subscriptionPlans' ? [['cardHeadingFontWeight', 'Card title'], ['cardBodyFontWeight', 'Card body']] : [])
           ].map(([key, label]) => (
             <label key={key} className="grid grid-cols-[5rem_1fr] items-center gap-3 text-sm text-gray-700">
               <span className="font-semibold">{label}</span>
@@ -6257,7 +6309,7 @@ function SectionTypographyControls({ section, index, updateSection }: any) {
             <input type="range" min="1" max="2.4" step="0.05" value={getNumericValue('bodyLineHeight', 0)} onChange={(e) => updateSection(index, 'bodyLineHeight', e.target.value)} className="w-full accent-blue-600" />
             <input type="number" min="1" max="3" step="0.05" value={section.bodyLineHeight ?? ''} onChange={(e) => updateSection(index, 'bodyLineHeight', e.target.value)} className="w-full rounded-lg border px-2 py-1 text-right" />
           </label>
-          {section.type === 'siteDemos' && (
+          {(section.type === 'siteDemos' || section.type === 'subscriptionPlans') && (
             <>
               <label className="grid grid-cols-[5rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
                 <span className="font-semibold">Card title</span>

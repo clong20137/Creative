@@ -117,7 +117,8 @@ export const subscriptionsAPI = {
   createSubscription: (data: any) => unwrap(api.post('/subscriptions', data)),
   updateSubscription: (id: string, data: any) => unwrap(api.put(`/subscriptions/${id}`, data)),
   cancelSubscription: (id: string) => unwrap(api.put(`/subscriptions/${id}/cancel`)),
-  deleteSubscription: (id: string) => unwrap(api.delete(`/subscriptions/${id}`))
+  deleteSubscription: (id: string) => unwrap(api.delete(`/subscriptions/${id}`)),
+  getPublicPlans: (productType = 'service') => unwrap<any[]>(api.get('/subscriptions/public-plans', { params: { productType } }))
 }
 
 export const licensesAPI = {

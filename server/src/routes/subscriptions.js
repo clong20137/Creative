@@ -342,6 +342,20 @@ router.get('/license-plans', verifyToken, ensureActiveUser, async (req, res) => 
   }
 })
 
+router.get('/public-plans', async (req, res) => {
+  try {
+    await ensureSubscriptionSchema()
+    const productType = req.query.productType === 'cms-license' ? 'cms-license' : 'service'
+    const plans = await SubscriptionPlan.findAll({
+      where: { productType, isActive: true },
+      order: [['price', 'ASC'], ['createdAt', 'ASC']]
+    })
+    res.json(plans)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
 router.post('/client/:clientId/license/checkout-session', verifyToken, ensureActiveUser, requireSelfOrAdmin((req) => req.params.clientId), async (req, res) => {
   try {
     await ensureSubscriptionSchema()
