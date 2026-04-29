@@ -1,7 +1,7 @@
 import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
-import { FiAlignCenter, FiAlignLeft, FiAlignRight, FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiColumns, FiCopy, FiEye, FiEyeOff, FiFileText, FiGrid, FiImage, FiLayout, FiLink, FiMail, FiMapPin, FiMessageSquare, FiMonitor, FiMove, FiPhone, FiRotateCcw, FiRotateCw, FiSave, FiSearch, FiSmartphone, FiSquare, FiTablet, FiTrash2, FiType, FiVideo } from 'react-icons/fi'
+import { FiAlignCenter, FiAlignLeft, FiAlignRight, FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiChevronDown, FiColumns, FiCopy, FiEye, FiEyeOff, FiFileText, FiGrid, FiImage, FiLayout, FiLink, FiMail, FiMapPin, FiMessageSquare, FiMonitor, FiMove, FiPhone, FiRotateCcw, FiRotateCw, FiSave, FiSearch, FiSmartphone, FiSquare, FiTablet, FiTrash2, FiType, FiVideo } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import { useToast } from '../components/ToastProvider'
@@ -130,6 +130,14 @@ const MAX_IMAGE_HEIGHT = 800
 const MAX_UPLOAD_DATA_URL_LENGTH = 3_000_000
 const PAGE_AUTOSAVE_KEY_PREFIX = 'creativecms:page-autosave:'
 const PAGE_AUTOSAVE_DELAY = 1200
+const LEFT_PANEL_WIDTH_KEY = 'creativecms:builder-left-panel-width'
+const RIGHT_PANEL_WIDTH_KEY = 'creativecms:builder-right-panel-width'
+const DEFAULT_LEFT_PANEL_WIDTH = 320
+const DEFAULT_RIGHT_PANEL_WIDTH = 420
+const MIN_LEFT_PANEL_WIDTH = 260
+const MAX_LEFT_PANEL_WIDTH = 520
+const MIN_RIGHT_PANEL_WIDTH = 320
+const MAX_RIGHT_PANEL_WIDTH = 620
 
 function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -274,6 +282,12 @@ function clearAutosaveEntry(key: string) {
   window.localStorage.removeItem(key)
 }
 
+function readStoredPanelWidth(key: string, fallback: number) {
+  if (typeof window === 'undefined') return fallback
+  const rawValue = Number(window.localStorage.getItem(key) || fallback)
+  return Number.isFinite(rawValue) ? rawValue : fallback
+}
+
 function extractPlainTextFromHtml(value: string) {
   if (!value) return ''
   if (typeof window === 'undefined') return value.replace(/<[^>]+>/g, ' ').trim()
@@ -370,6 +384,7 @@ function makePageSection(type: string) {
     customFormName: 'Website Inquiry',
     customFormSubmitLabel: 'Send Message',
     customFormSuccessMessage: 'Thanks. Your submission has been sent.',
+    gridSetupComplete: type !== 'columns',
     formFields: type === 'customForm'
       ? [
           makeCustomFormField('text', { label: 'Your Name', placeholder: 'Jane Doe', required: true }),
@@ -925,6 +940,8 @@ export default function AdminPages() {
   const [highlightedSectionId, setHighlightedSectionId] = useState('')
   const [previewMode, setPreviewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const [sectionsPanelOpen, setSectionsPanelOpen] = useState(true)
+  const [leftPanelWidth, setLeftPanelWidth] = useState(() => readStoredPanelWidth(LEFT_PANEL_WIDTH_KEY, DEFAULT_LEFT_PANEL_WIDTH))
+  const [rightPanelWidth, setRightPanelWidth] = useState(() => readStoredPanelWidth(RIGHT_PANEL_WIDTH_KEY, DEFAULT_RIGHT_PANEL_WIDTH))
   const [savedSnapshot, setSavedSnapshot] = useState('')
   const [unsavedPrompt, setUnsavedPrompt] = useState<{ open: boolean; href?: string; action?: () => void }>({ open: false })
   const [draftRecoveryPrompt, setDraftRecoveryPrompt] = useState<{ open: boolean; key: string; label: string; updatedAt?: string; data?: any }>({ open: false, key: '', label: '' })
@@ -936,6 +953,7 @@ export default function AdminPages() {
   const skipNextNewPagePromptRef = useRef(false)
   const lastAutosavedSnapshotRef = useRef('')
   const autosaveTimerRef = useRef<number | null>(null)
+  const resizeStateRef = useRef<{ panel: 'left' | 'right' | null; startX: number; startWidth: number }>({ panel: null, startX: 0, startWidth: 0 })
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -948,6 +966,45 @@ export default function AdminPages() {
     syncMobileEditor()
     window.addEventListener('resize', syncMobileEditor)
     return () => window.removeEventListener('resize', syncMobileEditor)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(LEFT_PANEL_WIDTH_KEY, String(leftPanelWidth))
+  }, [leftPanelWidth])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(RIGHT_PANEL_WIDTH_KEY, String(rightPanelWidth))
+  }, [rightPanelWidth])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const state = resizeStateRef.current
+      if (!state.panel) return
+      if (state.panel === 'left') {
+        const nextWidth = Math.min(MAX_LEFT_PANEL_WIDTH, Math.max(MIN_LEFT_PANEL_WIDTH, state.startWidth + (event.clientX - state.startX)))
+        setLeftPanelWidth(nextWidth)
+      } else {
+        const nextWidth = Math.min(MAX_RIGHT_PANEL_WIDTH, Math.max(MIN_RIGHT_PANEL_WIDTH, state.startWidth - (event.clientX - state.startX)))
+        setRightPanelWidth(nextWidth)
+      }
+    }
+
+    const handleMouseUp = () => {
+      resizeStateRef.current = { panel: null, startX: 0, startWidth: 0 }
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
   }, [])
 
   const activeBuiltInPageKey = publicPages.some(page => page.id === activeTab) ? activeTab : ''
@@ -1514,7 +1571,19 @@ export default function AdminPages() {
     updateActiveSection(selectedSectionContext.topLevelIndex, field, value)
   }
   const saveActivePage = () => activeTab === 'Custom Pages' ? saveCustomPageEdits() : saveBuiltInPageEdits()
-  const editorGridColumns = `minmax(0, 1fr) ${sectionsPanelOpen ? '23rem' : '3.25rem'}`
+  const startPanelResize = useCallback((panel: 'left' | 'right', event: React.MouseEvent<HTMLButtonElement>) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1280) return
+    event.preventDefault()
+    event.stopPropagation()
+    resizeStateRef.current = {
+      panel,
+      startX: event.clientX,
+      startWidth: panel === 'left' ? leftPanelWidth : rightPanelWidth
+    }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }, [leftPanelWidth, rightPanelWidth])
+  const editorGridColumns = `${leftPanelWidth}px minmax(0, 1fr) ${sectionsPanelOpen ? `${rightPanelWidth}px` : '3.25rem'}`
   const activePageSnapshot = useMemo(() => JSON.stringify(activeTab === 'Custom Pages' ? pageDraft : getActivePayload(settings, activeTab)), [activeTab, pageDraft, settings])
   const autosaveStorageKey = useMemo(() => getAutosaveStorageKey(activeTab, selectedPageId), [activeTab, selectedPageId])
   const hasUnsavedChanges = Boolean(savedSnapshot) && savedSnapshot !== activePageSnapshot
@@ -1824,8 +1893,8 @@ export default function AdminPages() {
       {error && <div className="mx-2 mb-4 rounded-lg border border-red-400 bg-red-100 p-4 text-sm text-red-700 md:mx-4 md:mb-6">{error}</div>}
       {loading ? <PageSkeleton /> : (
         <div className="grid min-h-[calc(100vh-12rem)] grid-cols-1 items-start gap-3 transition-all duration-300 xl:grid-cols-[var(--editor-grid)]" style={{ '--editor-grid': editorGridColumns } as any}>
-          <div className="space-y-4 px-1 md:space-y-6">
-            <section className="z-20 rounded-2xl border border-gray-200 bg-white/96 p-3 shadow-lg backdrop-blur xl:sticky xl:top-24 xl:p-4">
+          <section className="relative z-20 min-w-0 rounded-2xl border border-gray-200 bg-white/96 p-3 shadow-lg backdrop-blur xl:sticky xl:top-24 xl:max-h-[calc(100vh-11rem)] xl:min-h-[calc(100vh-11rem)] xl:overflow-hidden xl:p-4">
+            <div className="xl:h-full xl:overflow-y-auto">
               <SectionBlockLibrary
                 addSection={addActiveSection}
                 reusableSections={settings.reusableSections || []}
@@ -1837,7 +1906,19 @@ export default function AdminPages() {
                 hasSelectedSection={Boolean(selectedSection)}
                 hasSections={activeSectionsRaw.length > 0}
               />
-            </section>
+            </div>
+            <button
+              type="button"
+              onMouseDown={(event) => startPanelResize('left', event)}
+              className="absolute right-[-10px] top-1/2 hidden h-24 w-5 -translate-y-1/2 cursor-col-resize items-center justify-center xl:flex"
+              aria-label="Resize sections panel"
+              title="Resize sections panel"
+            >
+              <span className="h-14 w-1.5 rounded-full bg-gray-300 transition hover:bg-blue-500" />
+            </button>
+          </section>
+
+          <div className="min-w-0 space-y-4 px-1 md:space-y-6">
 
           {activeTab === 'Custom Pages' ? (
             <section className="block">
@@ -2280,7 +2361,18 @@ export default function AdminPages() {
           )}
           </div>
 
-          <aside className={`overflow-hidden rounded-2xl border border-gray-200 bg-white/96 shadow-lg backdrop-blur transition-all duration-300 ease-in-out md:max-h-[70vh] xl:sticky xl:top-24 xl:h-[calc(100vh-14rem)] xl:max-h-none ${sectionsPanelOpen ? 'opacity-100' : 'opacity-95'}`}>
+          <aside className={`relative min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white/96 shadow-lg backdrop-blur transition-all duration-300 ease-in-out md:max-h-[70vh] xl:sticky xl:top-24 xl:h-[calc(100vh-11rem)] xl:max-h-none ${sectionsPanelOpen ? 'opacity-100' : 'opacity-95'}`}>
+            {sectionsPanelOpen && (
+              <button
+                type="button"
+                onMouseDown={(event) => startPanelResize('right', event)}
+                className="absolute left-[-10px] top-1/2 hidden h-24 w-5 -translate-y-1/2 cursor-col-resize items-center justify-center xl:flex"
+                aria-label="Resize section settings panel"
+                title="Resize section settings panel"
+              >
+                <span className="h-14 w-1.5 rounded-full bg-gray-300 transition hover:bg-blue-500" />
+              </button>
+            )}
             {selectedSection && selectedSectionContext?.kind === 'nested' ? (
               <div className="flex h-full min-h-0 flex-col">
                 <div className="border-b bg-gray-50 px-4 py-3">
@@ -4413,10 +4505,19 @@ function ColumnsEditor({ section, index, updateSection, uploadImageToField, open
   const columnCount = clampGridSize(section.columns, 2)
   const rowCount = clampGridSize(section.rows, 1)
   const cells = getGridCells(section)
+  useEffect(() => {
+    if (section.gridSetupComplete === true || isOpen) return
+    setIsOpen(true)
+  }, [section.gridSetupComplete, isOpen])
+  const closeEditor = () => {
+    updateSection(index, 'gridSetupComplete', true)
+    setIsOpen(false)
+  }
   const setGrid = (nextColumns: number, nextRows: number, existingCells = cells) => {
     updateSection(index, 'columns', nextColumns)
     updateSection(index, 'rows', nextRows)
     updateSection(index, 'items', makeGridCells(nextColumns, nextRows, existingCells))
+    updateSection(index, 'gridSetupComplete', true)
   }
   const updateCells = (nextCells: any[]) => updateSection(index, 'items', nextCells)
   const updateCellSections = (cellIndex: number, nextSections: any[]) => {
@@ -4466,7 +4567,7 @@ function ColumnsEditor({ section, index, updateSection, uploadImageToField, open
                 <h3 className="text-xl font-bold text-gray-900">Edit Columns Grid</h3>
                 <p className="text-sm text-gray-600">Build a layout up to 6 columns by 6 rows and add sections into each cell.</p>
               </div>
-              <button type="button" onClick={() => setIsOpen(false)} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Close</button>
+              <button type="button" onClick={closeEditor} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Close</button>
             </div>
             <div className="overflow-y-auto p-6">
               <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -4759,6 +4860,31 @@ function NestedImageStripItemsEditor({ block, columnIndex, blockIndex, updateBlo
         </div>
       ))}
       {items.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-gray-600">No strip images yet.</div>}
+    </div>
+  )
+}
+
+function InspectorCollapsible({ title, children, defaultOpen = false }: any) {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+
+  return (
+    <div className="mb-3 overflow-hidden rounded-lg border bg-white">
+      <button
+        type="button"
+        onClick={() => setIsOpen((current: boolean) => !current)}
+        className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-sm font-bold text-gray-800 transition hover:bg-gray-50"
+        aria-expanded={isOpen}
+      >
+        <span>{title}</span>
+        <FiChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      <div className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+        <div className="overflow-hidden">
+          <div className="border-t px-3 py-3">
+            {children}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -5101,9 +5227,8 @@ function SectionSpacingControls({ section, index, updateSection }: any) {
   }
 
   return (
-    <details className="mb-3 rounded-lg border bg-white p-3">
-      <summary className="cursor-pointer text-sm font-bold text-gray-800">Spacing</summary>
-      <div className="mt-3 space-y-5">
+    <InspectorCollapsible title="Spacing">
+      <div className="space-y-5">
         {spacingGroups.map(group => (
           <div key={group.title} className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500">{group.title}</h4>
@@ -5136,7 +5261,7 @@ function SectionSpacingControls({ section, index, updateSection }: any) {
           </div>
         ))}
       </div>
-    </details>
+    </InspectorCollapsible>
   )
 }
 
@@ -5186,9 +5311,8 @@ function SectionResponsiveControls({ section, index, updateSection }: any) {
   )
 
   return (
-    <details className="mb-3 rounded-lg border bg-white p-3">
-      <summary className="cursor-pointer text-sm font-bold text-gray-800">Responsive</summary>
-      <div className="mt-3 space-y-5">
+    <InspectorCollapsible title="Responsive">
+      <div className="space-y-5">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-gray-700">
             <input type="checkbox" checked={Boolean(section.hideOnDesktop)} onChange={(e) => updateSection(index, 'hideOnDesktop', e.target.checked)} />
@@ -5269,7 +5393,7 @@ function SectionResponsiveControls({ section, index, updateSection }: any) {
           </div>
         ))}
       </div>
-    </details>
+    </InspectorCollapsible>
   )
 }
 
@@ -5301,9 +5425,8 @@ function SectionColorControls({ section, index, updateSection }: any) {
   ]
 
   return (
-    <details className="mb-3 rounded-lg border bg-white p-3">
-      <summary className="cursor-pointer text-sm font-bold text-gray-800">Colors</summary>
-      <div className="mt-3 space-y-5">
+    <InspectorCollapsible title="Colors">
+      <div className="space-y-5">
         <div className="space-y-3">
         {colorFields.map(field => (
           <label key={field.key} className="grid grid-cols-[1fr_3rem_6rem] items-center gap-2 text-sm text-gray-700">
@@ -5366,7 +5489,7 @@ function SectionColorControls({ section, index, updateSection }: any) {
           ))}
         </div>
       </div>
-    </details>
+    </InspectorCollapsible>
   )
 }
 
@@ -5391,9 +5514,8 @@ function SectionPanelStyleControls({ section, index, updateSection, prefix, titl
   ]
 
   return (
-    <details className="mb-3 rounded-lg border bg-white p-3">
-      <summary className="cursor-pointer text-sm font-bold text-gray-800">{title} Border And Shadow</summary>
-      <div className="mt-3 space-y-5">
+    <InspectorCollapsible title={`${title} Border And Shadow`}>
+      <div className="space-y-5">
         <label className="block text-sm font-semibold text-gray-700">
           Box shadow
           <select value={section[`${prefix}BoxShadow`] || ''} onChange={(e) => updateSection(index, `${prefix}BoxShadow`, e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
@@ -5434,7 +5556,7 @@ function SectionPanelStyleControls({ section, index, updateSection, prefix, titl
           </label>
         ))}
       </div>
-    </details>
+    </InspectorCollapsible>
   )
 }
 
@@ -5535,9 +5657,8 @@ function SectionButtonControls({ section, index, updateSection }: any) {
   )
 
   return (
-    <details className="mb-3 rounded-lg border bg-white p-3">
-      <summary className="cursor-pointer text-sm font-bold text-gray-800">Button</summary>
-      <div className="mt-3 space-y-5">
+    <InspectorCollapsible title="Button">
+      <div className="space-y-5">
         {renderButtonOverrideControls({
           prefix: 'button',
           title: section.type === 'hero' ? 'Primary Button Overrides' : 'Button Overrides',
@@ -5551,7 +5672,7 @@ function SectionButtonControls({ section, index, updateSection }: any) {
           textFallback: '#111827'
         })}
       </div>
-    </details>
+    </InspectorCollapsible>
   )
 }
 
@@ -5605,9 +5726,8 @@ function SectionTypographyControls({ section, index, updateSection }: any) {
   }
 
   return (
-    <details className="mb-3 rounded-lg border bg-white p-3">
-      <summary className="cursor-pointer text-sm font-bold text-gray-800">Typography</summary>
-      <div className="mt-3 space-y-5">
+    <InspectorCollapsible title="Typography">
+      <div className="space-y-5">
         <label className="block text-sm font-semibold text-gray-700">
           Text alignment
           <select value={section.textAlign || ''} onChange={(e) => updateSection(index, 'textAlign', e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
@@ -5705,7 +5825,7 @@ function SectionTypographyControls({ section, index, updateSection }: any) {
           </label>
         </div>
       </div>
-    </details>
+    </InspectorCollapsible>
   )
 }
 
@@ -5731,9 +5851,8 @@ function SectionAnimationControls({ section, index, updateSection }: any) {
   ]
 
   return (
-    <details className="mb-3 rounded-lg border bg-white p-3">
-      <summary className="cursor-pointer text-sm font-bold text-gray-800">Animation</summary>
-      <div className="mt-3 space-y-5">
+    <InspectorCollapsible title="Animation">
+      <div className="space-y-5">
         <label className="block text-sm font-semibold text-gray-700">
           Entrance animation
           <select value={section.animationType || ''} onChange={(e) => updateSection(index, 'animationType', e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
@@ -5775,7 +5894,7 @@ function SectionAnimationControls({ section, index, updateSection }: any) {
           </label>
         </div>
       </div>
-    </details>
+    </InspectorCollapsible>
   )
 }
 
@@ -5801,9 +5920,8 @@ function SectionPanelAnimationControls({ section, index, updateSection, prefix, 
   ]
 
   return (
-    <details className="mb-3 rounded-lg border bg-white p-3">
-      <summary className="cursor-pointer text-sm font-bold text-gray-800">{title} Animation</summary>
-      <div className="mt-3 space-y-5">
+    <InspectorCollapsible title={`${title} Animation`}>
+      <div className="space-y-5">
         <label className="block text-sm font-semibold text-gray-700">
           Entrance animation
           <select value={section[`${prefix}AnimationType`] || ''} onChange={(e) => updateSection(index, `${prefix}AnimationType`, e.target.value)} className="mt-2 w-full rounded-lg border px-3 py-2">
@@ -5835,7 +5953,7 @@ function SectionPanelAnimationControls({ section, index, updateSection, prefix, 
           </label>
         </div>
       </div>
-    </details>
+    </InspectorCollapsible>
   )
 }
 
