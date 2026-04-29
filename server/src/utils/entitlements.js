@@ -13,6 +13,17 @@ function toNumberOrNull(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
+function normalizeDomain(value) {
+  const domain = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '')
+    .replace(/:\d+$/, '')
+
+  return domain.startsWith('www.') ? domain.slice(4) : domain
+}
+
 function buildEntitlementsFromPlan(plan) {
   const data = plan?.toJSON ? plan.toJSON() : (plan || {})
   return {
@@ -56,6 +67,38 @@ export async function getClientEntitlements(clientId) {
     ...entitlements,
     licenseId: activeLicense?.id || null,
     subscriptionId: activeSubscription?.id || null
+  }
+}
+
+export async function getSiteEntitlements(host = '') {
+  const normalizedHost = normalizeDomain(host)
+  const activeLicenses = await CMSLicense.findAll({
+    where: { status: 'active' },
+    include: [{ model: SubscriptionPlan, required: false }],
+    order: [['updatedAt', 'DESC'], ['createdAt', 'DESC']]
+  })
+
+  const matchingLicense = normalizedHost
+    ? activeLicenses.find((license) => {
+        const licensedDomain = normalizeDomain(license.licensedDomain)
+        if (!licensedDomain) return false
+        return normalizedHost === licensedDomain || normalizedHost.endsWith(`.${licensedDomain}`)
+      })
+    : null
+
+  const activeLicense = matchingLicense
+    || activeLicenses.find((license) => !normalizeDomain(license.licensedDomain))
+    || activeLicenses[0]
+    || null
+
+  const plan = activeLicense?.SubscriptionPlan || null
+  const entitlements = buildEntitlementsFromPlan(plan)
+
+  return {
+    ...entitlements,
+    licenseId: activeLicense?.id || null,
+    licensedDomain: activeLicense?.licensedDomain || '',
+    appliesToHost: Boolean(matchingLicense)
   }
 }
 

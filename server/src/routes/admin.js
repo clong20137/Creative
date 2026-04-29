@@ -37,6 +37,7 @@ import jwt from 'jsonwebtoken'
 import { ensureActiveUser, requireRole, verifyToken } from '../utils/auth.js'
 import { cleanString, sanitizeUserForResponse } from '../utils/validation.js'
 import { createAuditLog, ensureAuditLogSchema } from '../utils/audit.js'
+import { getSiteEntitlements } from '../utils/entitlements.js'
 
 const router = express.Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -772,6 +773,110 @@ async function writeBackupAssetFile(asset, dataUrl) {
   }
 }
 
+function buildPlanLimitError(message, code, details = {}) {
+  const error = new Error(message)
+  error.statusCode = 403
+  error.code = code
+  error.details = details
+  return error
+}
+
+function sendRouteError(res, error) {
+  res.status(error.statusCode || 500).json({
+    error: error.message,
+    code: error.code || undefined,
+    details: error.details || undefined
+  })
+}
+
+function getRequestHost(req) {
+  return req.get('x-forwarded-host') || req.get('host') || req.hostname || ''
+}
+
+async function getCurrentSiteEntitlements(req) {
+  return getSiteEntitlements(getRequestHost(req))
+}
+
+async function requirePlanFeature(req, featureKey, message) {
+  const entitlements = await getCurrentSiteEntitlements(req)
+  if (entitlements.hasActivePlan && entitlements[featureKey] !== true) {
+    throw buildPlanLimitError(message, 'feature_not_included', {
+      feature: featureKey,
+      planName: entitlements.planName || ''
+    })
+  }
+  return entitlements
+}
+
+async function enforceCustomPageLimit(req) {
+  const entitlements = await getCurrentSiteEntitlements(req)
+  if (!entitlements.hasActivePlan || !entitlements.maxPages) return entitlements
+
+  const currentCount = await CustomPage.count()
+  if (currentCount >= entitlements.maxPages) {
+    throw buildPlanLimitError(
+      `Your ${entitlements.planName || 'current'} plan allows up to ${entitlements.maxPages} custom page${entitlements.maxPages === 1 ? '' : 's'}. Remove a page or upgrade your plan to add another.`,
+      'page_limit_reached',
+      { limit: entitlements.maxPages, current: currentCount }
+    )
+  }
+
+  return entitlements
+}
+
+async function enforceMediaLimits(req, dataUrl) {
+  const entitlements = await getCurrentSiteEntitlements(req)
+  if (!entitlements.hasActivePlan) return entitlements
+
+  if (entitlements.maxMediaItems) {
+    const currentCount = await MediaAsset.count()
+    if (currentCount >= entitlements.maxMediaItems) {
+      throw buildPlanLimitError(
+        `Your ${entitlements.planName || 'current'} plan allows up to ${entitlements.maxMediaItems} media item${entitlements.maxMediaItems === 1 ? '' : 's'}. Remove an asset or upgrade your plan to upload more.`,
+        'media_limit_reached',
+        { limit: entitlements.maxMediaItems, current: currentCount }
+      )
+    }
+  }
+
+  if (entitlements.maxStorageMb && dataUrl) {
+    const { buffer } = decodeUploadDataUrl(dataUrl)
+    const currentBytes = Number(await MediaAsset.sum('size').catch(() => 0) || 0)
+    const limitBytes = entitlements.maxStorageMb * 1024 * 1024
+    const projectedBytes = currentBytes + buffer.length
+
+    if (projectedBytes > limitBytes) {
+      throw buildPlanLimitError(
+        `This upload would exceed your ${entitlements.maxStorageMb} MB storage limit on the ${entitlements.planName || 'current'} plan.`,
+        'storage_limit_reached',
+        {
+          limitMb: entitlements.maxStorageMb,
+          currentMb: Number((currentBytes / (1024 * 1024)).toFixed(2)),
+          projectedMb: Number((projectedBytes / (1024 * 1024)).toFixed(2))
+        }
+      )
+    }
+  }
+
+  return entitlements
+}
+
+async function enforceTeamMemberLimit(req) {
+  const entitlements = await getCurrentSiteEntitlements(req)
+  if (!entitlements.hasActivePlan || !entitlements.maxTeamMembers) return entitlements
+
+  const currentCount = await User.count()
+  if (currentCount >= entitlements.maxTeamMembers) {
+    throw buildPlanLimitError(
+      `Your ${entitlements.planName || 'current'} plan allows up to ${entitlements.maxTeamMembers} team member${entitlements.maxTeamMembers === 1 ? '' : 's'}. Remove a user or upgrade your plan to add another.`,
+      'team_limit_reached',
+      { limit: entitlements.maxTeamMembers, current: currentCount }
+    )
+  }
+
+  return entitlements
+}
+
 async function ensureMediaAssetsSchema() {
   if (mediaAssetsSchemaReady) return
 
@@ -1119,6 +1224,7 @@ router.use(verifyToken, ensureActiveUser, requireRole('admin'))
 
 router.get('/audit-logs', async (req, res) => {
   try {
+    await requirePlanFeature(req, 'auditLogEnabled', 'Audit logs are not included with your current CMS plan.')
     await ensureAuditLogSchema()
     const where = {}
     const action = String(req.query.action || '').trim()
@@ -1145,7 +1251,7 @@ router.get('/audit-logs', async (req, res) => {
 
     res.json(logs)
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    sendRouteError(res, error)
   }
 })
 
@@ -1960,6 +2066,7 @@ router.get('/media', async (req, res) => {
 router.post('/media', async (req, res) => {
   try {
     await ensureMediaAssetsSchema()
+    await enforceMediaLimits(req, req.body.dataUrl)
     const visibility = req.body.visibility === 'private' ? 'private' : 'public'
     const stored = await storeUpload(req.body.dataUrl, req.body.originalName || '', visibility)
     const asset = await MediaAsset.create({
@@ -1983,7 +2090,7 @@ router.post('/media', async (req, res) => {
     })
     res.status(201).json(asset)
   } catch (error) {
-    res.status(error.statusCode || 500).json({ error: error.message })
+    sendRouteError(res, error)
   }
 })
 
@@ -2317,6 +2424,11 @@ router.get('/site-settings', async (req, res) => {
 
 router.put('/site-settings', async (req, res) => {
   try {
+    const whiteLabelKeys = ['clientPortalName', 'adminPortalName', 'emailFromName', 'showPoweredBy', 'poweredByText']
+    const isChangingWhiteLabel = whiteLabelKeys.some((key) => Object.prototype.hasOwnProperty.call(req.body || {}, key))
+    if (isChangingWhiteLabel) {
+      await requirePlanFeature(req, 'whiteLabelEnabled', 'White-label controls are not included with your current CMS plan.')
+    }
     const settings = await getOrCreateSiteSettings()
     const previous = settings.toJSON()
     await settings.update(req.body)
@@ -2332,22 +2444,24 @@ router.put('/site-settings', async (req, res) => {
     })
     res.json(settings)
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    sendRouteError(res, error)
   }
 })
 
 router.get('/backups', async (req, res) => {
   try {
+    await requirePlanFeature(req, 'backupsEnabled', 'Backups are not included with your current CMS plan.')
     const settings = await getOrCreateSiteSettings()
     const backups = Array.isArray(settings.siteBackups) ? settings.siteBackups.map(sanitizeBackupRecord) : []
     res.json(backups)
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    sendRouteError(res, error)
   }
 })
 
 router.post('/backups', async (req, res) => {
   try {
+    await requirePlanFeature(req, 'backupsEnabled', 'Backups are not included with your current CMS plan.')
     const backup = await createSiteBackupRecord(req.body?.name, { includeFiles: false })
     await createAuditLog(req, {
       action: 'backup.created',
@@ -2360,32 +2474,35 @@ router.post('/backups', async (req, res) => {
     })
     res.status(201).json({ backup: sanitizeBackupRecord(backup) })
   } catch (error) {
-    res.status(error.statusCode || 500).json({ error: error.message })
+    sendRouteError(res, error)
   }
 })
 
 router.get('/backups/export', async (req, res) => {
   try {
+    await requirePlanFeature(req, 'backupsEnabled', 'Backups are not included with your current CMS plan.')
     const payload = await buildCmsBackupPayload({ includeFiles: true })
     res.json(payload)
   } catch (error) {
-    res.status(error.statusCode || 500).json({ error: error.message })
+    sendRouteError(res, error)
   }
 })
 
 router.get('/backups/:id/export', async (req, res) => {
   try {
+    await requirePlanFeature(req, 'backupsEnabled', 'Backups are not included with your current CMS plan.')
     const settings = await getOrCreateSiteSettings()
     const backup = (Array.isArray(settings.siteBackups) ? settings.siteBackups : []).find((item) => String(item.id) === String(req.params.id))
     if (!backup) return res.status(404).json({ error: 'Backup not found' })
     res.json(backup.payload)
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    sendRouteError(res, error)
   }
 })
 
 router.post('/backups/import', async (req, res) => {
   try {
+    await requirePlanFeature(req, 'backupsEnabled', 'Backups are not included with your current CMS plan.')
     const incoming = parseIncomingBackupPayload(req.body?.payload ?? req.body)
     const preImportBackup = await createSiteBackupRecord(`Auto backup before import ${new Date().toLocaleString('en-US')}`, { includeFiles: false })
     const summary = await restoreCmsBackupPayload(incoming)
@@ -2405,12 +2522,13 @@ router.post('/backups/import', async (req, res) => {
       restorePoint: sanitizeBackupRecord(preImportBackup)
     })
   } catch (error) {
-    res.status(error.statusCode || 500).json({ error: error.message })
+    sendRouteError(res, error)
   }
 })
 
 router.post('/backups/:id/restore', async (req, res) => {
   try {
+    await requirePlanFeature(req, 'backupsEnabled', 'Backups are not included with your current CMS plan.')
     const settings = await getOrCreateSiteSettings()
     const backup = (Array.isArray(settings.siteBackups) ? settings.siteBackups : []).find((item) => String(item.id) === String(req.params.id))
     if (!backup) return res.status(404).json({ error: 'Backup not found' })
@@ -2433,12 +2551,13 @@ router.post('/backups/:id/restore', async (req, res) => {
       restorePoint: sanitizeBackupRecord(preRestoreBackup)
     })
   } catch (error) {
-    res.status(error.statusCode || 500).json({ error: error.message })
+    sendRouteError(res, error)
   }
 })
 
 router.delete('/backups/:id', async (req, res) => {
   try {
+    await requirePlanFeature(req, 'backupsEnabled', 'Backups are not included with your current CMS plan.')
     const settings = await getOrCreateSiteSettings()
     const backups = Array.isArray(settings.siteBackups) ? settings.siteBackups : []
     const backup = backups.find((item) => String(item.id) === String(req.params.id))
@@ -2457,7 +2576,7 @@ router.delete('/backups/:id', async (req, res) => {
     }
     res.json({ message: 'Backup deleted' })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    sendRouteError(res, error)
   }
 })
 
@@ -2475,6 +2594,7 @@ router.get('/pages', async (req, res) => {
 router.post('/pages', async (req, res) => {
   try {
     await ensureCustomPagesSchema()
+    await enforceCustomPageLimit(req)
     const page = await CustomPage.create({
       title: req.body.title,
       slug: String(req.body.slug || req.body.title || '')
@@ -2505,7 +2625,7 @@ router.post('/pages', async (req, res) => {
     })
     res.status(201).json(page)
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    sendRouteError(res, error)
   }
 })
 
@@ -2811,6 +2931,7 @@ router.post('/users', async (req, res) => {
     if (!req.body.password || req.body.password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' })
     }
+    await enforceTeamMemberLimit(req)
     const user = await User.create({
       ...req.body,
       name: cleanString(req.body.name, 120),
@@ -2830,7 +2951,7 @@ router.post('/users', async (req, res) => {
     })
     res.status(201).json({ message: 'User created', user: safeUser })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    sendRouteError(res, error)
   }
 })
 
