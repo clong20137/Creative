@@ -2817,6 +2817,8 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
     backgroundPosition: section.crmBackgroundImageUrl ? 'center' : undefined
   }
   const crmTextColor = section.crmTextColor || '#111827'
+  const crmHeadingColor = section.crmHeadingColor || crmTextColor
+  const crmHeadingFontSize = Math.max(18, Number(section.crmHeadingFontSize || (compact ? 24 : 30)))
   const crmMutedTextColor = section.crmTextColor || '#374151'
   const crmInputTextColor = section.crmInputTextColor || '#111827'
   const crmPlaceholderColor = section.crmPlaceholderColor || '#6b7280'
@@ -2837,9 +2839,9 @@ function CrmQuoteForm({ section, compact = false }: { section: any; compact?: bo
   const crmLabelStyle = { color: crmMutedTextColor }
 
   return (
-    <div className={`mx-auto grid ${compact ? 'max-w-none grid-cols-1' : 'max-w-3xl grid-cols-1'}`}>
-      <form onSubmit={handleSubmit} className={`${section.crmFormCardClassName || 'rounded-lg bg-white p-6'} text-gray-900 shadow-xl ${compact ? 'rounded-lg p-5 md:p-6' : ''}`} style={{ ...formBackgroundStyle, color: crmTextColor }}>
-        <h3 className={`font-bold ${compact ? 'text-xl md:text-2xl' : 'text-2xl'}`} style={{ color: crmTextColor }}>{section.crmFormTitle || 'Send us a Message'}</h3>
+      <div className={`mx-auto grid ${compact ? 'max-w-none grid-cols-1' : 'max-w-3xl grid-cols-1'}`}>
+        <form onSubmit={handleSubmit} className={`${section.crmFormCardClassName || 'rounded-lg bg-white p-6'} text-gray-900 shadow-xl ${compact ? 'rounded-lg p-5 md:p-6' : ''}`} style={{ ...formBackgroundStyle, color: crmTextColor }}>
+        <h3 className="font-bold" style={{ color: crmHeadingColor, fontSize: `${crmHeadingFontSize}px`, lineHeight: 1.15 }}>{section.crmFormTitle || 'Send us a Message'}</h3>
         {isSubmitted && <div className="mt-4 rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">Message sent. Thank you for reaching out. We will get back to you soon.</div>}
         {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">

@@ -404,6 +404,8 @@ function makePageSection(type: string) {
     crmPanelTitle: '',
     crmPanelText: '',
     crmFormTitle: '',
+    crmHeadingColor: '',
+    crmHeadingFontSize: '',
     crmServices: '',
     crmDetailsPlaceholder: '',
     crmBackgroundColor: '',
@@ -3838,6 +3840,19 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
                   <>
                     <input value={section.crmFormTitle || ''} onChange={(e) => updateSection(index, 'crmFormTitle', e.target.value)} placeholder="Form title" className="w-full px-4 py-2 border rounded-lg" />
                     <textarea value={section.crmServices || ''} onChange={(e) => updateSection(index, 'crmServices', e.target.value)} placeholder="Services interested in, one per line" rows={4} className="w-full px-4 py-2 border rounded-lg" />
+                    <div className="grid grid-cols-[1fr_3rem_6rem] items-center gap-2 text-sm text-gray-700">
+                      <span className="font-semibold">Heading color</span>
+                      <input type="color" value={section.crmHeadingColor || '#111827'} onChange={(e) => updateSection(index, 'crmHeadingColor', e.target.value)} className="h-10 w-12 rounded border p-1" />
+                      <input value={section.crmHeadingColor || ''} onChange={(e) => updateSection(index, 'crmHeadingColor', e.target.value)} placeholder="#111827" className="w-full rounded-lg border px-2 py-1" />
+                    </div>
+                    <label className="grid grid-cols-[6rem_1fr_5rem] items-center gap-3 text-sm text-gray-700">
+                      <span className="font-semibold">Heading</span>
+                      <input type="range" min="18" max="48" step="1" value={Number(section.crmHeadingFontSize || 24)} onChange={(e) => updateSection(index, 'crmHeadingFontSize', e.target.value)} className="w-full accent-blue-600" />
+                      <div className="flex items-center gap-1">
+                        <input type="number" min="18" max="64" value={section.crmHeadingFontSize || ''} onChange={(e) => updateSection(index, 'crmHeadingFontSize', e.target.value)} className="w-full rounded-lg border px-2 py-1 text-right" />
+                        <span className="text-xs text-gray-500">px</span>
+                      </div>
+                    </label>
                     <div className="grid grid-cols-[1fr_3rem_6rem] items-center gap-2 text-sm text-gray-700">
                       <span className="font-semibold">CRM background</span>
                       <input type="color" value={section.crmBackgroundColor || '#ffffff'} onChange={(e) => updateSection(index, 'crmBackgroundColor', e.target.value)} className="h-10 w-12 rounded border p-1" />
