@@ -8,6 +8,7 @@ type ToastItem = {
   message: string
   title?: string
   tone: ToastTone
+  leaving?: boolean
 }
 
 type ToastContextValue = {
@@ -32,7 +33,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
 
   const dismissToast = useCallback((id: string) => {
-    setToasts((current) => current.filter((toast) => toast.id !== id))
+    setToasts((current) => current.map((toast) => toast.id === id ? { ...toast, leaving: true } : toast))
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id))
+    }, 280)
   }, [])
 
   const showToast = useCallback(({ message, title, tone = 'info' }: { message: string; title?: string; tone?: ToastTone }) => {
@@ -50,7 +54,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`pointer-events-auto rounded-2xl border px-4 py-3 shadow-xl backdrop-blur ${toneClasses(toast.tone)}`}
+            className={`pointer-events-auto rounded-2xl border px-4 py-3 shadow-xl backdrop-blur transition-all duration-300 ${toast.leaving ? 'toast-leave' : 'toast-enter'} ${toneClasses(toast.tone)}`}
           >
             <div className="flex items-start gap-3">
               <ToneIcon tone={toast.tone} />

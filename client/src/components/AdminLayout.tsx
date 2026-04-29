@@ -1,7 +1,7 @@
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { FiAlertCircle, FiArrowLeft, FiArrowRight, FiBarChart, FiBell, FiCheckCircle, FiChevronDown, FiChevronRight, FiCreditCard, FiFileText, FiGrid, FiHelpCircle, FiHome, FiImage, FiInbox, FiLogOut, FiMenu, FiMonitor, FiMoon, FiSearch, FiSettings, FiSun, FiUsers, FiX } from 'react-icons/fi'
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { adminAPI, resolveAssetUrl, ticketsAPI } from '../services/api'
 
 const primaryLinks = [
@@ -68,6 +68,12 @@ const mobilePrimaryLinks = [
   { label: 'Website', path: '/admin/plugins', icon: FiGrid },
   { label: 'Settings', path: '/admin/settings', icon: FiSettings }
 ]
+
+const ADMIN_SIDEBAR_WIDTH_KEY = 'creative-admin-sidebar-width'
+const ADMIN_SIDEBAR_MIN_WIDTH = 256
+const ADMIN_SIDEBAR_MAX_WIDTH = 420
+const ADMIN_SIDEBAR_DEFAULT_WIDTH = 288
+const ONBOARDING_BANNER_DISMISSED_KEY = 'creative-onboarding-banner-dismissed'
 
 type PageNavLink = {
   title: string
@@ -250,17 +256,23 @@ export default function AdminLayout({ title, children, headerActions }: { title:
   const [siteSettings, setSiteSettings] = useState<any>({})
   const [theme, setTheme] = useState(() => localStorage.getItem('siteTheme') || 'light')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const stored = Number(window.localStorage.getItem(ADMIN_SIDEBAR_WIDTH_KEY) || ADMIN_SIDEBAR_DEFAULT_WIDTH)
+    return Number.isFinite(stored) ? Math.min(ADMIN_SIDEBAR_MAX_WIDTH, Math.max(ADMIN_SIDEBAR_MIN_WIDTH, stored)) : ADMIN_SIDEBAR_DEFAULT_WIDTH
+  })
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [menuSearch, setMenuSearch] = useState('')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notificationItems, setNotificationItems] = useState<any[]>([])
   const [notificationsLoading, setNotificationsLoading] = useState(false)
+  const [setupBannerDismissed, setSetupBannerDismissed] = useState(() => localStorage.getItem(ONBOARDING_BANNER_DISMISSED_KEY) === 'true')
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Pages: true,
     Revenue: true,
     Website: true,
     Support: true
   })
+  const sidebarResizeStateRef = useRef<{ startX: number; startWidth: number; active: boolean }>({ startX: 0, startWidth: 0, active: false })
   const brandSiteName = siteSettings?.siteName || 'Creative by Caleb'
   const adminPortalName = siteSettings?.adminPortalName || 'Admin Portal'
   const brandLogoUrl = resolveAssetUrl(siteSettings?.logoUrl)
@@ -280,9 +292,42 @@ export default function AdminLayout({ title, children, headerActions }: { title:
   }, [theme])
 
   useEffect(() => {
+    window.localStorage.setItem(ADMIN_SIDEBAR_WIDTH_KEY, String(sidebarWidth))
+  }, [sidebarWidth])
+
+  useEffect(() => {
     setMobileSidebarOpen(false)
     setNotificationsOpen(false)
   }, [location.pathname, location.search])
+
+  useEffect(() => {
+    if (siteSettings?.setupWizardCompleted === true) {
+      setSetupBannerDismissed(false)
+      window.localStorage.removeItem(ONBOARDING_BANNER_DISMISSED_KEY)
+    }
+  }, [siteSettings?.setupWizardCompleted])
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      const state = sidebarResizeStateRef.current
+      if (!state.active) return
+      const nextWidth = Math.min(ADMIN_SIDEBAR_MAX_WIDTH, Math.max(ADMIN_SIDEBAR_MIN_WIDTH, state.startWidth + (event.clientX - state.startX)))
+      setSidebarWidth(nextWidth)
+    }
+
+    const handleMouseUp = () => {
+      sidebarResizeStateRef.current = { startX: 0, startWidth: 0, active: false }
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [])
 
   useEffect(() => {
     let isMounted = true
@@ -438,6 +483,24 @@ export default function AdminLayout({ title, children, headerActions }: { title:
       setNotificationsLoading(false)
     }
   }
+
+  const startSidebarResize = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    if (!sidebarOpen) return
+    event.preventDefault()
+    event.stopPropagation()
+    sidebarResizeStateRef.current = {
+      startX: event.clientX,
+      startWidth: sidebarWidth,
+      active: true
+    }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }, [sidebarOpen, sidebarWidth])
+
+  const dismissSetupBanner = useCallback(() => {
+    setSetupBannerDismissed(true)
+    window.localStorage.setItem(ONBOARDING_BANNER_DISMISSED_KEY, 'true')
+  }, [])
 
   return (
     <div className="admin-shell min-h-screen bg-gray-50 lg:flex">
@@ -634,7 +697,7 @@ export default function AdminLayout({ title, children, headerActions }: { title:
           </div>
         </div>
       </aside>
-      <aside className={`admin-sidebar hidden fixed inset-y-0 left-0 z-50 w-[17.5rem] max-w-[88vw] bg-white shadow-sm transition-transform duration-300 lg:sticky lg:top-0 lg:flex lg:h-screen lg:shrink-0 lg:flex-col lg:translate-x-0 lg:transition-all ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${sidebarOpen ? 'lg:w-72' : 'lg:w-16'}`}>
+      <aside className={`admin-sidebar hidden fixed inset-y-0 left-0 z-50 max-w-[88vw] overflow-visible bg-white shadow-sm transition-transform duration-300 lg:sticky lg:top-0 lg:flex lg:h-screen lg:shrink-0 lg:flex-col lg:translate-x-0 lg:transition-all ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${sidebarOpen ? '' : 'lg:w-16'}`} style={sidebarOpen ? { width: `${sidebarWidth}px` } : undefined}>
         <div className="hidden w-full flex-col border-b border-gray-200 lg:flex lg:h-full lg:border-b-0 lg:border-r">
           <div className={`border-b border-gray-200 ${sidebarOpen ? 'p-5' : 'p-3'}`}>
             <div className={`flex ${sidebarOpen ? 'items-center justify-between gap-3' : 'flex-col items-center gap-2'}`}>
@@ -834,6 +897,17 @@ export default function AdminLayout({ title, children, headerActions }: { title:
             </button>
           </div>
         </div>
+        {sidebarOpen && (
+          <button
+            type="button"
+            onMouseDown={startSidebarResize}
+            className="absolute -right-[10px] top-1/2 hidden h-24 w-5 -translate-y-1/2 cursor-col-resize items-center justify-center xl:flex"
+            aria-label="Resize navigation panel"
+            title="Resize navigation panel"
+          >
+            <span className="h-14 w-1.5 rounded-full bg-gray-300 transition hover:bg-blue-500" />
+          </button>
+        )}
       </aside>
 
       <main className="min-w-0 flex-1 pb-24 lg:pb-0">
@@ -897,12 +971,23 @@ export default function AdminLayout({ title, children, headerActions }: { title:
           </div>
         </div>
 
-        {siteSettings?.setupWizardCompleted !== true && (
+        {siteSettings?.setupWizardCompleted !== true && !setupBannerDismissed && (
           <div className="border-b border-blue-200 bg-blue-50 px-4 py-3 text-blue-900">
             <div className={`${isPageEditor ? 'w-full' : 'container'} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
-              <div>
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div>
                 <div className="text-sm font-semibold">Finish your onboarding setup wizard</div>
                 <p className="text-sm text-blue-800">Brand the site, pick a starter demo, review homepage and navigation, then check launch readiness.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={dismissSetupBanner}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-blue-700 transition hover:bg-blue-100 hover:text-blue-900"
+                  aria-label="Dismiss setup wizard notification"
+                  title="Dismiss setup wizard notification"
+                >
+                  <FiX size={18} />
+                </button>
               </div>
               <Link to="/admin/settings?tab=Setup%20Wizard" className="btn-primary justify-center sm:justify-start">
                 Open Setup Wizard

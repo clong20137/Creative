@@ -1571,8 +1571,9 @@ function ImageCard({ item }: { item: any }) {
         {item.title && <h3 className="mt-2 text-2xl font-bold text-gray-900">{item.title}</h3>}
         {(item.description || item.body) && <p className="mt-3 text-gray-600">{item.description || item.body}</p>}
         {item.buttonLabel && item.buttonUrl && (
-          <Link to={item.buttonUrl} className="mt-5 inline-flex items-center gap-2 font-semibold text-blue-600 hover:text-blue-800">
-            {item.buttonLabel} <FiArrowRight />
+          <Link to={item.buttonUrl} className="section-button mt-5 inline-flex items-center justify-center gap-2" aria-label={item.buttonLabel || 'Button'}>
+            {item.buttonLabel}
+            {item.showArrow !== false && <FiArrowRight />}
           </Link>
         )}
       </div>

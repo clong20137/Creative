@@ -1026,6 +1026,7 @@ export default function AdminPages() {
   const lastAutosavedSnapshotRef = useRef('')
   const autosaveTimerRef = useRef<number | null>(null)
   const resizeStateRef = useRef<{ panel: 'right' | null; startX: number; startWidth: number }>({ panel: null, startX: 0, startWidth: 0 })
+  const deleteKeyStateRef = useRef<any>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1902,6 +1903,51 @@ export default function AdminPages() {
     }
   }
 
+  deleteKeyStateRef.current = {
+    deletePromptOpen,
+    seoModalOpen,
+    newPageTemplatePromptOpen,
+    draftRecoveryOpen: draftRecoveryPrompt.open,
+    unsavedPromptOpen: unsavedPrompt.open,
+    selectedSectionContext,
+    removeActiveSection,
+    removeNestedActiveSection,
+    showToast
+  }
+
+  useEffect(() => {
+    const handleDeleteKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Delete') return
+      const state = deleteKeyStateRef.current
+      if (!state) return
+      if (state.deletePromptOpen || state.seoModalOpen || state.newPageTemplatePromptOpen || state.draftRecoveryOpen || state.unsavedPromptOpen) return
+      const target = event.target as HTMLElement | null
+      const tagName = target?.tagName?.toLowerCase()
+      if (
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        tagName === 'select' ||
+        target?.isContentEditable
+      ) return
+      if (!state.selectedSectionContext) return
+      event.preventDefault()
+      if (state.selectedSectionContext.kind === 'nested') {
+        state.removeNestedActiveSection(
+          state.selectedSectionContext.topLevelIndex,
+          state.selectedSectionContext.columnIndex ?? 0,
+          state.selectedSectionContext.blockIndex ?? 0
+        )
+        state.showToast({ tone: 'info', title: 'Block removed', message: 'The selected nested block was deleted.' })
+      } else {
+        state.removeActiveSection(state.selectedSectionContext.topLevelIndex)
+        state.showToast({ tone: 'info', title: 'Section removed', message: 'The selected section was deleted.' })
+      }
+    }
+
+    window.addEventListener('keydown', handleDeleteKey)
+    return () => window.removeEventListener('keydown', handleDeleteKey)
+  }, [])
+
   const buildPrivatePreviewUrl = (token?: string) => {
     if (!token || typeof window === 'undefined') return ''
     return `${window.location.origin}/preview/page/${token}`
@@ -2028,7 +2074,7 @@ export default function AdminPages() {
       {loading ? <PageSkeleton /> : (
         <div className="grid min-h-[calc(100vh-12rem)] grid-cols-1 items-start gap-3 transition-all duration-300 xl:grid-cols-[var(--editor-grid)]" style={{ '--editor-grid': editorGridColumns } as any}>
           <div className="space-y-4 px-1 md:space-y-6">
-            <section className="z-20 rounded-2xl border border-gray-200 bg-white/96 p-3 shadow-lg backdrop-blur xl:sticky xl:top-24 xl:p-4">
+            <section className="z-20 rounded-2xl border border-gray-200 bg-white p-3 shadow-lg xl:sticky xl:top-24 xl:p-4">
               <SectionBlockLibrary
                 addSection={addActiveSection}
                 reusableSections={settings.reusableSections || []}
@@ -2039,6 +2085,10 @@ export default function AdminPages() {
                 deleteReusableSection={deleteReusableSection}
                 hasSelectedSection={Boolean(selectedSection)}
                 hasSections={activeSectionsRaw.length > 0}
+                sections={activeSections}
+                selectedSectionId={editingSectionId}
+                onSelectSection={setEditingSectionId}
+                moveSection={moveActiveSection}
               />
             </section>
 
@@ -2485,7 +2535,7 @@ export default function AdminPages() {
           )}
           </div>
 
-          <aside className={`relative min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white/96 shadow-lg backdrop-blur transition-all duration-300 ease-in-out md:max-h-[70vh] xl:sticky xl:top-24 xl:h-[calc(100vh-11rem)] xl:max-h-none ${sectionsPanelOpen ? 'opacity-100' : 'opacity-95'}`}>
+          <aside className={`relative min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg transition-all duration-300 ease-in-out md:max-h-[70vh] xl:sticky xl:top-24 xl:h-[calc(100vh-11rem)] xl:max-h-none ${sectionsPanelOpen ? 'opacity-100' : 'opacity-95'}`}>
             {sectionsPanelOpen && (
               <button
                 type="button"
@@ -3237,7 +3287,7 @@ function SectionPreviewToolbar({
 
   return (
     <div
-      className="absolute left-1/2 top-0 z-20 w-[min(calc(100%-1.5rem),52rem)] -translate-x-1/2 -translate-y-[calc(100%+0.5rem)] rounded-xl border bg-white/96 p-2 shadow-2xl backdrop-blur"
+      className="no-scrollbar absolute left-1/2 top-0 z-20 w-[min(calc(100%-1.5rem),58rem)] overflow-x-auto rounded-xl border border-gray-200 bg-white p-2 shadow-2xl -translate-x-1/2 -translate-y-[calc(100%+0.5rem)]"
       onClick={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
@@ -3246,7 +3296,7 @@ function SectionPreviewToolbar({
         event.stopPropagation()
       }}
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex min-w-max items-center gap-2">
         <div className="flex items-center gap-1 rounded-lg border bg-gray-50 p-1">
           {alignButtons.map(({ value, icon: Icon, label }) => (
             <button
@@ -3324,7 +3374,7 @@ function SectionPreviewToolbar({
         )}
 
         {(supportsHeading || supportsBody || hasPrimaryButton) && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-gray-50 px-2 py-2">
+          <div className="flex shrink-0 items-center gap-2 rounded-lg border bg-gray-50 px-2 py-2">
             {supportsHeading && (
               <label className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-gray-700" title="Heading size">
                 <span className="inline-flex h-6 min-w-6 items-center justify-center rounded bg-white px-1 text-[10px] font-black">H</span>
@@ -3371,7 +3421,7 @@ function SectionPreviewToolbar({
         )}
 
         {hasPrimaryButton && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-gray-50 px-2 py-2">
+          <div className="flex shrink-0 items-center gap-2 rounded-lg border bg-gray-50 px-2 py-2">
             <label className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-gray-700" title="Button text color">
               <input type="color" value={section?.buttonTextColor || '#ffffff'} onChange={(event) => onUpdate('buttonTextColor', event.target.value)} className="h-8 w-9 rounded border p-1" {...toolbarEventProps} />
             </label>
@@ -3550,7 +3600,7 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
                     setDraggingSectionIndex(null)
                   }}
                   onDragEnd={() => setDraggingSectionIndex(null)}
-                  className={`relative cursor-pointer transition ${draggingSectionIndex === index ? 'scale-[0.99] opacity-60 ring-2 ring-blue-500' : highlightedSectionId === sectionKey ? 'animate-pulse ring-4 ring-blue-500 ring-offset-2' : seoIssueCount > 0 ? 'ring-2 ring-orange-300 hover:ring-orange-400' : 'hover:ring-2 hover:ring-blue-300'}`}
+                  className={`relative cursor-pointer transition ${draggingSectionIndex === index ? 'scale-[0.99] opacity-60 ring-2 ring-blue-500' : highlightedSectionId === sectionKey ? 'builder-section-highlight ring-4 ring-blue-500 ring-offset-2' : seoIssueCount > 0 ? 'ring-2 ring-orange-300 hover:ring-orange-400' : 'hover:ring-2 hover:ring-blue-300'}`}
                   title={`Edit ${getSectionTitle(section, index)}`}
                 >
                   {selectedTopLevelId === sectionKey && selectedSectionForToolbar && (
@@ -3616,11 +3666,12 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
   )
 }
 
-function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSection, saveSelectedSectionAsTemplate, saveSelectedSectionAsSyncedBlock, saveCurrentPageAsTemplate, deleteReusableSection, hasSelectedSection, hasSections }: any) {
+function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSection, saveSelectedSectionAsTemplate, saveSelectedSectionAsSyncedBlock, saveCurrentPageAsTemplate, deleteReusableSection, hasSelectedSection, hasSections, sections = [], selectedSectionId = '', onSelectSection, moveSection }: any) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const saveMenuRef = useRef<HTMLDivElement | null>(null)
   const [sectionSearch, setSectionSearch] = useState('')
   const [saveMenuOpen, setSaveMenuOpen] = useState(false)
+  const [draggedOutlineIndex, setDraggedOutlineIndex] = useState<number | null>(null)
   const filteredSections = sectionTypeOptions.filter(option => option.label.toLowerCase().includes(sectionSearch.trim().toLowerCase()))
   const filteredTemplates = reusableSections.filter((template: any) => {
     const search = sectionSearch.trim().toLowerCase()
@@ -3640,6 +3691,7 @@ function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSec
       closeSaveMenu()
     }
   }
+  const outlineSections = Array.isArray(sections) ? sections : []
 
   return (
     <div className="min-w-0">
@@ -3781,6 +3833,67 @@ function SectionBlockLibrary({ addSection, reusableSections = [], addReusableSec
                 No templates found.
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {outlineSections.length > 0 && (
+        <div className="mt-4 border-t pt-4">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-bold text-gray-900">Page Outline</h3>
+            <span className="text-xs font-semibold text-gray-500">{outlineSections.length} sections</span>
+          </div>
+          <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
+            {outlineSections.map((section: any, index: number) => {
+              const sectionId = String(section?.id || index)
+              const isActive = selectedSectionId === sectionId
+              const nestedBlocks = section?.type === 'columns'
+                ? (Array.isArray(section?.items) ? section.items.flatMap((item: any) => Array.isArray(item?.sections) ? item.sections : []) : [])
+                : []
+              return (
+                <div key={sectionId} className="space-y-1">
+                  <button
+                    type="button"
+                    draggable
+                    onDragStart={(event) => {
+                      setDraggedOutlineIndex(index)
+                      event.dataTransfer.effectAllowed = 'move'
+                    }}
+                    onDragEnd={() => setDraggedOutlineIndex(null)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault()
+                      if (draggedOutlineIndex === null || draggedOutlineIndex === index) return
+                      moveSection?.(draggedOutlineIndex, index)
+                      setDraggedOutlineIndex(null)
+                    }}
+                    onClick={() => onSelectSection?.(sectionId)}
+                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition ${isActive ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-50 text-gray-700 hover:bg-blue-50 hover:text-blue-700'} ${draggedOutlineIndex === index ? 'opacity-60 ring-2 ring-blue-400' : ''}`}
+                  >
+                    <FiMove className="h-4 w-4 shrink-0 opacity-70" />
+                    <span className="min-w-0 flex-1 truncate">{getSectionTitle(section, index)}</span>
+                  </button>
+                  {nestedBlocks.length > 0 && (
+                    <div className="ml-5 border-l border-gray-200 pl-3">
+                      {nestedBlocks.map((block: any, blockIndex: number) => {
+                        const blockId = String(block?.id || `${sectionId}-nested-${blockIndex}`)
+                        const blockActive = selectedSectionId === blockId
+                        return (
+                          <button
+                            key={blockId}
+                            type="button"
+                            onClick={() => onSelectSection?.(blockId)}
+                            className={`mt-1 flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-xs font-semibold transition ${blockActive ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+                            <span className="min-w-0 flex-1 truncate">{block.title || block.buttonLabel || block.type || `Block ${blockIndex + 1}`}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

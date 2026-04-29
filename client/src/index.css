@@ -450,6 +450,55 @@ html.dark-mode .demo-page .text-green-800 {
   }
 }
 
+@keyframes toastIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -12px, 0) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes toastOut {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0) scale(0.98);
+  }
+}
+
+@keyframes sectionFlash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.38);
+    background-color: rgba(59, 130, 246, 0.02);
+  }
+  35% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0.14);
+    background-color: rgba(59, 130, 246, 0.08);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    background-color: rgba(59, 130, 246, 0);
+  }
+}
+
+.toast-enter {
+  animation: toastIn 220ms ease-out forwards;
+}
+
+.toast-leave {
+  animation: toastOut 260ms ease-in forwards;
+}
+
+.builder-section-highlight {
+  animation: sectionFlash 1.4s ease-in-out;
+}
+
 .no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
