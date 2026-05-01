@@ -631,6 +631,12 @@ async function ensureSiteSettingsSchema() {
     ['themeShadowPreset', { type: DataTypes.STRING, allowNull: true }],
     ['themeSpacingScale', { type: DataTypes.DECIMAL(4, 2), allowNull: true }],
     ['googleSearchConsoleProperty', { type: DataTypes.STRING, allowNull: true }],
+    ['localSeoBusinessType', { type: DataTypes.STRING, allowNull: true }],
+    ['localSeoPriceRange', { type: DataTypes.STRING, allowNull: true }],
+    ['localSeoPrimaryLatitude', { type: DataTypes.STRING, allowNull: true }],
+    ['localSeoPrimaryLongitude', { type: DataTypes.STRING, allowNull: true }],
+    ['localSeoServiceAreas', { type: DataTypes.JSON, allowNull: true }],
+    ['localSeoLocations', { type: DataTypes.JSON, allowNull: true }],
     ['googleSearchConsoleServiceAccountJson', { type: DataTypes.TEXT('long'), allowNull: true }],
     ['pageSpeedUrl', { type: DataTypes.STRING, allowNull: true }],
     ['pageSpeedApiKey', { type: DataTypes.STRING, allowNull: true }],
@@ -769,6 +775,18 @@ export async function getOrCreateSiteSettings() {
     settings.announcementBarTextColor = '#ffffff'
     changed = true
   }
+  if (!settings.localSeoBusinessType) {
+    settings.localSeoBusinessType = 'ProfessionalService'
+    changed = true
+  }
+  if (!Array.isArray(settings.localSeoServiceAreas)) {
+    settings.localSeoServiceAreas = []
+    changed = true
+  }
+  if (!Array.isArray(settings.localSeoLocations)) {
+    settings.localSeoLocations = []
+    changed = true
+  }
   if (!Array.isArray(settings.footerNavigationColumns) || settings.footerNavigationColumns.length === 0) {
     settings.footerNavigationColumns = buildFooterColumns(settings)
     changed = true
@@ -812,6 +830,12 @@ function publicSiteSettings(settings) {
     'themeCardRadius',
     'themeShadowPreset',
     'themeSpacingScale',
+    'localSeoBusinessType',
+    'localSeoPriceRange',
+    'localSeoPrimaryLatitude',
+    'localSeoPrimaryLongitude',
+    'localSeoServiceAreas',
+    'localSeoLocations',
     'cmsCurrentVersion',
     'cmsReleaseChannel',
     'cmsVersionName',

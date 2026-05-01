@@ -58,7 +58,7 @@ export default function EditableBuiltInPage({ pageKey }: { pageKey: string }) {
         title={metadata.metaTitle || metadata.headerTitle || metadata.pageTitle}
         description={metadata.metaDescription || metadata.description || metadata.headerSubtitle || ''}
         path={metadata.pageUrl || defaults.pageUrl}
-        structuredData={['home', 'services', 'contact'].includes(pageKey) ? localBusinessSchema(metadata.pageUrl || defaults.pageUrl) : undefined}
+        structuredData={['home', 'services', 'contact'].includes(pageKey) ? localBusinessSchema(metadata.pageUrl || defaults.pageUrl, settings, pageKey) : undefined}
       />
       <PageSections sections={sections} />
     </div>

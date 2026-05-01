@@ -332,6 +332,30 @@ const SiteSetting = sequelize.define('SiteSetting', {
     type: DataTypes.STRING,
     allowNull: true
   },
+  localSeoBusinessType: {
+    type: DataTypes.STRING,
+    defaultValue: 'ProfessionalService'
+  },
+  localSeoPriceRange: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  localSeoPrimaryLatitude: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  localSeoPrimaryLongitude: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  localSeoServiceAreas: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  },
+  localSeoLocations: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  },
   googleSearchConsoleServiceAccountJson: {
     type: DataTypes.TEXT('long'),
     allowNull: true

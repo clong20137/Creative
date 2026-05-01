@@ -136,31 +136,81 @@ export default function SEO({
   return null
 }
 
-export function localBusinessSchema(path = '/') {
+function normalizeAreaServed(values: any[]) {
+  return values
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .map((name) => ({ '@type': 'City', name }))
+}
+
+export function localBusinessSchema(path = '/', settings: any = {}, pageKey?: string) {
   const siteUrl = getSiteUrl()
   const normalizedPath = normalizeSeoPath(path)
-
-  return {
+  const businessType = String(settings?.localSeoBusinessType || 'ProfessionalService').trim() || 'ProfessionalService'
+  const primaryAreas = normalizeAreaServed(Array.isArray(settings?.localSeoServiceAreas) ? settings.localSeoServiceAreas : [])
+  const primaryPhone = String(settings?.phone || '').trim()
+  const primaryEmail = String(settings?.contactEmail || '').trim()
+  const primaryLocation = {
     '@context': 'https://schema.org',
-    '@type': 'ProfessionalService',
+    '@type': businessType,
     name: getSiteName(),
     url: `${siteUrl}${normalizedPath}`,
-    areaServed: [
-      { '@type': 'City', name: 'Indianapolis' },
-      { '@type': 'State', name: 'Indiana' },
-      { '@type': 'Country', name: 'United States' }
-    ],
+    telephone: primaryPhone || undefined,
+    email: primaryEmail || undefined,
+    priceRange: String(settings?.localSeoPriceRange || '').trim() || undefined,
+    areaServed: primaryAreas,
     address: {
       '@type': 'PostalAddress',
-      addressLocality: 'Indianapolis',
-      addressRegion: 'IN',
+      streetAddress: [settings?.locationLine1, settings?.locationLine2].filter(Boolean).join(', ') || undefined,
+      addressLocality: primaryAreas[0]?.name || undefined,
+      addressRegion: undefined,
       addressCountry: 'US'
     },
-    serviceType: [
-      'Web design',
-      'Photography',
-      'Videography',
-      'Branding'
-    ]
+    geo: settings?.localSeoPrimaryLatitude && settings?.localSeoPrimaryLongitude ? {
+      '@type': 'GeoCoordinates',
+      latitude: settings.localSeoPrimaryLatitude,
+      longitude: settings.localSeoPrimaryLongitude
+    } : undefined,
+    sameAs: [settings?.facebookUrl, settings?.instagramUrl, settings?.twitterUrl, settings?.linkedinUrl].filter(Boolean)
   }
+
+  const locationSchemas = Array.isArray(settings?.localSeoLocations)
+    ? settings.localSeoLocations
+      .map((location: any) => {
+        const name = String(location?.name || '').trim()
+        const city = String(location?.city || '').trim()
+        const region = String(location?.region || '').trim()
+        const serviceAreas = normalizeAreaServed(String(location?.serviceAreasText || '').split('\n'))
+        if (!name || !city) return null
+        return {
+          '@context': 'https://schema.org',
+          '@type': businessType,
+          name,
+          url: location?.url ? `${siteUrl}${normalizeSeoPath(location.url)}` : `${siteUrl}${normalizedPath}`,
+          telephone: String(location?.phone || primaryPhone || '').trim() || undefined,
+          email: String(location?.email || primaryEmail || '').trim() || undefined,
+          address: {
+            '@type': 'PostalAddress',
+            streetAddress: [location?.addressLine1, location?.addressLine2].filter(Boolean).join(', ') || undefined,
+            addressLocality: city,
+            addressRegion: region || undefined,
+            postalCode: String(location?.postalCode || '').trim() || undefined,
+            addressCountry: String(location?.country || 'US').trim() || 'US'
+          },
+          geo: location?.latitude && location?.longitude ? {
+            '@type': 'GeoCoordinates',
+            latitude: location.latitude,
+            longitude: location.longitude
+          } : undefined,
+          areaServed: serviceAreas.length ? serviceAreas : undefined
+        }
+      })
+      .filter(Boolean)
+    : []
+
+  if (pageKey === 'contact' || pageKey === 'services' || pageKey === 'home') {
+    return [primaryLocation, ...locationSchemas]
+  }
+
+  return primaryLocation
 }

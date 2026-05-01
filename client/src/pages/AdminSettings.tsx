@@ -108,6 +108,12 @@ const emptySettings = {
   googlePlaceId: '',
   googleApiKey: '',
   googleSearchConsoleProperty: '',
+  localSeoBusinessType: 'ProfessionalService',
+  localSeoPriceRange: '',
+  localSeoPrimaryLatitude: '',
+  localSeoPrimaryLongitude: '',
+  localSeoServiceAreas: [] as any[],
+  localSeoLocations: [] as any[],
   googleSearchConsoleServiceAccountJson: '',
   pageSpeedUrl: '',
   pageSpeedApiKey: '',
@@ -296,7 +302,7 @@ function getActiveTabPayload(settings: typeof emptySettings, activeTab: string) 
     Services: ['services'],
     Pricing: ['webDesignPackages', 'faqs'],
     Testimonials: ['googleReviewsEnabled', 'googlePlaceId', 'googleApiKey', 'testimonials'],
-    SEO: ['googleSearchConsoleProperty', 'googleSearchConsoleServiceAccountJson', 'pageSpeedUrl', 'pageSpeedApiKey'],
+    SEO: ['googleSearchConsoleProperty', 'googleSearchConsoleServiceAccountJson', 'pageSpeedUrl', 'pageSpeedApiKey', 'localSeoBusinessType', 'localSeoPriceRange', 'localSeoPrimaryLatitude', 'localSeoPrimaryLongitude', 'localSeoServiceAreas', 'localSeoLocations'],
     Payments: ['stripePublishableKey', 'stripeSecretKey', 'stripeWebhookSecret', 'bankName', 'bankAccountLast4', 'payoutInstructions'],
     Security: ['turnstileSiteKey', 'turnstileSecretKey']
   }
@@ -481,6 +487,42 @@ export default function AdminSettings() {
           [key]: value
         }
       }
+    }))
+  }
+  const updateLocalSeoLocation = (index: number, field: string, value: any) => {
+    setSettings(prev => {
+      const locations = [...(prev.localSeoLocations || [])]
+      locations[index] = { ...(locations[index] || {}), [field]: value }
+      return { ...prev, localSeoLocations: locations }
+    })
+  }
+  const addLocalSeoLocation = () => {
+    setSettings(prev => ({
+      ...prev,
+      localSeoLocations: [
+        ...(prev.localSeoLocations || []),
+        {
+          name: '',
+          url: '',
+          phone: '',
+          email: '',
+          addressLine1: '',
+          addressLine2: '',
+          city: '',
+          region: '',
+          postalCode: '',
+          country: 'US',
+          latitude: '',
+          longitude: '',
+          serviceAreasText: ''
+        }
+      ]
+    }))
+  }
+  const removeLocalSeoLocation = (index: number) => {
+    setSettings(prev => ({
+      ...prev,
+      localSeoLocations: (prev.localSeoLocations || []).filter((_: any, i: number) => i !== index)
     }))
   }
 
@@ -1689,6 +1731,88 @@ export default function AdminSettings() {
                 </label>
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
                   Search Console ranking data uses the last 28 days, ending 2 days ago, because Google Search Console data is delayed.
+                </div>
+                <div className="space-y-4 rounded-xl border p-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Local SEO and Multi-Location Schema</h3>
+                    <p className="text-sm text-gray-600">Feed structured data for your main business entity, service areas, and additional locations.</p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-semibold text-gray-700">Business schema type</span>
+                      <select value={settings.localSeoBusinessType || 'ProfessionalService'} onChange={(e) => handleChange('localSeoBusinessType', e.target.value)} className="w-full rounded-lg border px-4 py-2">
+                        <option value="ProfessionalService">ProfessionalService</option>
+                        <option value="HomeAndConstructionBusiness">HomeAndConstructionBusiness</option>
+                        <option value="Electrician">Electrician</option>
+                        <option value="Plumber">Plumber</option>
+                        <option value="RoofingContractor">RoofingContractor</option>
+                        <option value="HVACBusiness">HVACBusiness</option>
+                        <option value="Locksmith">Locksmith</option>
+                        <option value="RealEstateAgent">RealEstateAgent</option>
+                        <option value="LocalBusiness">LocalBusiness</option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-semibold text-gray-700">Price range</span>
+                      <input value={settings.localSeoPriceRange || ''} onChange={(e) => handleChange('localSeoPriceRange', e.target.value)} placeholder="$$" className="w-full rounded-lg border px-4 py-2" />
+                    </label>
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-semibold text-gray-700">Primary latitude</span>
+                      <input value={settings.localSeoPrimaryLatitude || ''} onChange={(e) => handleChange('localSeoPrimaryLatitude', e.target.value)} placeholder="39.7684" className="w-full rounded-lg border px-4 py-2" />
+                    </label>
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-semibold text-gray-700">Primary longitude</span>
+                      <input value={settings.localSeoPrimaryLongitude || ''} onChange={(e) => handleChange('localSeoPrimaryLongitude', e.target.value)} placeholder="-86.1581" className="w-full rounded-lg border px-4 py-2" />
+                    </label>
+                    <label className="block md:col-span-2">
+                      <span className="mb-2 block text-sm font-semibold text-gray-700">Primary service areas</span>
+                      <textarea
+                        value={Array.isArray(settings.localSeoServiceAreas) ? settings.localSeoServiceAreas.join('\n') : ''}
+                        onChange={(e) => handleChange('localSeoServiceAreas', e.target.value.split('\n').map((value) => value.trim()).filter(Boolean))}
+                        placeholder={'Indianapolis, Indiana\nCarmel, Indiana\nFishers, Indiana'}
+                        rows={4}
+                        className="w-full rounded-lg border px-4 py-2"
+                      />
+                    </label>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-base font-bold text-gray-900">Additional locations</h4>
+                        <p className="text-sm text-gray-600">Each location becomes its own structured data node with its own address and service areas.</p>
+                      </div>
+                      <button type="button" onClick={addLocalSeoLocation} className="btn-secondary whitespace-nowrap">Add Location</button>
+                    </div>
+                    {(settings.localSeoLocations || []).map((location: any, index: number) => (
+                      <div key={`location-${index}`} className="space-y-4 rounded-xl border p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <h5 className="text-sm font-bold text-gray-900">{location.name?.trim() || `Location ${index + 1}`}</h5>
+                          <button type="button" onClick={() => removeLocalSeoLocation(index)} className="rounded-lg border px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Remove</button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <input value={location.name || ''} onChange={(e) => updateLocalSeoLocation(index, 'name', e.target.value)} placeholder="Office name" className="rounded-lg border px-4 py-2" />
+                          <input value={location.url || ''} onChange={(e) => updateLocalSeoLocation(index, 'url', e.target.value)} placeholder="/indianapolis" className="rounded-lg border px-4 py-2" />
+                          <input value={location.phone || ''} onChange={(e) => updateLocalSeoLocation(index, 'phone', e.target.value)} placeholder="Phone" className="rounded-lg border px-4 py-2" />
+                          <input value={location.email || ''} onChange={(e) => updateLocalSeoLocation(index, 'email', e.target.value)} placeholder="Email" className="rounded-lg border px-4 py-2" />
+                          <input value={location.addressLine1 || ''} onChange={(e) => updateLocalSeoLocation(index, 'addressLine1', e.target.value)} placeholder="Address line 1" className="rounded-lg border px-4 py-2 md:col-span-2" />
+                          <input value={location.addressLine2 || ''} onChange={(e) => updateLocalSeoLocation(index, 'addressLine2', e.target.value)} placeholder="Address line 2" className="rounded-lg border px-4 py-2 md:col-span-2" />
+                          <input value={location.city || ''} onChange={(e) => updateLocalSeoLocation(index, 'city', e.target.value)} placeholder="City" className="rounded-lg border px-4 py-2" />
+                          <input value={location.region || ''} onChange={(e) => updateLocalSeoLocation(index, 'region', e.target.value)} placeholder="State / region" className="rounded-lg border px-4 py-2" />
+                          <input value={location.postalCode || ''} onChange={(e) => updateLocalSeoLocation(index, 'postalCode', e.target.value)} placeholder="Postal code" className="rounded-lg border px-4 py-2" />
+                          <input value={location.country || ''} onChange={(e) => updateLocalSeoLocation(index, 'country', e.target.value)} placeholder="US" className="rounded-lg border px-4 py-2" />
+                          <input value={location.latitude || ''} onChange={(e) => updateLocalSeoLocation(index, 'latitude', e.target.value)} placeholder="Latitude" className="rounded-lg border px-4 py-2" />
+                          <input value={location.longitude || ''} onChange={(e) => updateLocalSeoLocation(index, 'longitude', e.target.value)} placeholder="Longitude" className="rounded-lg border px-4 py-2" />
+                          <textarea
+                            value={location.serviceAreasText || ''}
+                            onChange={(e) => updateLocalSeoLocation(index, 'serviceAreasText', e.target.value)}
+                            placeholder={'Service areas, one per line\nCarmel, Indiana\nFishers, Indiana'}
+                            rows={4}
+                            className="rounded-lg border px-4 py-2 md:col-span-2"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </section>
             )}
