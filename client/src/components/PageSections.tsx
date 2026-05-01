@@ -205,6 +205,7 @@ function extractPlainText(value: string) {
 
 function EditableHeadingText({ section, fallbackText = '' }: { section: any; fallbackText?: string }) {
   const editorRef = useRef<HTMLSpanElement | null>(null)
+  const [isFocused, setIsFocused] = useState(false)
   const editableMeta = section?.__liveEdit
   const isEditable = Boolean(editableMeta?.titleEditable)
   const rawHtml = section?.titleHtml || section?.title || fallbackText
@@ -213,9 +214,9 @@ function EditableHeadingText({ section, fallbackText = '' }: { section: any; fal
   useEffect(() => {
     const editor = editorRef.current
     if (!editor || !isEditable) return
-    if (document.activeElement === editor) return
+    if (isFocused || document.activeElement === editor) return
     if (editor.innerHTML !== normalized) editor.innerHTML = normalized
-  }, [normalized, isEditable])
+  }, [normalized, isEditable, isFocused])
 
   if (isEditable) {
     return (
@@ -232,11 +233,17 @@ function EditableHeadingText({ section, fallbackText = '' }: { section: any; fal
           event.stopPropagation()
           editorRef.current?.focus()
         }}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => {
+          setIsFocused(false)
+          const html = sanitizeRichTextHtml(editorRef.current?.innerHTML || '')
+          if (editorRef.current && editorRef.current.innerHTML !== html) editorRef.current.innerHTML = html
+          editableMeta?.onTitleChange?.(html, extractPlainText(html))
+        }}
         onInput={() => {
           const html = sanitizeRichTextHtml(editorRef.current?.innerHTML || '')
           editableMeta?.onTitleChange?.(html, extractPlainText(html))
         }}
-        dangerouslySetInnerHTML={{ __html: normalized || fallbackText || '' }}
       />
     )
   }
@@ -258,6 +265,7 @@ function EditableRichTextContent({
   fallbackHtml?: string
 }) {
   const editorRef = useRef<HTMLDivElement | null>(null)
+  const [isFocused, setIsFocused] = useState(false)
   const editableMeta = section?.__liveEdit
   const isEditable = Boolean(editableMeta?.bodyEditable)
   const rawHtml = section?.body || fallbackHtml
@@ -266,9 +274,9 @@ function EditableRichTextContent({
   useEffect(() => {
     const editor = editorRef.current
     if (!editor || !isEditable) return
-    if (document.activeElement === editor) return
+    if (isFocused || document.activeElement === editor) return
     if (editor.innerHTML !== normalized) editor.innerHTML = normalized
-  }, [normalized, isEditable])
+  }, [normalized, isEditable, isFocused])
 
   if (isEditable) {
     return (
@@ -285,11 +293,17 @@ function EditableRichTextContent({
           event.stopPropagation()
           editorRef.current?.focus()
         }}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => {
+          setIsFocused(false)
+          const html = sanitizeRichTextHtml(editorRef.current?.innerHTML || '')
+          if (editorRef.current && editorRef.current.innerHTML !== html) editorRef.current.innerHTML = html
+          editableMeta?.onBodyChange?.(html, extractPlainText(html))
+        }}
         onInput={() => {
           const html = sanitizeRichTextHtml(editorRef.current?.innerHTML || '')
           editableMeta?.onBodyChange?.(html, extractPlainText(html))
         }}
-        dangerouslySetInnerHTML={{ __html: normalized }}
       />
     )
   }
