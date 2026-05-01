@@ -3490,6 +3490,27 @@ function SectionPreviewToolbar({
     return true
   }
 
+  useEffect(() => {
+    const captureSelection = () => {
+      const editor = getActiveEditableElement()
+      const selection = window.getSelection()
+      if (!editor || !selection || selection.rangeCount === 0) return
+      const range = selection.getRangeAt(0)
+      if (!editor.contains(range.commonAncestorContainer)) return
+      savedRangeRef.current = range.cloneRange()
+    }
+
+    document.addEventListener('selectionchange', captureSelection)
+    window.addEventListener('keyup', captureSelection)
+    window.addEventListener('mouseup', captureSelection)
+
+    return () => {
+      document.removeEventListener('selectionchange', captureSelection)
+      window.removeEventListener('keyup', captureSelection)
+      window.removeEventListener('mouseup', captureSelection)
+    }
+  }, [section?.id])
+
   const restoreCurrentSelection = () => {
     const selection = window.getSelection()
     if (!selection || !savedRangeRef.current) return
@@ -3516,6 +3537,7 @@ function SectionPreviewToolbar({
   const applyInlineCommand = (command: string, commandValue?: string) => {
     const editor = focusPreferredEditor()
     if (!editor) return
+    restoreCurrentSelection()
     document.execCommand('styleWithCSS', false, 'true')
     if (command === 'hiliteColor') {
       const applied = document.execCommand('hiliteColor', false, commandValue)
