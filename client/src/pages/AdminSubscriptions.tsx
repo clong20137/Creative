@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { FiEdit, FiPlus, FiTrash2, FiUserPlus, FiX } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
-import { adminAPI, subscriptionsAPI } from '../services/api'
+import { adminAPI, builderAccountsAPI, subscriptionsAPI } from '../services/api'
 
 const emptyPlanForm = {
   name: '',
@@ -39,6 +39,8 @@ export default function AdminSubscriptions() {
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
   const [planForm, setPlanForm] = useState(emptyPlanForm)
   const [assignment, setAssignment] = useState({ clientId: '', planId: '', renewalDate: '', licensedDomain: '' })
+  const [builderAccountsByLicense, setBuilderAccountsByLicense] = useState<Record<string, { builders: any[]; maxBuilderAccounts: number | null; currentCount: number }>>({})
+  const [builderFormByLicense, setBuilderFormByLicense] = useState<Record<string, { name: string; email: string; password: string; company: string }>>({})
 
   const fetchData = async () => {
     try {
@@ -53,11 +55,25 @@ export default function AdminSubscriptions() {
       setPlans(plansData)
       setSubscriptions(subscriptionsData)
       setLicenses(licensesData)
+      const builderEntries = await Promise.all((licensesData || []).map(async (license: any) => {
+        try {
+          const data = await builderAccountsAPI.getForLicense(String(license.id))
+          return [String(license.id), data] as const
+        } catch {
+          return [String(license.id), { builders: [], maxBuilderAccounts: null, currentCount: 0 }] as const
+        }
+      }))
+      setBuilderAccountsByLicense(Object.fromEntries(builderEntries))
     } catch (err: any) {
       setError(err.error || 'Failed to load subscriptions')
     } finally {
       setLoading(false)
     }
+  }
+
+  const loadBuilderAccounts = async (licenseId: string) => {
+    const data = await builderAccountsAPI.getForLicense(licenseId)
+    setBuilderAccountsByLicense(prev => ({ ...prev, [licenseId]: data }))
   }
 
   useEffect(() => {
@@ -170,6 +186,55 @@ export default function AdminSubscriptions() {
       fetchData()
     } catch (err: any) {
       setError(err.error || 'Failed to cancel license')
+    }
+  }
+
+  const handleBuilderFormChange = (licenseId: string, field: string, value: string) => {
+    setBuilderFormByLicense(prev => {
+      const existingForm = prev[licenseId] ?? { name: '', email: '', password: '', company: '' }
+      return {
+        ...prev,
+        [licenseId]: {
+          ...existingForm,
+          [field]: value
+        }
+      }
+    })
+  }
+
+  const handleCreateBuilder = async (licenseId: string) => {
+    try {
+      const form = builderFormByLicense[licenseId] || { name: '', email: '', password: '', company: '' }
+      await builderAccountsAPI.createForLicense(licenseId, form)
+      setMessage('Builder account created')
+      setBuilderFormByLicense(prev => ({
+        ...prev,
+        [licenseId]: { name: '', email: '', password: '', company: '' }
+      }))
+      await loadBuilderAccounts(licenseId)
+    } catch (err: any) {
+      setError(err.error || 'Failed to create builder account')
+    }
+  }
+
+  const handleToggleBuilder = async (licenseId: string, builder: any) => {
+    try {
+      await builderAccountsAPI.updateBuilder(String(builder.id), { isActive: builder.isActive === false })
+      setMessage(`Builder account ${builder.isActive === false ? 'enabled' : 'disabled'}`)
+      await loadBuilderAccounts(licenseId)
+    } catch (err: any) {
+      setError(err.error || 'Failed to update builder account')
+    }
+  }
+
+  const handleDeleteBuilder = async (licenseId: string, builderId: string) => {
+    if (!confirm('Delete this builder account?')) return
+    try {
+      await builderAccountsAPI.deleteBuilder(builderId)
+      setMessage('Builder account deleted')
+      await loadBuilderAccounts(licenseId)
+    } catch (err: any) {
+      setError(err.error || 'Failed to delete builder account')
     }
   }
 
@@ -302,7 +367,7 @@ export default function AdminSubscriptions() {
                     <input
                       type="number"
                       min="0"
-                      placeholder="Max team members"
+                      placeholder="Max builder accounts / team members"
                       value={planForm.maxTeamMembers}
                       onChange={(e) => setPlanForm({ ...planForm, maxTeamMembers: e.target.value })}
                       className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -397,7 +462,7 @@ export default function AdminSubscriptions() {
                     <div className="rounded-lg bg-gray-50 px-3 py-2">Pages: <span className="font-semibold text-gray-900">{plan.maxPages || 'Unlimited'}</span></div>
                     <div className="rounded-lg bg-gray-50 px-3 py-2">Media: <span className="font-semibold text-gray-900">{plan.maxMediaItems || 'Unlimited'}</span></div>
                     <div className="rounded-lg bg-gray-50 px-3 py-2">Storage: <span className="font-semibold text-gray-900">{plan.maxStorageMb ? `${plan.maxStorageMb} MB` : 'Unlimited'}</span></div>
-                    <div className="rounded-lg bg-gray-50 px-3 py-2">Team: <span className="font-semibold text-gray-900">{plan.maxTeamMembers || 'Unlimited'}</span></div>
+                    <div className="rounded-lg bg-gray-50 px-3 py-2">Builder seats: <span className="font-semibold text-gray-900">{plan.maxTeamMembers || 'Unlimited'}</span></div>
                   </div>
                   <ul className="space-y-2 mb-6">
                     {(plan.features || []).map((feature: string, index: number) => (
@@ -684,6 +749,70 @@ export default function AdminSubscriptions() {
                 </tbody>
               </table>
               </div>
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 md:text-2xl">Site Builder Accounts</h2>
+              <p className="mt-2 text-sm text-gray-600">Builder accounts sign in directly to Pro Builder. Seat limits are enforced from each CMS license plan’s team member limit.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              {licenses.map((license) => {
+                const licenseId = String(license.id)
+                const builderState = builderAccountsByLicense[licenseId] || { builders: [], maxBuilderAccounts: null, currentCount: 0 }
+                const form = builderFormByLicense[licenseId] || { name: '', email: '', password: '', company: '' }
+                return (
+                  <div key={`builders-${licenseId}`} className="card space-y-4 p-4 md:p-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">{license.planName}</h3>
+                        <p className="text-sm text-gray-600">{license.User?.name || 'Unknown client'}</p>
+                        <p className="mt-1 text-xs text-gray-500">{license.licensedDomain || 'No licensed domain set yet'}</p>
+                      </div>
+                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                        {builderState.currentCount}/{builderState.maxBuilderAccounts || '∞'} seats
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <input value={form.name} onChange={(e) => handleBuilderFormChange(licenseId, 'name', e.target.value)} placeholder="Builder name" className="rounded-lg border px-4 py-2" />
+                      <input value={form.company} onChange={(e) => handleBuilderFormChange(licenseId, 'company', e.target.value)} placeholder="Company" className="rounded-lg border px-4 py-2" />
+                      <input value={form.email} onChange={(e) => handleBuilderFormChange(licenseId, 'email', e.target.value)} placeholder="builder@example.com" className="rounded-lg border px-4 py-2 md:col-span-2" />
+                      <input value={form.password} onChange={(e) => handleBuilderFormChange(licenseId, 'password', e.target.value)} placeholder="Temporary password" className="rounded-lg border px-4 py-2 md:col-span-2" />
+                    </div>
+                    <button type="button" onClick={() => handleCreateBuilder(licenseId)} className="inline-flex items-center gap-2 btn-primary">
+                      <FiUserPlus /> Add Builder Account
+                    </button>
+
+                    <div className="space-y-3">
+                      {builderState.builders.map((builder) => (
+                        <div key={builder.id} className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="font-semibold text-gray-900">{builder.name}</p>
+                            <p className="text-sm text-gray-600">{builder.email}</p>
+                            <p className="mt-1 text-xs text-gray-500">{builder.isActive === false ? 'Disabled' : 'Active'} builder access</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => handleToggleBuilder(licenseId, builder)} className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200">
+                              {builder.isActive === false ? 'Enable' : 'Disable'}
+                            </button>
+                            <button type="button" onClick={() => handleDeleteBuilder(licenseId, String(builder.id))} className="rounded-lg bg-red-100 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-200">
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {builderState.builders.length === 0 && (
+                        <div className="rounded-xl border border-dashed p-4 text-sm text-gray-500">No builder accounts on this license yet.</div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+              {licenses.length === 0 && (
+                <div className="card p-6 text-gray-600">Assign a CMS license first, then add builder accounts under that license.</div>
+              )}
             </div>
           </section>
         </div>

@@ -11,6 +11,10 @@ const CustomPage = sequelize.define('CustomPage', {
     allowNull: false,
     unique: true
   },
+  ownerClientId: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
   headerTitle: {
     type: DataTypes.STRING,
     allowNull: true

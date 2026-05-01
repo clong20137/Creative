@@ -37,7 +37,7 @@ import jwt from 'jsonwebtoken'
 import { ensureActiveUser, requireRole, verifyToken } from '../utils/auth.js'
 import { cleanString, sanitizeUserForResponse } from '../utils/validation.js'
 import { createAuditLog, ensureAuditLogSchema } from '../utils/audit.js'
-import { getSiteEntitlements } from '../utils/entitlements.js'
+import { getClientEntitlements, getSiteEntitlements } from '../utils/entitlements.js'
 
 const router = express.Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -223,6 +223,17 @@ function normalizeSearchConsoleProperty(value) {
   const property = String(value || '').trim()
   if (!property || property.startsWith('sc-domain:')) return property
   return property.endsWith('/') ? property : `${property}/`
+}
+
+function resolveCmsPlanSeatLimit(input) {
+  const explicitLimit = input?.maxTeamMembers ? Number(input.maxTeamMembers) : null
+  if (explicitLimit) return explicitLimit
+  if (String(input?.productType || '') !== 'cms-license') return null
+
+  const normalizedName = String(input?.name || '').trim().toLowerCase()
+  if (normalizedName === 'standard') return 2
+  if (normalizedName === 'pro') return 5
+  return null
 }
 
 function safeNumber(value, fallback = 0) {
@@ -877,6 +888,22 @@ async function enforceTeamMemberLimit(req) {
   return entitlements
 }
 
+async function enforceBuilderSeatLimit(clientId, cmsLicenseId) {
+  const entitlements = await getClientEntitlements(clientId)
+  if (!entitlements.hasActivePlan || !entitlements.maxTeamMembers) return entitlements
+
+  const currentCount = await User.count({ where: { role: 'builder', cmsLicenseId } })
+  if (currentCount >= entitlements.maxTeamMembers) {
+    throw buildPlanLimitError(
+      `This ${entitlements.planName || 'current'} CMS license allows up to ${entitlements.maxTeamMembers} builder account${entitlements.maxTeamMembers === 1 ? '' : 's'}. Remove a builder or upgrade the plan to add another.`,
+      'builder_seat_limit_reached',
+      { limit: entitlements.maxTeamMembers, current: currentCount }
+    )
+  }
+
+  return entitlements
+}
+
 async function ensureMediaAssetsSchema() {
   if (mediaAssetsSchemaReady) return
 
@@ -1374,6 +1401,129 @@ router.get('/licenses', async (req, res) => {
     res.json(licenses)
   } catch (error) {
     res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/licenses/:id/builders', async (req, res) => {
+  try {
+    const license = await CMSLicense.findByPk(req.params.id, {
+      include: [{ model: SubscriptionPlan, attributes: ['id', 'name', 'maxTeamMembers'] }]
+    })
+    if (!license) return res.status(404).json({ error: 'CMS license not found' })
+
+    const builders = await User.findAll({
+      where: { role: 'builder', cmsLicenseId: license.id },
+      attributes: { exclude: ['password', 'twoFactorCode', 'twoFactorSecret', 'passwordResetCode', 'passwordResetExpires'] },
+      order: [['createdAt', 'DESC']]
+    })
+    const entitlements = await getClientEntitlements(license.clientId)
+    res.json({
+      builders: builders.map(sanitizeUserForResponse),
+      maxBuilderAccounts: entitlements.maxTeamMembers,
+      currentCount: builders.length
+    })
+  } catch (error) {
+    sendRouteError(res, error)
+  }
+})
+
+router.post('/licenses/:id/builders', async (req, res) => {
+  try {
+    const license = await CMSLicense.findByPk(req.params.id)
+    if (!license) return res.status(404).json({ error: 'CMS license not found' })
+
+    await enforceBuilderSeatLimit(license.clientId, license.id)
+
+    const name = cleanString(req.body.name, 120)
+    const email = cleanString(req.body.email, 160).toLowerCase()
+    const password = String(req.body.password || '')
+    if (!name || !email) return res.status(400).json({ error: 'A valid name and email are required' })
+    if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' })
+
+    const existingUser = await User.findOne({ where: { email } })
+    if (existingUser) return res.status(400).json({ error: 'Email already exists' })
+
+    const builder = await User.create({
+      name,
+      email,
+      password,
+      role: 'builder',
+      ownerClientId: license.clientId,
+      cmsLicenseId: license.id,
+      company: cleanString(req.body.company, 120) || ''
+    })
+
+    await createAuditLog(req, {
+      action: 'builder-account.created',
+      targetType: 'user',
+      targetId: builder.id,
+      summary: `Created builder account "${builder.email}"`,
+      details: {
+        cmsLicenseId: license.id,
+        ownerClientId: license.clientId
+      }
+    })
+
+    res.status(201).json({ builder: sanitizeUserForResponse(builder) })
+  } catch (error) {
+    sendRouteError(res, error)
+  }
+})
+
+router.put('/builder-users/:id', async (req, res) => {
+  try {
+    const builder = await User.findOne({ where: { id: req.params.id, role: 'builder' } })
+    if (!builder) return res.status(404).json({ error: 'Builder account not found' })
+
+    const updates = {}
+    if (req.body.name !== undefined) updates.name = cleanString(req.body.name, 120) || builder.name
+    if (req.body.company !== undefined) updates.company = cleanString(req.body.company, 120) || ''
+    if (req.body.isActive !== undefined) updates.isActive = Boolean(req.body.isActive)
+    if (req.body.password) {
+      const password = String(req.body.password || '')
+      if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' })
+      updates.password = password
+    }
+
+    await builder.update(updates)
+    await createAuditLog(req, {
+      action: 'builder-account.updated',
+      targetType: 'user',
+      targetId: builder.id,
+      summary: `Updated builder account "${builder.email}"`,
+      details: {
+        cmsLicenseId: builder.cmsLicenseId,
+        ownerClientId: builder.ownerClientId
+      }
+    })
+
+    res.json({ builder: sanitizeUserForResponse(builder) })
+  } catch (error) {
+    sendRouteError(res, error)
+  }
+})
+
+router.delete('/builder-users/:id', async (req, res) => {
+  try {
+    const builder = await User.findOne({ where: { id: req.params.id, role: 'builder' } })
+    if (!builder) return res.status(404).json({ error: 'Builder account not found' })
+    const email = builder.email
+    const cmsLicenseId = builder.cmsLicenseId
+    const ownerClientId = builder.ownerClientId
+    await builder.destroy()
+    await createAuditLog(req, {
+      action: 'builder-account.deleted',
+      targetType: 'user',
+      targetId: req.params.id,
+      summary: `Deleted builder account "${email}"`,
+      details: {
+        cmsLicenseId,
+        ownerClientId
+      }
+    })
+    res.json({ message: 'Builder account deleted' })
+  } catch (error) {
+    sendRouteError(res, error)
   }
 })
 
@@ -2260,7 +2410,7 @@ router.post('/subscription-plans', async (req, res) => {
       maxPages: req.body.maxPages ? Number(req.body.maxPages) : null,
       maxMediaItems: req.body.maxMediaItems ? Number(req.body.maxMediaItems) : null,
       maxStorageMb: req.body.maxStorageMb ? Number(req.body.maxStorageMb) : null,
-      maxTeamMembers: req.body.maxTeamMembers ? Number(req.body.maxTeamMembers) : null,
+      maxTeamMembers: resolveCmsPlanSeatLimit(req.body),
       allowAllPlugins: req.body.allowAllPlugins !== false,
       allowedPluginSlugs,
       whiteLabelEnabled: req.body.whiteLabelEnabled === true,
@@ -2303,7 +2453,7 @@ router.put('/subscription-plans/:id', async (req, res) => {
       maxPages: req.body.maxPages ? Number(req.body.maxPages) : null,
       maxMediaItems: req.body.maxMediaItems ? Number(req.body.maxMediaItems) : null,
       maxStorageMb: req.body.maxStorageMb ? Number(req.body.maxStorageMb) : null,
-      maxTeamMembers: req.body.maxTeamMembers ? Number(req.body.maxTeamMembers) : null,
+      maxTeamMembers: resolveCmsPlanSeatLimit(req.body),
       allowAllPlugins: req.body.allowAllPlugins !== false,
       allowedPluginSlugs,
       whiteLabelEnabled: req.body.whiteLabelEnabled === true,

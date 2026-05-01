@@ -73,7 +73,7 @@ export default function Navigation() {
 
   const isActive = (path: string) => location.pathname === path
   const isSectionActive = (path: string) => location.pathname === path || location.pathname.startsWith(`${path}/`)
-  const dashboardPath = userRole === 'admin' ? '/admin/dashboard' : '/client-dashboard'
+  const dashboardPath = userRole === 'admin' ? '/admin/dashboard' : userRole === 'builder' ? '/admin/pages?page=home' : '/client-dashboard'
 
   useEffect(() => {
     setUserRole(localStorage.getItem('userRole'))

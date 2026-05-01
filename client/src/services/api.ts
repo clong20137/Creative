@@ -78,6 +78,10 @@ const unwrap = async <T = any>(request: Promise<{ data: T }>) => {
   return response.data
 }
 
+function isBuilderSession() {
+  return localStorage.getItem('userRole') === 'builder'
+}
+
 // Auth API
 export const authAPI = {
   register: (data: any) => unwrap(api.post('/auth/register', data)),
@@ -205,17 +209,17 @@ export const adminAPI = {
   deleteSubscriptionPlan: (id: string) => unwrap(api.delete(`/admin/subscription-plans/${id}`)),
   assignSubscription: (data: any) => unwrap(api.post('/admin/subscriptions/assign', data)),
   cancelLicense: (id: string) => unwrap(api.put(`/admin/licenses/${id}/cancel`)),
-  getServicePackages: () => unwrap<any[]>(api.get('/admin/service-packages')),
+  getServicePackages: () => unwrap<any[]>(api.get(isBuilderSession() ? '/builder/service-packages' : '/admin/service-packages')),
   createServicePackage: (data: any) => unwrap(api.post('/admin/service-packages', data)),
   updateServicePackage: (id: string, data: any) => unwrap(api.put(`/admin/service-packages/${id}`, data)),
   deleteServicePackage: (id: string) => unwrap(api.delete(`/admin/service-packages/${id}`)),
-  getPortfolioItems: () => unwrap<any[]>(api.get('/admin/portfolio-items')),
+  getPortfolioItems: () => unwrap<any[]>(api.get(isBuilderSession() ? '/builder/portfolio-items' : '/admin/portfolio-items')),
   createPortfolioItem: (data: any) => unwrap(api.post('/admin/portfolio-items', data)),
   updatePortfolioItem: (id: string, data: any) => unwrap(api.put(`/admin/portfolio-items/${id}`, data)),
   deletePortfolioItem: (id: string) => unwrap(api.delete(`/admin/portfolio-items/${id}`)),
   getPlugins: () => unwrap<any[]>(api.get('/admin/plugins')),
   updatePlugin: (slug: string, data: any) => unwrap(api.put(`/admin/plugins/${slug}`, data)),
-  getSiteDemos: () => unwrap<any[]>(api.get('/admin/site-demos')),
+  getSiteDemos: () => unwrap<any[]>(api.get(isBuilderSession() ? '/builder/site-demos' : '/admin/site-demos')),
   updateSiteDemo: (slug: string, data: any) => unwrap(api.put(`/admin/site-demos/${slug}`, data)),
   getMedia: (type = 'all', visibility = 'all') => unwrap<any[]>(api.get(`/admin/media?type=${encodeURIComponent(type)}&visibility=${encodeURIComponent(visibility)}`)),
   uploadMedia: (data: any) => unwrap(api.post('/admin/media', data)),
@@ -252,14 +256,14 @@ export const adminAPI = {
   getCrmLeads: () => unwrap<any[]>(api.get('/admin/plugins/crm/leads')),
   updateCrmLead: (id: string, data: any) => unwrap(api.put(`/admin/plugins/crm/leads/${id}`, data)),
   deleteCrmLead: (id: string) => unwrap(api.delete(`/admin/plugins/crm/leads/${id}`)),
-  getPages: () => unwrap<any[]>(api.get('/admin/pages')),
-  createPage: (data: any) => unwrap(api.post('/admin/pages', data)),
-  updatePage: (id: string, data: any) => unwrap(api.put(`/admin/pages/${id}`, data)),
-  deletePage: (id: string) => unwrap(api.delete(`/admin/pages/${id}`)),
-  ensurePagePreviewLink: (id: string) => unwrap(api.post(`/admin/pages/${id}/preview-link`)),
-  regeneratePagePreviewLink: (id: string) => unwrap(api.post(`/admin/pages/${id}/preview-link/regenerate`)),
-  getSiteSettings: () => unwrap(api.get('/admin/site-settings')),
-  updateSiteSettings: (data: any) => unwrap(api.put('/admin/site-settings', data)),
+  getPages: () => unwrap<any[]>(api.get(isBuilderSession() ? '/builder/pages' : '/admin/pages')),
+  createPage: (data: any) => unwrap(api.post(isBuilderSession() ? '/builder/pages' : '/admin/pages', data)),
+  updatePage: (id: string, data: any) => unwrap(api.put(`${isBuilderSession() ? '/builder/pages' : '/admin/pages'}/${id}`, data)),
+  deletePage: (id: string) => unwrap(api.delete(`${isBuilderSession() ? '/builder/pages' : '/admin/pages'}/${id}`)),
+  ensurePagePreviewLink: (id: string) => unwrap(api.post(`${isBuilderSession() ? '/builder/pages' : '/admin/pages'}/${id}/preview-link`)),
+  regeneratePagePreviewLink: (id: string) => unwrap(api.post(`${isBuilderSession() ? '/builder/pages' : '/admin/pages'}/${id}/preview-link/regenerate`)),
+  getSiteSettings: () => unwrap(api.get(isBuilderSession() ? '/builder/site-settings' : '/admin/site-settings')),
+  updateSiteSettings: (data: any) => unwrap(api.put(isBuilderSession() ? '/builder/site-settings' : '/admin/site-settings', data)),
   getBackups: () => unwrap<any[]>(api.get('/admin/backups')),
   createBackup: (data?: { name?: string }) => unwrap(api.post('/admin/backups', data || {})),
   exportCurrentBackup: () => unwrap<any>(api.get('/admin/backups/export')),
@@ -267,12 +271,19 @@ export const adminAPI = {
   importBackup: (payload: any) => unwrap(api.post('/admin/backups/import', { payload })),
   restoreBackup: (id: string) => unwrap(api.post(`/admin/backups/${id}/restore`)),
   deleteBackup: (id: string) => unwrap(api.delete(`/admin/backups/${id}`)),
-  uploadImage: (dataUrl: string) => unwrap<{ url: string }>(api.post('/admin/uploads', { dataUrl })),
+  uploadImage: (dataUrl: string) => unwrap<{ url: string }>(api.post(isBuilderSession() ? '/builder/uploads' : '/admin/uploads', { dataUrl })),
   getContactMessages: () => unwrap<any[]>(api.get('/admin/contact-messages')),
   updateContactMessage: (id: string, data: any) => unwrap(api.put(`/admin/contact-messages/${id}`, data)),
   updateTwoFactor: (id: string, enabled: boolean) => unwrap(api.put(`/admin/users/${id}/two-factor`, { enabled })),
   startTwoFactorSetup: (id: string) => unwrap(api.post(`/admin/users/${id}/two-factor/setup`)),
   confirmTwoFactorSetup: (id: string, code: string) => unwrap(api.post(`/admin/users/${id}/two-factor/confirm`, { code }))
+}
+
+export const builderAccountsAPI = {
+  getForLicense: (licenseId: string) => unwrap<{ builders: any[]; maxBuilderAccounts: number | null; currentCount: number }>(api.get(`/admin/licenses/${licenseId}/builders`)),
+  createForLicense: (licenseId: string, data: any) => unwrap(api.post(`/admin/licenses/${licenseId}/builders`, data)),
+  updateBuilder: (id: string, data: any) => unwrap(api.put(`/admin/builder-users/${id}`, data)),
+  deleteBuilder: (id: string) => unwrap(api.delete(`/admin/builder-users/${id}`))
 }
 
 export const ticketsAPI = {

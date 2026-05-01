@@ -43,7 +43,7 @@ export default function Login() {
     const role = localStorage.getItem('userRole')
 
     if (token && role) {
-      navigate(role === 'admin' ? '/admin/dashboard' : '/client-dashboard')
+      navigate(role === 'admin' ? '/admin/dashboard' : role === 'builder' ? '/admin/pages?page=home' : '/client-dashboard')
     }
 
     siteSettingsAPI.getSettings()
@@ -104,7 +104,7 @@ export default function Login() {
       localStorage.setItem('userRole', data.user.role)
       localStorage.setItem('userEmail', data.user.email)
       showToast({ tone: 'success', title: 'Signed in', message: `Welcome back to ${branding.clientPortalName}.` })
-      navigate(data.user.role === 'admin' ? '/admin/dashboard' : '/client-dashboard')
+      navigate(data.user.role === 'admin' ? '/admin/dashboard' : data.user.role === 'builder' ? '/admin/pages?page=home' : '/client-dashboard')
     } catch (err: any) {
       setError(err.error || 'Unable to sign in')
       showToast({ tone: 'error', title: 'Sign in failed', message: err.error || 'Unable to sign in' })
@@ -185,7 +185,7 @@ export default function Login() {
       localStorage.setItem('userRole', data.user.role)
       localStorage.setItem('userEmail', data.user.email)
       showToast({ tone: 'success', title: 'Verified', message: 'You are signed in.' })
-      navigate(data.user.role === 'admin' ? '/admin/dashboard' : '/client-dashboard')
+      navigate(data.user.role === 'admin' ? '/admin/dashboard' : data.user.role === 'builder' ? '/admin/pages?page=home' : '/client-dashboard')
     } catch (err: any) {
       setError(err.error || 'Unable to verify code')
       showToast({ tone: 'error', title: 'Verification failed', message: err.error || 'Unable to verify code' })

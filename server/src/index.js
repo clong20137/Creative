@@ -51,6 +51,7 @@ import pluginRoutes from './routes/plugins.js'
 import pageRoutes from './routes/pages.js'
 import siteDemoRoutes from './routes/site-demos.js'
 import protectedMediaRoutes from './routes/protected-media.js'
+import builderRoutes from './routes/builder.js'
 
 dotenv.config()
 
@@ -210,6 +211,7 @@ app.use('/api/plugins', pluginRoutes)
 app.use('/api/site-demos', siteDemoRoutes)
 app.use('/api/pages', pageRoutes)
 app.use('/api/protected-media', protectedMediaRoutes)
+app.use('/api/builder', builderRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {

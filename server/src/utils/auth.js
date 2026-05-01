@@ -19,13 +19,14 @@ export function verifyToken(req, res, next) {
 
 export async function ensureActiveUser(req, res, next) {
   try {
-    const user = await User.findByPk(req.userId, { attributes: ['id', 'role', 'isActive'] })
+    const user = await User.findByPk(req.userId, { attributes: ['id', 'role', 'isActive', 'ownerClientId', 'cmsLicenseId'] })
     if (!user) return res.status(404).json({ error: 'User not found' })
     if (user.isActive === false) {
       return res.status(403).json({ error: 'This account has been disabled. Please contact support.' })
     }
 
     req.userRole = req.userRole || user.role
+    req.activeUser = user
     next()
   } catch (error) {
     return res.status(500).json({ error: error.message })

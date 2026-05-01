@@ -53,8 +53,16 @@ const User = sequelize.define('User', {
     allowNull: true
   },
   role: {
-    type: DataTypes.ENUM('admin', 'client'),
+    type: DataTypes.ENUM('admin', 'client', 'builder'),
     defaultValue: 'client'
+  },
+  ownerClientId: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  cmsLicenseId: {
+    type: DataTypes.INTEGER,
+    allowNull: true
   },
   avatar: {
     type: DataTypes.STRING,

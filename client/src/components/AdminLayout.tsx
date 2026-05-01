@@ -279,6 +279,8 @@ export default function AdminLayout({ title, children, headerActions }: { title:
   const navigate = useNavigate()
   const location = useLocation()
   const isPageEditor = location.pathname === '/admin/pages'
+  const currentUserRole = localStorage.getItem('userRole')
+  const isBuilderUser = currentUserRole === 'builder'
   const [notifications, setNotifications] = useState({ newMessages: 0, newTickets: 0, total: 0 })
   const [customPages, setCustomPages] = useState<any[]>([])
   const [siteSettings, setSiteSettings] = useState<any>({})
@@ -307,16 +309,22 @@ export default function AdminLayout({ title, children, headerActions }: { title:
   const sidebarResizeStateRef = useRef<{ startX: number; startWidth: number; active: boolean }>({ startX: 0, startWidth: 0, active: false })
   const brandSiteName = siteSettings?.siteName || 'Creative by Caleb'
   const adminPortalName = siteSettings?.adminPortalName || 'Admin Portal'
+  const adminHomePath = isBuilderUser ? '/admin/pages?page=home' : '/admin/dashboard'
   const brandLogoUrl = resolveAssetUrl(siteSettings?.logoUrl)
   const brandLogoSize = Math.min(Math.max(Number(siteSettings?.logoSize) || 40, 24), 72)
   const showPoweredBy = siteSettings?.showPoweredBy !== false
   const poweredByText = siteSettings?.poweredByText || 'Powered by Creative CMS'
 
   useEffect(() => {
-    if (localStorage.getItem('userRole') !== 'admin') {
+    const role = localStorage.getItem('userRole')
+    if (!['admin', 'builder'].includes(role || '')) {
       navigate('/login')
+      return
     }
-  }, [navigate])
+    if (role === 'builder' && location.pathname !== '/admin/pages') {
+      navigate('/admin/pages?page=home', { replace: true })
+    }
+  }, [location.pathname, navigate])
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark-mode', theme === 'dark')
@@ -366,13 +374,11 @@ export default function AdminLayout({ title, children, headerActions }: { title:
 
     const fetchAdminChrome = async () => {
       try {
-        const [notificationData, pagesData, settingsData] = await Promise.all([
-          adminAPI.getNotifications(),
+        const [pagesData, settingsData] = await Promise.all([
           adminAPI.getPages(),
           adminAPI.getSiteSettings()
         ])
         if (isMounted) {
-          setNotifications(notificationData)
           setCustomPages(Array.isArray(pagesData) ? pagesData : [])
           setSiteSettings(settingsData || {})
         }
@@ -382,6 +388,7 @@ export default function AdminLayout({ title, children, headerActions }: { title:
     }
 
     const refreshNotifications = async () => {
+      if (isBuilderUser) return
       try {
         const data = await adminAPI.getNotifications()
         if (isMounted) setNotifications(data)
@@ -391,20 +398,20 @@ export default function AdminLayout({ title, children, headerActions }: { title:
     }
 
     fetchAdminChrome()
-    window.addEventListener('admin-notifications-refresh', refreshNotifications)
+    if (!isBuilderUser) window.addEventListener('admin-notifications-refresh', refreshNotifications)
     window.addEventListener('admin-pages-refresh', fetchAdminChrome)
-    window.addEventListener('focus', refreshNotifications)
+    if (!isBuilderUser) window.addEventListener('focus', refreshNotifications)
 
-    const intervalId = window.setInterval(refreshNotifications, 60000)
+    const intervalId = isBuilderUser ? null : window.setInterval(refreshNotifications, 60000)
 
     return () => {
       isMounted = false
-      window.removeEventListener('admin-notifications-refresh', refreshNotifications)
+      if (!isBuilderUser) window.removeEventListener('admin-notifications-refresh', refreshNotifications)
       window.removeEventListener('admin-pages-refresh', fetchAdminChrome)
-      window.removeEventListener('focus', refreshNotifications)
-      window.clearInterval(intervalId)
+      if (!isBuilderUser) window.removeEventListener('focus', refreshNotifications)
+      if (intervalId) window.clearInterval(intervalId)
     }
-  }, [])
+  }, [isBuilderUser])
 
   useEffect(() => {
     const handleOutlineSync = (event: Event) => {
@@ -489,6 +496,16 @@ export default function AdminLayout({ title, children, headerActions }: { title:
     isPublished: page.isPublished !== false,
     seoScore: computeNavSeoScore(page, Array.isArray(page.sections) ? page.sections : [])
   }))
+  const visiblePrimaryLinks = isBuilderUser ? [] : primaryLinks
+  const visibleAdminGroups = isBuilderUser
+    ? adminGroups
+      .filter((group) => group.label === 'Pages')
+      .map((group) => ({ ...group, links: [] }))
+    : adminGroups
+  const visibleUtilityLinks = isBuilderUser ? [] : utilityLinks
+  const visibleMobilePrimaryLinks = isBuilderUser
+    ? [{ label: 'Pages', path: '/admin/pages?page=home', icon: FiFileText }]
+    : mobilePrimaryLinks
   const activePageParams = new URLSearchParams(location.search)
   const activePageKey = activePageParams.get('custom')
     ? `custom:${activePageParams.get('custom')}`
@@ -803,9 +820,9 @@ export default function AdminLayout({ title, children, headerActions }: { title:
 
         <div className="grid grid-cols-4 gap-2 border-b border-gray-200 px-4 py-3">
           {[
-            { label: 'Menu', value: String(primaryLinks.length + adminGroups.length + utilityLinks.length) },
+            { label: 'Menu', value: String(visiblePrimaryLinks.length + visibleAdminGroups.length + visibleUtilityLinks.length) },
             { label: 'Pages', value: String(customPages.length + builtInPageLinks.length) },
-            { label: 'Alerts', value: String(notifications.total) },
+            { label: 'Alerts', value: String(isBuilderUser ? 0 : notifications.total) },
             { label: 'Theme', value: theme === 'dark' ? 'Dark' : 'Light' }
           ].map((item) => (
             <div key={item.label} className="rounded-xl bg-gray-50 px-2 py-3 text-center">
@@ -817,7 +834,7 @@ export default function AdminLayout({ title, children, headerActions }: { title:
 
         <nav className="flex-1 overflow-y-auto px-4 py-4">
           <div className="mb-5 grid grid-cols-2 gap-2">
-            {primaryLinks.filter(link => matchesSearch(link.label)).map((link) => {
+            {visiblePrimaryLinks.filter(link => matchesSearch(link.label)).map((link) => {
               const Icon = link.icon
               const active = location.pathname === link.path || location.pathname.startsWith(`${link.path}/`)
               return (
@@ -837,7 +854,7 @@ export default function AdminLayout({ title, children, headerActions }: { title:
           </div>
 
           <div className="space-y-4">
-            {adminGroups.map((group) => {
+            {visibleAdminGroups.map((group) => {
               const GroupIcon = group.icon
               const groupActive = group.label === 'Pages' ? location.pathname.startsWith('/admin/pages') || isGroupActive(group.links) : isGroupActive(group.links)
               const pageLinks: PageNavLink[] = group.label === 'Pages'
@@ -946,7 +963,7 @@ export default function AdminLayout({ title, children, headerActions }: { title:
         <div className="hidden w-full flex-col border-b border-gray-200 lg:flex lg:h-full lg:border-b-0 lg:border-r">
           <div className={`border-b border-gray-200 ${sidebarOpen ? 'p-5' : 'p-3'}`}>
             <div className={`flex ${sidebarOpen ? 'items-center justify-between gap-3' : 'flex-col items-center gap-2'}`}>
-              <Link to="/admin/dashboard" className={`inline-flex min-w-0 items-center gap-2 text-lg font-black text-gray-900 ${sidebarOpen ? '' : 'justify-center'}`} title={adminPortalName}>
+              <Link to={adminHomePath} className={`inline-flex min-w-0 items-center gap-2 text-lg font-black text-gray-900 ${sidebarOpen ? '' : 'justify-center'}`} title={adminPortalName}>
                 {brandLogoUrl ? (
                   <img src={brandLogoUrl} alt={brandSiteName} className="w-auto object-contain shrink-0" style={{ height: `${sidebarOpen ? brandLogoSize : 28}px` }} />
                 ) : (
@@ -979,7 +996,7 @@ export default function AdminLayout({ title, children, headerActions }: { title:
 
           <nav className={`flex-1 overflow-auto ${sidebarOpen ? 'space-y-5 p-4' : 'space-y-2 p-3'}`}>
             <div className="space-y-1">
-              {primaryLinks.filter(link => matchesSearch(link.label)).map((link) => {
+              {visiblePrimaryLinks.filter(link => matchesSearch(link.label)).map((link) => {
                 const Icon = link.icon
                 return (
                   <NavLink key={link.path} to={link.path} onClick={() => setMobileSidebarOpen(false)} className={sidebarOpen ? sidebarLinkClass : collapsedLinkClass} title={link.label}>
@@ -992,7 +1009,7 @@ export default function AdminLayout({ title, children, headerActions }: { title:
               })}
             </div>
 
-            {adminGroups.map((group) => {
+            {visibleAdminGroups.map((group) => {
               const GroupIcon = group.icon
               const groupActive = group.label === 'Pages' ? location.pathname.startsWith('/admin/pages') || isGroupActive(group.links) : isGroupActive(group.links)
               const pageLinks: PageNavLink[] = group.label === 'Pages'
@@ -1099,7 +1116,7 @@ export default function AdminLayout({ title, children, headerActions }: { title:
             })}
 
             <div className="space-y-1">
-              {utilityLinks.filter(link => matchesSearch(link.label)).map((link) => {
+              {visibleUtilityLinks.filter(link => matchesSearch(link.label)).map((link) => {
                 const Icon = link.icon
                 return (
                   <NavLink key={link.path} to={link.path} onClick={() => setMobileSidebarOpen(false)} className={sidebarOpen ? sidebarLinkClass : collapsedLinkClass} title={link.label}>
@@ -1141,7 +1158,7 @@ export default function AdminLayout({ title, children, headerActions }: { title:
                   <FiMenu size={18} />
                 </button>
                 <div>
-                  <Link to="/admin/dashboard" className="hidden text-sm font-semibold text-blue-600 hover:text-blue-800 sm:inline-flex">
+                  <Link to={adminHomePath} className="hidden text-sm font-semibold text-blue-600 hover:text-blue-800 sm:inline-flex">
                     {adminPortalName}
                   </Link>
                   <h1 className="text-xl font-bold text-gray-900 sm:text-2xl md:text-3xl">{title}</h1>
@@ -1149,46 +1166,50 @@ export default function AdminLayout({ title, children, headerActions }: { title:
               </div>
               <div className="flex items-center gap-2">
                 {headerActions}
-                <div className="mx-1 hidden h-8 w-px bg-gray-200 md:block" aria-hidden="true" />
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={openNotifications}
-                    className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
-                    aria-label={`${notifications.total} new admin notifications`}
-                    title={`${notifications.newMessages} new messages, ${notifications.newTickets} new tickets`}
-                  >
-                    <FiBell size={20} />
-                    {notifications.total > 0 && (
-                      <span className="absolute -right-2 -top-2 min-w-6 h-6 px-1 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center ring-2 ring-white">
-                        {notifications.total > 99 ? '99+' : notifications.total}
-                      </span>
-                    )}
-                  </button>
-                  {notificationsOpen && (
-                    <div className="absolute right-0 top-12 z-50 w-[20rem] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border bg-white shadow-xl">
-                      <div className="border-b p-4">
-                        <h2 className="font-bold text-gray-900">Notifications</h2>
-                        <p className="text-sm text-gray-600">{notifications.total} item{notifications.total === 1 ? '' : 's'} need attention</p>
-                      </div>
-                      <div className="max-h-96 overflow-auto p-2">
-                        {notificationsLoading && <div className="p-3 text-sm text-gray-600">Loading notifications...</div>}
-                        {!notificationsLoading && notificationItems.length === 0 && <div className="p-3 text-sm text-gray-600">No new notifications.</div>}
-                        {!notificationsLoading && notificationItems.map(item => (
-                          <Link
-                            key={item.id}
-                            to={item.to}
-                            onClick={() => setNotificationsOpen(false)}
-                            className="block rounded-lg p-3 transition hover:bg-blue-50"
-                          >
-                            <span className="block text-sm font-bold text-gray-900">{item.title}</span>
-                            <span className="mt-1 line-clamp-2 block text-xs text-gray-600">{item.body}</span>
-                          </Link>
-                        ))}
-                      </div>
+                {!isBuilderUser && (
+                  <>
+                    <div className="mx-1 hidden h-8 w-px bg-gray-200 md:block" aria-hidden="true" />
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={openNotifications}
+                        className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
+                        aria-label={`${notifications.total} new admin notifications`}
+                        title={`${notifications.newMessages} new messages, ${notifications.newTickets} new tickets`}
+                      >
+                        <FiBell size={20} />
+                        {notifications.total > 0 && (
+                          <span className="absolute -right-2 -top-2 min-w-6 h-6 px-1 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center ring-2 ring-white">
+                            {notifications.total > 99 ? '99+' : notifications.total}
+                          </span>
+                        )}
+                      </button>
+                      {notificationsOpen && (
+                        <div className="absolute right-0 top-12 z-50 w-[20rem] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border bg-white shadow-xl">
+                          <div className="border-b p-4">
+                            <h2 className="font-bold text-gray-900">Notifications</h2>
+                            <p className="text-sm text-gray-600">{notifications.total} item{notifications.total === 1 ? '' : 's'} need attention</p>
+                          </div>
+                          <div className="max-h-96 overflow-auto p-2">
+                            {notificationsLoading && <div className="p-3 text-sm text-gray-600">Loading notifications...</div>}
+                            {!notificationsLoading && notificationItems.length === 0 && <div className="p-3 text-sm text-gray-600">No new notifications.</div>}
+                            {!notificationsLoading && notificationItems.map(item => (
+                              <Link
+                                key={item.id}
+                                to={item.to}
+                                onClick={() => setNotificationsOpen(false)}
+                                className="block rounded-lg p-3 transition hover:bg-blue-50"
+                              >
+                                <span className="block text-sm font-bold text-gray-900">{item.title}</span>
+                                <span className="mt-1 line-clamp-2 block text-xs text-gray-600">{item.body}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </>
+                )}
                 <button
                   type="button"
                   onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}
@@ -1250,7 +1271,7 @@ export default function AdminLayout({ title, children, headerActions }: { title:
 
       <nav className="admin-mobile-footer fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
         <div className="grid grid-cols-5 gap-1">
-          {mobilePrimaryLinks.map((link) => {
+          {visibleMobilePrimaryLinks.map((link) => {
             const Icon = link.icon
             const active = isMobilePrimaryActive(link.path)
             return (
