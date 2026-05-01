@@ -4185,6 +4185,29 @@ function PageSettingsInspector({ title, editor, isOpen = true, setIsOpen = () =>
 }
 
 function SectionInspector({ title, section, rawSection, index, updateSection, removeSection, duplicateSection, uploadImageToField, openMediaPicker, isOpen = true, setIsOpen = () => {} }: any) {
+  const [activeTab, setActiveTab] = useState('content')
+  const hasButtonControls = ['banner', 'hero', 'cta', 'imageOverlay', 'button'].includes(section?.type)
+  const availableTabs = useMemo(() => {
+    const tabs = [
+      { key: 'content', label: 'Content' },
+      { key: 'spacing', label: 'Spacing' },
+      { key: 'responsive', label: 'Responsive' },
+      { key: 'colors', label: 'Colors' },
+      { key: 'typography', label: 'Typography' },
+      { key: 'animations', label: 'Animations' }
+    ]
+    if (hasButtonControls) tabs.splice(4, 0, { key: 'buttons', label: 'Buttons' })
+    return tabs
+  }, [hasButtonControls])
+
+  useEffect(() => {
+    if (!availableTabs.some((tab) => tab.key === activeTab)) setActiveTab('content')
+  }, [activeTab, availableTabs])
+
+  useEffect(() => {
+    setActiveTab('content')
+  }, [section?.id])
+
   if (!section || index < 0) {
     return (
       <section className="h-full bg-white">
@@ -4219,41 +4242,67 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
 
       <div className={`min-h-0 flex-1 overflow-hidden border-t transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[calc(100vh-12rem)] opacity-100' : 'max-h-0 opacity-0 border-t-0'}`}>
       <div className="h-full min-h-0 space-y-4 overflow-y-auto p-4 pb-8">
-        <div className="rounded-lg border bg-gray-50 p-4">
-          <label className="mb-2 block text-sm font-bold text-gray-700">Section Type</label>
-          <select value={section.type || 'paragraph'} onChange={(e) => updateSection(index, 'type', e.target.value)} className="w-full px-4 py-2 border rounded-lg">
-            {sectionTypeOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
+        <div className="sticky top-0 z-10 -mx-4 border-b bg-white px-4 pb-4">
+          <div className="flex items-start justify-between gap-3 pt-2">
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Selected Section</p>
+              <p className="truncate text-base font-semibold text-gray-900">{getSectionTitle(section, index)}</p>
+              {rawSection?.syncedBlockId && <p className="mt-1 text-xs text-blue-700">Synced block linked</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => duplicateSection(index)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg border text-gray-700 transition hover:bg-gray-50" title="Duplicate section" aria-label="Duplicate section">
+                <FiCopy />
+              </button>
+              <button type="button" onClick={() => updateSection(index, 'isHidden', !section.isHidden)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg border text-gray-700 transition hover:bg-gray-50" title={section.isHidden ? 'Show section' : 'Hide section'} aria-label={section.isHidden ? 'Show section' : 'Hide section'}>
+                {section.isHidden ? <FiEye /> : <FiEyeOff />}
+              </button>
+              <button type="button" onClick={() => removeSection(index)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50" title="Delete section" aria-label="Delete section">
+                <FiTrash2 />
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 overflow-x-auto">
+            <div className="inline-flex min-w-full gap-2 rounded-lg bg-gray-100 p-1">
+              {availableTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`rounded-md px-3 py-2 text-sm font-semibold transition ${activeTab === tab.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {rawSection?.syncedBlockId && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-            This section is linked to the synced block <strong>{rawSection.syncedBlockName || section.title || 'Synced Block'}</strong>. Changes here will update every page using it.
-          </div>
+        {activeTab === 'content' && (
+          <>
+            <div className="rounded-lg border bg-gray-50 p-4">
+              <label className="mb-2 block text-sm font-bold text-gray-700">Section Type</label>
+              <select value={section.type || 'paragraph'} onChange={(e) => updateSection(index, 'type', e.target.value)} className="w-full px-4 py-2 border rounded-lg">
+                {sectionTypeOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
+
+            {rawSection?.syncedBlockId && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                This section is linked to the synced block <strong>{rawSection.syncedBlockName || section.title || 'Synced Block'}</strong>. Changes here will update every page using it.
+              </div>
+            )}
+          </>
         )}
 
-        <div className="grid grid-cols-3 gap-2">
-          <button type="button" onClick={() => duplicateSection(index)} className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50">
-            <FiCopy />
-            Duplicate
-          </button>
-          <button type="button" onClick={() => updateSection(index, 'isHidden', !section.isHidden)} className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50">
-            {section.isHidden ? <FiEye /> : <FiEyeOff />}
-            {section.isHidden ? 'Show' : 'Hide'}
-          </button>
-          <button type="button" onClick={() => removeSection(index)} className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-bold text-red-600 transition hover:bg-red-50">
-            <FiTrash2 />
-            Delete
-          </button>
-        </div>
+        {activeTab === 'spacing' && <SectionSpacingControls section={section} index={index} updateSection={updateSection} plain />}
+        {activeTab === 'responsive' && <SectionResponsiveControls section={section} index={index} updateSection={updateSection} plain />}
+        {activeTab === 'colors' && <SectionColorControls section={section} index={index} updateSection={updateSection} plain />}
+        {activeTab === 'buttons' && hasButtonControls && <SectionButtonControls section={section} index={index} updateSection={updateSection} plain />}
+        {activeTab === 'typography' && <SectionTypographyControls section={section} index={index} updateSection={updateSection} plain />}
+        {activeTab === 'animations' && <SectionAnimationControls section={section} index={index} updateSection={updateSection} plain />}
 
-        <SectionSpacingControls section={section} index={index} updateSection={updateSection} />
-        <SectionResponsiveControls section={section} index={index} updateSection={updateSection} />
-        <SectionColorControls section={section} index={index} updateSection={updateSection} />
-        {['banner', 'hero', 'cta', 'imageOverlay', 'button'].includes(section.type) && <SectionButtonControls section={section} index={index} updateSection={updateSection} />}
-        <SectionTypographyControls section={section} index={index} updateSection={updateSection} />
-        <SectionAnimationControls section={section} index={index} updateSection={updateSection} />
-
+        {activeTab === 'content' && (
+          <>
         {(section.type === 'banner' || section.type === 'hero' || section.type === 'cta' || section.type === 'imageOverlay' || section.type === 'button') && (
           <div className="space-y-3">
             {section.type !== 'button' && <input value={section.title || ''} onChange={(e) => updateSection(index, 'title', e.target.value)} placeholder="Heading" className="w-full px-4 py-2 border rounded-lg" />}
@@ -4797,6 +4846,8 @@ function SectionInspector({ title, section, rawSection, index, updateSection, re
               </>
             )}
           </div>
+        )}
+          </>
         )}
       </div>
       </div>
@@ -6059,7 +6110,7 @@ function MapPinsEditor({ section, index, updateSection }: any) {
   )
 }
 
-function SectionSpacingControls({ section, index, updateSection }: any) {
+function SectionSpacingControls({ section, index, updateSection, plain = false }: any) {
   const spacingGroups = [
     {
       title: 'Margin',
@@ -6086,8 +6137,7 @@ function SectionSpacingControls({ section, index, updateSection }: any) {
     return Number.isFinite(value) ? value : 0
   }
 
-  return (
-    <InspectorCollapsible title="Spacing">
+  const content = (
       <div className="space-y-5">
         {spacingGroups.map(group => (
           <div key={group.title} className="space-y-3">
@@ -6121,11 +6171,14 @@ function SectionSpacingControls({ section, index, updateSection }: any) {
           </div>
         ))}
       </div>
-    </InspectorCollapsible>
   )
+
+  if (plain) return <div className="rounded-lg border bg-white p-4">{content}</div>
+
+  return <InspectorCollapsible title="Spacing">{content}</InspectorCollapsible>
 }
 
-function SectionResponsiveControls({ section, index, updateSection }: any) {
+function SectionResponsiveControls({ section, index, updateSection, plain = false }: any) {
   const devices: Array<{ key: 'tablet' | 'mobile'; label: string }> = [
     { key: 'tablet', label: 'Tablet' },
     { key: 'mobile', label: 'Mobile' }
@@ -6170,8 +6223,7 @@ function SectionResponsiveControls({ section, index, updateSection }: any) {
     </label>
   )
 
-  return (
-    <InspectorCollapsible title="Responsive">
+  const content = (
       <div className="space-y-5">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-gray-700">
@@ -6253,11 +6305,14 @@ function SectionResponsiveControls({ section, index, updateSection }: any) {
           </div>
         ))}
       </div>
-    </InspectorCollapsible>
   )
+
+  if (plain) return <div className="rounded-lg border bg-white p-4">{content}</div>
+
+  return <InspectorCollapsible title="Responsive">{content}</InspectorCollapsible>
 }
 
-function SectionColorControls({ section, index, updateSection }: any) {
+function SectionColorControls({ section, index, updateSection, plain = false }: any) {
   const colorFields = [
     { key: 'backgroundColor', label: 'Background' },
     { key: 'headingColor', label: 'Headings' },
@@ -6288,8 +6343,7 @@ function SectionColorControls({ section, index, updateSection }: any) {
     return Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 100
   })()
 
-  return (
-    <InspectorCollapsible title="Colors">
+  const content = (
       <div className="space-y-5">
         <div className="space-y-3">
         {colorFields.map(field => (
@@ -6376,8 +6430,11 @@ function SectionColorControls({ section, index, updateSection }: any) {
           ))}
         </div>
       </div>
-    </InspectorCollapsible>
   )
+
+  if (plain) return <div className="rounded-lg border bg-white p-4">{content}</div>
+
+  return <InspectorCollapsible title="Colors">{content}</InspectorCollapsible>
 }
 
 function SectionPanelStyleControls({ section, index, updateSection, prefix, title }: any) {
@@ -6447,7 +6504,7 @@ function SectionPanelStyleControls({ section, index, updateSection, prefix, titl
   )
 }
 
-function SectionButtonControls({ section, index, updateSection }: any) {
+function SectionButtonControls({ section, index, updateSection, plain = false }: any) {
   const colorValue = (value: string, fallback = '#2563eb') => /^#[0-9A-F]{6}$/i.test(value || '') ? value : fallback
   const getNumericValue = (key: string, fallback = 0) => {
     const value = Number(section[key] || fallback)
@@ -6543,8 +6600,7 @@ function SectionButtonControls({ section, index, updateSection }: any) {
     </label>
   )
 
-  return (
-    <InspectorCollapsible title="Button">
+  const content = (
       <div className="space-y-5">
         {renderButtonOverrideControls({
           prefix: 'button',
@@ -6559,11 +6615,14 @@ function SectionButtonControls({ section, index, updateSection }: any) {
           textFallback: '#111827'
         })}
       </div>
-    </InspectorCollapsible>
   )
+
+  if (plain) return <div className="rounded-lg border bg-white p-4">{content}</div>
+
+  return <InspectorCollapsible title="Button">{content}</InspectorCollapsible>
 }
 
-function SectionTypographyControls({ section, index, updateSection }: any) {
+function SectionTypographyControls({ section, index, updateSection, plain = false }: any) {
   const getNumericValue = (key: string, fallback = 0) => {
     const value = Number(section[key] || fallback)
     return Number.isFinite(value) ? value : fallback
@@ -6612,8 +6671,7 @@ function SectionTypographyControls({ section, index, updateSection }: any) {
     )
   }
 
-  return (
-    <InspectorCollapsible title="Typography">
+  const content = (
       <div className="space-y-5">
         <label className="block text-sm font-semibold text-gray-700">
           Text alignment
@@ -6712,11 +6770,14 @@ function SectionTypographyControls({ section, index, updateSection }: any) {
           </label>
         </div>
       </div>
-    </InspectorCollapsible>
   )
+
+  if (plain) return <div className="rounded-lg border bg-white p-4">{content}</div>
+
+  return <InspectorCollapsible title="Typography">{content}</InspectorCollapsible>
 }
 
-function SectionAnimationControls({ section, index, updateSection }: any) {
+function SectionAnimationControls({ section, index, updateSection, plain = false }: any) {
   const getNumericValue = (key: string, fallback = 0) => {
     const value = Number(section[key] ?? fallback)
     return Number.isFinite(value) ? value : fallback
@@ -6737,8 +6798,7 @@ function SectionAnimationControls({ section, index, updateSection }: any) {
     { label: 'Linear', value: 'linear' }
   ]
 
-  return (
-    <InspectorCollapsible title="Animation">
+  const content = (
       <div className="space-y-5">
         <label className="block text-sm font-semibold text-gray-700">
           Entrance animation
@@ -6781,8 +6841,11 @@ function SectionAnimationControls({ section, index, updateSection }: any) {
           </label>
         </div>
       </div>
-    </InspectorCollapsible>
   )
+
+  if (plain) return <div className="rounded-lg border bg-white p-4">{content}</div>
+
+  return <InspectorCollapsible title="Animation">{content}</InspectorCollapsible>
 }
 
 function SectionPanelAnimationControls({ section, index, updateSection, prefix, title }: any) {
