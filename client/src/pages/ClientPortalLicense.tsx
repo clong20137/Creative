@@ -55,6 +55,9 @@ export default function ClientPortalLicense() {
   const hasActiveLicense = Boolean(licenseStatus?.hasActiveLicense)
   const activePlanId = license?.planId ? String(license.planId) : ''
   const sortedPlans = useMemo(() => [...plans].sort((a, b) => Number(a.price || 0) - Number(b.price || 0)), [plans])
+  const primaryLicenseAction = hasActiveLicense
+    ? { label: 'Open Billing', to: '/client-dashboard/billing' }
+    : { label: 'Choose a Plan', to: '#license-plans' }
 
   const startCheckout = async (planId: string) => {
     try {
@@ -118,7 +121,7 @@ export default function ClientPortalLicense() {
           <section className={`rounded-2xl border p-4 sm:p-6 lg:p-8 ${hasActiveLicense ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}>
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-gray-600">
                   <FiKey /> License Status
                 </p>
                 <h2 className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">
@@ -132,15 +135,35 @@ export default function ClientPortalLicense() {
                     : 'Pick a license plan below to start your monthly CMS subscription, set the licensed domain, and unlock all CMS features.'}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <button onClick={fetchLicense} className="btn-secondary inline-flex items-center gap-2">
+              <div className="flex flex-wrap gap-3 lg:max-w-xs lg:justify-end">
+                <Link to={primaryLicenseAction.to} className="btn-primary inline-flex items-center gap-2">
+                  {primaryLicenseAction.label} <FiArrowRight />
+                </Link>
+                <button onClick={fetchLicense} className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 font-semibold text-gray-700 transition hover:border-gray-400 hover:bg-gray-50">
                   <FiRefreshCw /> Refresh Status
                 </button>
-                <Link to="/client-dashboard/billing" className="btn-primary">
-                  Open Billing
-                </Link>
               </div>
             </div>
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+            <WorkflowCard
+              eyebrow="Primary action"
+              title={hasActiveLicense ? 'Keep billing current' : 'Start the CMS license'}
+              copy={hasActiveLicense
+                ? 'Billing is the main place to manage renewals, payment methods, and plan changes.'
+                : 'Choose a license plan, confirm the domain, and complete checkout to unlock the full CMS.'}
+            />
+            <WorkflowCard
+              eyebrow="Domain"
+              title={license?.licensedDomain || licensedDomain || 'Set the licensed domain'}
+              copy="The licensed domain is what ties this CMS plan to the live site you want to run."
+            />
+            <WorkflowCard
+              eyebrow="Update channel"
+              title={license?.updateChannel === 'early-access' ? 'Early Access' : 'Stable'}
+              copy="Stable is the default path. Early Access should only be used when you want new features sooner."
+            />
           </section>
 
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
@@ -267,8 +290,9 @@ export default function ClientPortalLicense() {
             </div>
           </section>
 
-          <section className="space-y-4">
+          <section id="license-plans" className="space-y-4">
             <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Plan selection</p>
               <h3 className="text-2xl font-bold text-gray-900">Choose a License Plan</h3>
               <p className="mt-2 text-gray-600">Start a new CMS subscription, renew on a different tier, or move to a different update channel.</p>
             </div>
@@ -358,5 +382,15 @@ export default function ClientPortalLicense() {
         </div>
       )}
     </ClientLayout>
+  )
+}
+
+function WorkflowCard({ eyebrow, title, copy }: { eyebrow: string; title: string; copy: string }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white px-5 py-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">{eyebrow}</p>
+      <h3 className="mt-2 text-lg font-bold text-gray-900">{title}</h3>
+      <p className="mt-2 text-sm text-gray-600">{copy}</p>
+    </div>
   )
 }

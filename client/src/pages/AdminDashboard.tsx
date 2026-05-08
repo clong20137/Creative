@@ -103,27 +103,43 @@ export default function AdminDashboard() {
           </div>
         ) : null}
 
-        {/* Quick Links */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-          {[
-            { label: 'Manage Clients', url: '/admin/clients', icon: FiUsers },
-            { label: 'View Projects', url: '/admin/projects', icon: FiFileText },
-            { label: 'Invoices', url: '/admin/invoices', icon: FiBarChart },
-            { label: 'Subscriptions', url: '/admin/subscriptions', icon: FiTrendingUp }
-          ].map((link, i) => {
-            const Icon = link.icon
-            return (
-              <button
-                key={i}
-                onClick={() => navigate(link.url)}
-                className="card p-4 text-center transition hover:shadow-lg sm:p-5 lg:p-6"
-              >
-                <Icon size={28} className="mx-auto mb-2 text-blue-600 sm:mb-3 sm:text-[32px]" />
-                <p className="text-sm font-semibold text-gray-900 sm:text-base">{link.label}</p>
+        <section className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr,1fr] xl:gap-6">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Primary workflow</p>
+            <h2 className="mt-2 text-2xl font-bold text-gray-900">Run the business from one place</h2>
+            <p className="mt-2 max-w-2xl text-sm text-gray-600 sm:text-base">
+              Clients, projects, invoices, and subscriptions are the four admin paths used most often. Start with the one that directly matches the work in front of you.
+            </p>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <button onClick={() => navigate('/admin/clients')} className="btn-primary">
+                Manage Clients
               </button>
-            )
-          })}
-        </div>
+              <button onClick={() => navigate('/admin/projects')} className="btn-secondary">
+                View Projects
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {[
+              { label: 'Invoices', detail: 'Create, send, and track payments.', url: '/admin/invoices', icon: FiBarChart },
+              { label: 'Subscriptions', detail: 'Control plans, seats, and licensing.', url: '/admin/subscriptions', icon: FiTrendingUp }
+            ].map((link, i) => {
+              const Icon = link.icon
+              return (
+                <button
+                  key={i}
+                  onClick={() => navigate(link.url)}
+                  className="rounded-2xl border border-gray-200 bg-white p-5 text-left transition hover:border-blue-200 hover:shadow-lg"
+                >
+                  <Icon size={28} className="mb-3 text-blue-600 sm:text-[32px]" />
+                  <p className="text-base font-semibold text-gray-900">{link.label}</p>
+                  <p className="mt-1 text-sm text-gray-600">{link.detail}</p>
+                </button>
+              )
+            })}
+          </div>
+        </section>
 
         <SeoDashboardPanel data={seoDashboard} />
         <SiteHealthPanel data={siteHealth} navigate={navigate} />

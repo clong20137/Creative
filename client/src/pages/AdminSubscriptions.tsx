@@ -27,6 +27,16 @@ const emptyPlanForm = {
   isActive: true
 }
 
+function SummaryCard({ label, value, helper }: { label: string; value: string; helper: string }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">{label}</p>
+      <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
+      <p className="mt-1 text-sm text-gray-600">{helper}</p>
+    </div>
+  )
+}
+
 export default function AdminSubscriptions() {
   const [clients, setClients] = useState<any[]>([])
   const [plans, setPlans] = useState<any[]>([])
@@ -241,6 +251,14 @@ export default function AdminSubscriptions() {
   const servicePlans = plans.filter((plan) => plan.productType !== 'cms-license')
   const licensePlans = plans.filter((plan) => plan.productType === 'cms-license')
   const selectedPlan = plans.find((plan) => String(plan.id) === assignment.planId)
+  const totalBuilderSeats = licenses.reduce((sum, license) => {
+    const builderState = builderAccountsByLicense[String(license.id)]
+    return sum + Number(builderState?.maxBuilderAccounts || 0)
+  }, 0)
+  const totalBuilderAccounts = licenses.reduce((sum, license) => {
+    const builderState = builderAccountsByLicense[String(license.id)]
+    return sum + Number(builderState?.currentCount || 0)
+  }, 0)
 
   return (
     <AdminLayout title="Subscriptions">
@@ -251,11 +269,19 @@ export default function AdminSubscriptions() {
         <PageSkeleton />
       ) : (
         <div className="space-y-6 pb-28 md:space-y-10">
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <SummaryCard label="Plans" value={String(plans.length)} helper={`${licensePlans.length} CMS licenses`} />
+            <SummaryCard label="Client subscriptions" value={String(subscriptions.length)} helper={`${subscriptions.filter((item) => item.status === 'active').length} active`} />
+            <SummaryCard label="CMS licenses" value={String(licenses.length)} helper={`${licenses.filter((item) => item.status === 'active').length} active`} />
+            <SummaryCard label="Builder seats" value={totalBuilderSeats ? `${totalBuilderAccounts}/${totalBuilderSeats}` : `${totalBuilderAccounts}`} helper={totalBuilderSeats ? 'Used across all CMS licenses' : 'Unlimited until a seat cap is set'} />
+          </section>
+
           <section>
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Primary setup</p>
                 <h2 className="text-xl font-bold text-gray-900 md:text-2xl">Subscription Plans</h2>
-                <p className="text-sm text-gray-600 md:text-base">Manage the plans clients can be assigned to.</p>
+                <p className="text-sm text-gray-600 md:text-base">Create the plans first. Assignments, CMS licenses, and builder seat limits all inherit from these settings.</p>
               </div>
               <button
                 onClick={() => {
@@ -490,7 +516,11 @@ export default function AdminSubscriptions() {
 
           <section className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
             <form onSubmit={handleAssign} className="card space-y-4 p-4 md:p-6">
-              <h2 className="text-xl font-bold text-gray-900 md:text-2xl">Assign to Client</h2>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Common workflow</p>
+                <h2 className="text-xl font-bold text-gray-900 md:text-2xl">Assign to Client</h2>
+                <p className="mt-2 text-sm text-gray-600">Pick the client first, then choose the live plan they should inherit.</p>
+              </div>
               <select
                 value={assignment.clientId}
                 onChange={(e) => setAssignment({ ...assignment, clientId: e.target.value })}
@@ -534,6 +564,11 @@ export default function AdminSubscriptions() {
             </form>
 
             <div className="lg:col-span-2">
+              <div className="mb-4 rounded-2xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Secondary management</p>
+                <h3 className="mt-1 text-lg font-bold text-gray-900">Existing client subscriptions</h3>
+                <p className="mt-1 text-sm text-gray-600">Use this table for review and cancellations. New work should start from the assignment form.</p>
+              </div>
               <div className="space-y-3 md:hidden">
                 {subscriptions.map((subscription) => (
                   <article key={subscription.id} className="rounded-xl border bg-white p-4 shadow-sm">
@@ -622,6 +657,7 @@ export default function AdminSubscriptions() {
 
           <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div className="card p-4 md:p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Reference</p>
               <h2 className="text-xl font-bold text-gray-900 md:text-2xl">Service Plans</h2>
               <p className="mt-2 text-sm text-gray-600">These plans power normal recurring services and do not control CMS access.</p>
               <div className="mt-4 space-y-3">
@@ -643,6 +679,7 @@ export default function AdminSubscriptions() {
             </div>
 
             <div className="card p-4 md:p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Reference</p>
               <h2 className="text-xl font-bold text-gray-900 md:text-2xl">CMS License Plans</h2>
               <p className="mt-2 text-sm text-gray-600">These unlock the CMS itself and are tracked separately from service subscriptions.</p>
               <div className="mt-4 space-y-3">
@@ -666,6 +703,7 @@ export default function AdminSubscriptions() {
 
           <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr,1.6fr] xl:gap-6">
             <div className="card space-y-4 p-4 md:p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Client access</p>
               <h2 className="text-xl font-bold text-gray-900 md:text-2xl">CMS Licenses</h2>
               <p className="text-sm text-gray-600">
                 Active CMS licenses unlock the full client-side CMS experience, separately from service subscriptions.
@@ -754,6 +792,7 @@ export default function AdminSubscriptions() {
 
           <section className="space-y-4">
             <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Builder workflow</p>
               <h2 className="text-xl font-bold text-gray-900 md:text-2xl">Site Builder Accounts</h2>
               <p className="mt-2 text-sm text-gray-600">Builder accounts sign in directly to Pro Builder. Seat limits are enforced from each CMS license plan’s team member limit.</p>
             </div>

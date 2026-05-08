@@ -2317,6 +2317,36 @@ export default function AdminPages() {
       {message && <div className="mx-2 mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 md:mx-4 md:mb-6">{message}</div>}
       {autosaveMessage && !message && <div className="mx-2 mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 md:mx-4 md:mb-6">{autosaveMessage}</div>}
       {error && <div className="mx-2 mb-4 rounded-lg border border-red-400 bg-red-100 p-4 text-sm text-red-700 md:mx-4 md:mb-6">{error}</div>}
+      <section className="mx-2 mb-4 rounded-2xl border border-gray-200 bg-white px-4 py-4 shadow-sm md:mx-4 md:mb-6 md:px-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Current workflow</p>
+            <h2 className="mt-1 text-lg font-bold text-gray-900">{activePageLabel}</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              {activeTab === 'Custom Pages'
+                ? 'Edit the page directly in the preview, then save once the layout and copy are ready.'
+                : 'Adjust the built-in page in the preview. Changes stay local until you save the page.'}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:min-w-[36rem]">
+            <BuilderWorkflowStat
+              label="Save state"
+              value={hasUnsavedChanges ? 'Needs save' : 'Saved'}
+              tone={hasUnsavedChanges ? 'blue' : 'emerald'}
+            />
+            <BuilderWorkflowStat
+              label="Selected section"
+              value={selectedSection ? getSectionTitle(selectedSection, selectedSectionIndex) : 'None selected'}
+              tone={selectedSection ? 'gray' : 'amber'}
+            />
+            <BuilderWorkflowStat
+              label="Sections on page"
+              value={String(activeSectionsRaw.length)}
+              tone="gray"
+            />
+          </div>
+        </div>
+      </section>
       {loading ? <PageSkeleton /> : (
         <div className="grid min-h-[calc(100vh-12rem)] grid-cols-1 items-start gap-3 transition-all duration-300 xl:grid-cols-[var(--editor-grid)]" style={{ '--editor-grid': editorGridColumns } as any}>
           <div className="space-y-4 px-1 md:space-y-6">
@@ -3994,6 +4024,22 @@ function PagePreviewPanel({ title, sections, draggingSectionIndex, setDraggingSe
         </div>
       </div>
     </section>
+  )
+}
+
+function BuilderWorkflowStat({ label, value, tone = 'gray' }: { label: string; value: string; tone?: 'gray' | 'blue' | 'emerald' | 'amber' }) {
+  const toneClasses = {
+    gray: 'border-gray-200 bg-gray-50 text-gray-900',
+    blue: 'border-blue-200 bg-blue-50 text-blue-900',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+    amber: 'border-amber-200 bg-amber-50 text-amber-900'
+  }
+
+  return (
+    <div className={`rounded-xl border px-4 py-3 ${toneClasses[tone]}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold">{value}</p>
+    </div>
   )
 }
 

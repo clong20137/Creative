@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FiDownload, FiMessageSquare, FiCheckCircle, FiClock, FiKey } from 'react-icons/fi'
+import { FiArrowRight, FiDownload, FiMessageSquare, FiCheckCircle, FiClock, FiKey } from 'react-icons/fi'
 import { licensesAPI, projectsAPI } from '../services/api'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import ClientLayout from '../components/ClientLayout'
@@ -80,7 +80,7 @@ export default function ClientDashboard() {
           }`}>
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="client-dashboard-license-eyebrow inline-flex items-center gap-2 text-sm font-semibold">
+                <p className="client-dashboard-license-eyebrow inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em]">
                   <FiKey /> CMS License
                 </p>
                 <h2 className="client-dashboard-license-heading mt-2 text-xl font-bold sm:text-2xl">
@@ -99,15 +99,42 @@ export default function ClientDashboard() {
           </div>
         )}
 
+        <section className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3 sm:mb-8">
+          <ClientWorkflowCard
+            eyebrow="Primary action"
+            title={licenseStatus?.hasActiveLicense ? 'Keep the license healthy' : 'Restore CMS access'}
+            copy={licenseStatus?.hasActiveLicense
+              ? 'Use the license screen for billing, plan changes, and domain updates.'
+              : 'Go to the license screen first. That is the main blocker before any builder work happens.'}
+          />
+          <ClientWorkflowCard
+            eyebrow="Project work"
+            title={projects.length ? `${projects.length} project${projects.length === 1 ? '' : 's'} in motion` : 'No active projects yet'}
+            copy="Project cards below are where messaging and file handoff happen. Keep those as the day-to-day workflow."
+          />
+          <ClientWorkflowCard
+            eyebrow="Support"
+            title="Use support only when needed"
+            copy="Billing, settings, and license updates should stay self-serve. Support is the fallback path."
+          />
+        </section>
+
+        <section className="mb-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Quick actions</p>
+          <h2 className="mt-1 text-lg font-bold text-gray-900">Common account tasks</h2>
+        </section>
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:mb-8">
-          <Link to="/client-dashboard/billing" className="client-dashboard-shortcut card p-4 font-semibold transition hover:shadow-lg">
-            Billing
+          <Link to="/client-dashboard/billing" className="client-dashboard-shortcut rounded-2xl border border-gray-200 bg-white p-4 text-left transition hover:border-blue-200 hover:shadow-lg">
+            <p className="text-base font-semibold text-gray-900">Billing</p>
+            <p className="mt-1 text-sm text-gray-600">Manage payment methods, invoices, and renewals.</p>
           </Link>
-          <Link to="/client-dashboard/settings" className="client-dashboard-shortcut card p-4 font-semibold transition hover:shadow-lg">
-            Account Settings
+          <Link to="/client-dashboard/settings" className="client-dashboard-shortcut rounded-2xl border border-gray-200 bg-white p-4 text-left transition hover:border-blue-200 hover:shadow-lg">
+            <p className="text-base font-semibold text-gray-900">Account Settings</p>
+            <p className="mt-1 text-sm text-gray-600">Update profile, password, and sign-in preferences.</p>
           </Link>
-          <Link to="/client-dashboard/tickets" className="client-dashboard-shortcut card p-4 font-semibold transition hover:shadow-lg">
-            Support Tickets
+          <Link to="/client-dashboard/tickets" className="client-dashboard-shortcut rounded-2xl border border-gray-200 bg-white p-4 text-left transition hover:border-blue-200 hover:shadow-lg">
+            <p className="text-base font-semibold text-gray-900">Support Tickets</p>
+            <p className="mt-1 text-sm text-gray-600">Escalate questions that cannot be solved in billing or settings.</p>
           </Link>
         </div>
 
@@ -156,11 +183,11 @@ export default function ClientDashboard() {
                     Due: <span className="client-dashboard-strong font-bold">{project.dueDate ? new Date(project.dueDate).toLocaleDateString() : 'Not scheduled'}</span>
                   </div>
                   <div className="flex flex-col gap-3 sm:flex-row">
-                    <button className="btn-secondary flex items-center justify-center gap-2 px-4 py-2">
-                      <FiDownload size={18} /> Download
-                    </button>
                     <button className="btn-primary flex items-center justify-center gap-2 px-4 py-2">
                       <FiMessageSquare size={18} /> Message
+                    </button>
+                    <button className="btn-secondary flex items-center justify-center gap-2 px-4 py-2">
+                      <FiDownload size={18} /> Download
                     </button>
                   </div>
                 </div>
@@ -193,14 +220,24 @@ export default function ClientDashboard() {
           <h3 className="client-dashboard-strong mb-2 text-lg font-bold">Need Help?</h3>
           <p className="client-dashboard-copy mb-4">Have questions about your projects? Our team is here to help.</p>
           <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-            <button className="btn-primary px-4 py-2">
-              Contact Support
-            </button>
-            <button className="btn-secondary px-4 py-2">
+            <Link to="/client-dashboard/tickets" className="btn-primary inline-flex items-center justify-center gap-2 px-4 py-2">
+              Contact Support <FiArrowRight size={16} />
+            </Link>
+            <Link to="/faq" className="btn-secondary inline-flex items-center justify-center gap-2 px-4 py-2">
               View FAQ
-            </button>
+            </Link>
           </div>
         </div>
     </ClientLayout>
+  )
+}
+
+function ClientWorkflowCard({ eyebrow, title, copy }: { eyebrow: string; title: string; copy: string }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white px-5 py-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">{eyebrow}</p>
+      <h3 className="mt-2 text-lg font-bold text-gray-900">{title}</h3>
+      <p className="mt-2 text-sm text-gray-600">{copy}</p>
+    </div>
   )
 }
