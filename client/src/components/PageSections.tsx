@@ -2538,11 +2538,47 @@ function ContactFormSection() {
   )
 }
 
+function fieldOptions(field: any) {
+  return String(field?.options || '')
+    .split('\n')
+    .map((option: string) => option.trim())
+    .filter(Boolean)
+}
+
+function matchesFieldCondition(field: any, formData: Record<string, any>) {
+  if (!field?.showWhenFieldId) return true
+  const relatedValue = formData[field.showWhenFieldId]
+  const operator = field.showWhenOperator || 'equals'
+  const expectedValue = String(field.showWhenValue || '')
+
+  if (operator === 'checked') return relatedValue ? true : false
+  if (operator === 'not_checked') return relatedValue ? false : true
+
+  const normalizedValue = typeof relatedValue === 'object'
+    ? String(relatedValue?.name || relatedValue?.url || '')
+    : String(relatedValue || '')
+
+  if (operator === 'contains') return normalizedValue.toLowerCase().includes(expectedValue.toLowerCase())
+  if (operator === 'not_equals') return normalizedValue.toLowerCase() !== expectedValue.toLowerCase()
+  return normalizedValue.toLowerCase() === expectedValue.toLowerCase()
+}
+
+async function fileToDataUrl(file: File) {
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.readAsDataURL(file)
+  })
+}
+
 function CustomFormSection({ section }: { section: any }) {
   const rawFields = Array.isArray(section.formFields) ? section.formFields : []
   const fields = rawFields.filter((field: any) => String(field?.label || '').trim())
   const initialState = useMemo(() => fields.reduce((acc: Record<string, any>, field: any) => {
-    acc[field.id] = field.type === 'checkbox' ? false : ''
+    if (field.type === 'checkbox') acc[field.id] = false
+    else if (field.type === 'file') acc[field.id] = null
+    else acc[field.id] = ''
     return acc
   }, {}), [fields])
   const [formData, setFormData] = useState<Record<string, any>>(initialState)
@@ -2551,10 +2587,27 @@ function CustomFormSection({ section }: { section: any }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [turnstileToken, setTurnstileToken] = useState('')
+  const [currentStep, setCurrentStep] = useState(1)
+
+  const visibleFields = useMemo(() => fields.filter((field: any) => matchesFieldCondition(field, formData)), [fields, formData])
+  const stepNumbers = useMemo(() => {
+    if (!section.customFormMultiStep) return [1]
+    const steps = Array.from(new Set<number>(visibleFields.map((field: any) => Math.max(1, Number(field.step || 1)))))
+    return steps.sort((a, b) => a - b)
+  }, [section.customFormMultiStep, visibleFields])
+  const activeStep = stepNumbers.includes(currentStep) ? currentStep : (stepNumbers[0] || 1)
+  const currentFields = section.customFormMultiStep
+    ? visibleFields.filter((field: any) => Math.max(1, Number(field.step || 1)) === activeStep)
+    : visibleFields
+  const isFinalStep = !section.customFormMultiStep || activeStep === stepNumbers[stepNumbers.length - 1]
 
   useEffect(() => {
     setFormData(initialState)
   }, [initialState])
+
+  useEffect(() => {
+    if (!stepNumbers.includes(currentStep)) setCurrentStep(stepNumbers[0] || 1)
+  }, [currentStep, stepNumbers])
 
   useEffect(() => {
     siteSettingsAPI.getSettings().then(setSettings).catch(() => setSettings({}))
@@ -2566,8 +2619,27 @@ function CustomFormSection({ section }: { section: any }) {
     setFormData((prev) => ({ ...prev, [fieldId]: value }))
   }
 
+  const stepHasMissingRequired = currentFields.some((field: any) => {
+    if (!field.required) return false
+    const value = formData[field.id]
+    if (field.type === 'checkbox') return !value
+    if (field.type === 'file') return !value?.dataUrl
+    return !String(value || '').trim()
+  })
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (!isFinalStep) {
+      if (stepHasMissingRequired) {
+        setSubmitError('Complete the required fields before moving to the next step.')
+        return
+      }
+      setSubmitError('')
+      const stepIndex = stepNumbers.indexOf(activeStep)
+      setCurrentStep(stepNumbers[Math.min(stepIndex + 1, stepNumbers.length - 1)] || activeStep)
+      return
+    }
+
     setIsSubmitting(true)
     setIsSubmitted(false)
     setSubmitError('')
@@ -2578,7 +2650,9 @@ function CustomFormSection({ section }: { section: any }) {
         pagePath: typeof window !== 'undefined' ? window.location.pathname : '',
         pageTitle: section.title || '',
         turnstileToken,
-        fields: fields.map((field: any) => ({
+        notificationEmails: section.customFormNotificationEmails || '',
+        routingRules: Array.isArray(section.customFormRoutingRules) ? section.customFormRoutingRules : [],
+        fields: visibleFields.map((field: any) => ({
           id: field.id,
           label: field.label,
           type: field.type,
@@ -2588,7 +2662,11 @@ function CustomFormSection({ section }: { section: any }) {
       })
       setIsSubmitted(true)
       setTurnstileToken('')
+      setCurrentStep(stepNumbers[0] || 1)
       setFormData(initialState)
+      if (section.customFormRedirectUrl && typeof window !== 'undefined') {
+        window.setTimeout(() => { window.location.href = section.customFormRedirectUrl }, 800)
+      }
     } catch (error) {
       setSubmitError('We could not send this form right now. Please try again in a moment.')
     } finally {
@@ -2608,13 +2686,22 @@ function CustomFormSection({ section }: { section: any }) {
               </div>
             )}
             {submitError && <div role="alert" className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{submitError}</div>}
-            {fields.length === 0 ? (
+            {visibleFields.length === 0 ? (
               <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-600">
                 Add form fields in the page editor to start collecting submissions here.
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                {fields.map((field: any) => (
+                {section.customFormMultiStep && stepNumbers.length > 1 && (
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    {stepNumbers.map((stepNumber: number) => (
+                      <div key={stepNumber} className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full px-3 text-sm font-bold ${stepNumber === activeStep ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                        {stepNumber}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {currentFields.map((field: any) => (
                   <CustomFormField
                     key={field.id}
                     field={field}
@@ -2622,10 +2709,17 @@ function CustomFormSection({ section }: { section: any }) {
                     onChange={(value) => handleChange(field.id, value)}
                   />
                 ))}
-                {settings.turnstileSiteKey && <TurnstileWidget siteKey={settings.turnstileSiteKey} onVerify={setTurnstileToken} />}
-                <button type="submit" className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60" disabled={isSubmitting}>
-                  {isSubmitting ? 'Sending...' : (section.customFormSubmitLabel || 'Submit')}
-                </button>
+                {settings.turnstileSiteKey && isFinalStep && <TurnstileWidget siteKey={settings.turnstileSiteKey} onVerify={setTurnstileToken} />}
+                <div className="flex flex-wrap gap-3">
+                  {section.customFormMultiStep && stepNumbers.length > 1 && activeStep > stepNumbers[0] && (
+                    <button type="button" onClick={() => setCurrentStep(stepNumbers[Math.max(0, stepNumbers.indexOf(activeStep) - 1)] ?? activeStep)} className="btn-secondary">
+                      Back
+                    </button>
+                  )}
+                  <button type="submit" className="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-60" disabled={isSubmitting}>
+                    {isSubmitting ? 'Sending...' : isFinalStep ? (section.customFormSubmitLabel || 'Submit') : 'Next Step'}
+                  </button>
+                </div>
               </form>
             )}
           </div>
@@ -2660,6 +2754,7 @@ function CtaSection({ section }: { section: any }) {
 function CustomFormField({ field, value, onChange }: { field: any; value: any; onChange: (value: any) => void }) {
   const label = `${field.label}${field.required ? ' *' : ''}`
   const commonClassName = 'w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600'
+  const helpText = field.helpText ? <p className="mt-2 text-sm text-gray-500">{field.helpText}</p> : null
 
   if (field.type === 'textarea') {
     return (
@@ -2674,15 +2769,13 @@ function CustomFormField({ field, value, onChange }: { field: any; value: any; o
           className={commonClassName}
           placeholder={field.placeholder || ''}
         />
+        {helpText}
       </div>
     )
   }
 
   if (field.type === 'select') {
-    const options = String(field.options || '')
-      .split('\n')
-      .map((option: string) => option.trim())
-      .filter(Boolean)
+    const options = fieldOptions(field)
     return (
       <div>
         <label htmlFor={field.id} className="mb-2 block font-semibold text-gray-700">{label}</label>
@@ -2696,6 +2789,31 @@ function CustomFormField({ field, value, onChange }: { field: any; value: any; o
           <option value="">{field.placeholder || 'Select an option...'}</option>
           {options.map((option: string) => <option key={option} value={option}>{option}</option>)}
         </select>
+        {helpText}
+      </div>
+    )
+  }
+
+  if (field.type === 'radio') {
+    const options = fieldOptions(field)
+    return (
+      <div>
+        <span className="mb-2 block font-semibold text-gray-700">{label}</span>
+        <div className="space-y-2">
+          {options.map((option: string) => (
+            <label key={option} className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+              <input
+                type="radio"
+                name={field.id}
+                checked={String(value || '') === option}
+                onChange={() => onChange(option)}
+                className="h-4 w-4 border-gray-300"
+              />
+              <span className="text-sm font-semibold text-gray-700">{option}</span>
+            </label>
+          ))}
+        </div>
+        {helpText}
       </div>
     )
   }
@@ -2715,19 +2833,52 @@ function CustomFormField({ field, value, onChange }: { field: any; value: any; o
     )
   }
 
+  if (field.type === 'file') {
+    return (
+      <div>
+        <label htmlFor={field.id} className="mb-2 block font-semibold text-gray-700">{label}</label>
+        <input
+          id={field.id}
+          type="file"
+          accept={field.accept || undefined}
+          onChange={async (event) => {
+            const nextFile = event.target.files?.[0]
+            if (!nextFile) {
+              onChange(null)
+              return
+            }
+            const dataUrl = await fileToDataUrl(nextFile)
+            onChange({
+              name: nextFile.name,
+              size: nextFile.size,
+              type: nextFile.type,
+              dataUrl
+            })
+          }}
+          className={commonClassName}
+        />
+        {value?.name && <p className="mt-2 text-sm text-gray-600">Selected: {value.name}</p>}
+        {helpText}
+      </div>
+    )
+  }
+
   return (
-    <Field
-      id={field.id}
-      label={label}
-      type={field.type === 'tel' ? 'tel' : field.type === 'email' ? 'email' : 'text'}
-      value={value || ''}
-      onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChange(event.target.value)}
-      required={Boolean(field.required)}
-      inputClassName=""
-      inputStyle={undefined}
-      labelStyle={undefined}
-      placeholder={field.placeholder || ''}
-    />
+    <div>
+      <Field
+        id={field.id}
+        label={label}
+        type={field.type === 'tel' ? 'tel' : field.type === 'email' ? 'email' : 'text'}
+        value={value || ''}
+        onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChange(event.target.value)}
+        required={Boolean(field.required)}
+        inputClassName=""
+        inputStyle={undefined}
+        labelStyle={undefined}
+        placeholder={field.placeholder || ''}
+      />
+      {helpText}
+    </div>
   )
 }
 

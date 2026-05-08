@@ -426,6 +426,10 @@ function makePageSection(type: string) {
     customFormName: 'Website Inquiry',
     customFormSubmitLabel: 'Send Message',
     customFormSuccessMessage: 'Thanks. Your submission has been sent.',
+    customFormNotificationEmails: '',
+    customFormRedirectUrl: '',
+    customFormMultiStep: false,
+    customFormRoutingRules: [],
     gridSetupComplete: type !== 'columns',
     formFields: type === 'customForm'
       ? [
@@ -533,6 +537,23 @@ function makeCustomFormField(type = 'text', overrides: Record<string, any> = {})
     required: false,
     placeholder: '',
     options: '',
+    helpText: '',
+    step: 1,
+    accept: '',
+    showWhenFieldId: '',
+    showWhenOperator: 'equals',
+    showWhenValue: '',
+    ...overrides
+  }
+}
+
+function makeFormRoutingRule(overrides: Record<string, any> = {}) {
+  return {
+    id: crypto.randomUUID(),
+    fieldId: '',
+    operator: 'equals',
+    value: '',
+    notificationEmails: '',
     ...overrides
   }
 }
@@ -5086,9 +5107,16 @@ function PageSectionEditor({ title, sections, editingSectionId, draggingSectionI
                   <input value={section.customFormName || ''} onChange={(e) => updateSection(index, 'customFormName', e.target.value)} placeholder="Internal form name" className="px-4 py-2 border rounded-lg" />
                   <input value={section.customFormSubmitLabel || ''} onChange={(e) => updateSection(index, 'customFormSubmitLabel', e.target.value)} placeholder="Submit button label" className="px-4 py-2 border rounded-lg" />
                   <input value={section.customFormSuccessMessage || ''} onChange={(e) => updateSection(index, 'customFormSuccessMessage', e.target.value)} placeholder="Success message" className="px-4 py-2 border rounded-lg" />
+                  <input value={section.customFormRedirectUrl || ''} onChange={(e) => updateSection(index, 'customFormRedirectUrl', e.target.value)} placeholder="Redirect URL after submit (optional)" className="px-4 py-2 border rounded-lg md:col-span-2" />
+                  <textarea value={section.customFormNotificationEmails || ''} onChange={(e) => updateSection(index, 'customFormNotificationEmails', e.target.value)} placeholder="Notification emails, comma or line separated" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
                   <textarea value={section.body || ''} onChange={(e) => updateSection(index, 'body', e.target.value)} placeholder="Form description" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
                 </div>
+                <label className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <input type="checkbox" checked={Boolean(section.customFormMultiStep)} onChange={(e) => updateSection(index, 'customFormMultiStep', e.target.checked)} />
+                  Enable multi-step flow
+                </label>
                 <CustomFormFieldsEditor section={section} index={index} updateSection={updateSection} />
+                <FormRoutingRulesEditor section={section} index={index} updateSection={updateSection} />
               </>
             )}
 
@@ -5782,7 +5810,9 @@ function CustomFormFieldsEditor({ section, index, updateSection }: any) {
           <button type="button" onClick={() => addField('text')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add Text</button>
           <button type="button" onClick={() => addField('textarea')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add Textarea</button>
           <button type="button" onClick={() => addField('select')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add Select</button>
+          <button type="button" onClick={() => addField('radio')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add Radio</button>
           <button type="button" onClick={() => addField('checkbox')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add Checkbox</button>
+          <button type="button" onClick={() => addField('file')} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add File</button>
         </div>
       </div>
       {fields.map((field: any, fieldIndex: number) => (
@@ -5795,10 +5825,13 @@ function CustomFormFieldsEditor({ section, index, updateSection }: any) {
               <option value="tel">Phone</option>
               <option value="textarea">Textarea</option>
               <option value="select">Select</option>
+              <option value="radio">Radio</option>
               <option value="checkbox">Checkbox</option>
+              <option value="file">File Upload</option>
             </select>
             <input value={field.placeholder || ''} onChange={(e) => updateField(fieldIndex, 'placeholder', e.target.value)} placeholder="Placeholder / helper prompt" className="px-4 py-2 border rounded-lg md:col-span-2" />
-            {field.type === 'select' && (
+            <input value={field.helpText || ''} onChange={(e) => updateField(fieldIndex, 'helpText', e.target.value)} placeholder="Help text (optional)" className="px-4 py-2 border rounded-lg md:col-span-2" />
+            {(field.type === 'select' || field.type === 'radio') && (
               <textarea
                 value={field.options || ''}
                 onChange={(e) => updateField(fieldIndex, 'options', e.target.value)}
@@ -5806,6 +5839,37 @@ function CustomFormFieldsEditor({ section, index, updateSection }: any) {
                 rows={4}
                 className="px-4 py-2 border rounded-lg md:col-span-2"
               />
+            )}
+            {field.type === 'file' && (
+              <input
+                value={field.accept || ''}
+                onChange={(e) => updateField(fieldIndex, 'accept', e.target.value)}
+                placeholder="Accepted file types, e.g. .pdf,image/*"
+                className="px-4 py-2 border rounded-lg md:col-span-2"
+              />
+            )}
+            {Boolean(section.customFormMultiStep) && (
+              <input type="number" min="1" value={field.step || 1} onChange={(e) => updateField(fieldIndex, 'step', Number(e.target.value || 1))} placeholder="Step number" className="px-4 py-2 border rounded-lg" />
+            )}
+            <select value={field.showWhenFieldId || ''} onChange={(e) => updateField(fieldIndex, 'showWhenFieldId', e.target.value)} className="px-4 py-2 border rounded-lg bg-white">
+              <option value="">Always show</option>
+              {fields.filter((_: any, itemIndex: number) => itemIndex !== fieldIndex).map((item: any) => (
+                <option key={item.id} value={item.id}>{item.label || item.id}</option>
+              ))}
+            </select>
+            {field.showWhenFieldId && (
+              <>
+                <select value={field.showWhenOperator || 'equals'} onChange={(e) => updateField(fieldIndex, 'showWhenOperator', e.target.value)} className="px-4 py-2 border rounded-lg bg-white">
+                  <option value="equals">Equals</option>
+                  <option value="not_equals">Does not equal</option>
+                  <option value="contains">Contains</option>
+                  <option value="checked">Is checked</option>
+                  <option value="not_checked">Is not checked</option>
+                </select>
+                {!['checked', 'not_checked'].includes(field.showWhenOperator || '') && (
+                  <input value={field.showWhenValue || ''} onChange={(e) => updateField(fieldIndex, 'showWhenValue', e.target.value)} placeholder="Conditional value" className="px-4 py-2 border rounded-lg" />
+                )}
+              </>
             )}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -5818,6 +5882,51 @@ function CustomFormFieldsEditor({ section, index, updateSection }: any) {
         </div>
       ))}
       {fields.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-sm text-gray-600">No fields yet. Add the first field above.</div>}
+    </div>
+  )
+}
+
+function FormRoutingRulesEditor({ section, index, updateSection }: any) {
+  const rules = Array.isArray(section.customFormRoutingRules) ? section.customFormRoutingRules : []
+  const fields = Array.isArray(section.formFields) ? section.formFields : []
+
+  const updateRule = (ruleIndex: number, field: string, value: any) => {
+    updateSection(index, 'customFormRoutingRules', rules.map((rule: any, currentIndex: number) => currentIndex === ruleIndex ? { ...rule, [field]: value } : rule))
+  }
+
+  const addRule = () => updateSection(index, 'customFormRoutingRules', [...rules, makeFormRoutingRule()])
+  const removeRule = (ruleIndex: number) => updateSection(index, 'customFormRoutingRules', rules.filter((_: any, currentIndex: number) => currentIndex !== ruleIndex))
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h4 className="font-bold text-gray-900">Notification Routing</h4>
+          <p className="text-sm text-gray-600">Route matching submissions to extra email recipients.</p>
+        </div>
+        <button type="button" onClick={addRule} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">Add Rule</button>
+      </div>
+      {rules.map((rule: any, ruleIndex: number) => (
+        <div key={rule.id || ruleIndex} className="grid grid-cols-1 gap-3 rounded-lg border p-3 md:grid-cols-2">
+          <select value={rule.fieldId || ''} onChange={(e) => updateRule(ruleIndex, 'fieldId', e.target.value)} className="px-4 py-2 border rounded-lg bg-white">
+            <option value="">Choose field</option>
+            {fields.map((field: any) => <option key={field.id} value={field.id}>{field.label || field.id}</option>)}
+          </select>
+          <select value={rule.operator || 'equals'} onChange={(e) => updateRule(ruleIndex, 'operator', e.target.value)} className="px-4 py-2 border rounded-lg bg-white">
+            <option value="equals">Equals</option>
+            <option value="not_equals">Does not equal</option>
+            <option value="contains">Contains</option>
+            <option value="checked">Is checked</option>
+            <option value="not_checked">Is not checked</option>
+          </select>
+          {!['checked', 'not_checked'].includes(rule.operator || '') && (
+            <input value={rule.value || ''} onChange={(e) => updateRule(ruleIndex, 'value', e.target.value)} placeholder="Match value" className="px-4 py-2 border rounded-lg" />
+          )}
+          <textarea value={rule.notificationEmails || ''} onChange={(e) => updateRule(ruleIndex, 'notificationEmails', e.target.value)} placeholder="Emails, comma or line separated" rows={3} className="px-4 py-2 border rounded-lg md:col-span-2" />
+          <button type="button" onClick={() => removeRule(ruleIndex)} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 md:col-span-2">Remove Rule</button>
+        </div>
+      ))}
+      {rules.length === 0 && <div className="rounded-lg border border-dashed p-4 text-center text-sm text-gray-600">No routing rules yet.</div>}
     </div>
   )
 }
