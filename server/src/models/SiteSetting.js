@@ -260,6 +260,10 @@ const SiteSetting = sequelize.define('SiteSetting', {
     type: DataTypes.JSON,
     defaultValue: []
   },
+  pageRevisions: {
+    type: DataTypes.JSON,
+    defaultValue: {}
+  },
   facebookUrl: {
     type: DataTypes.STRING,
     allowNull: true

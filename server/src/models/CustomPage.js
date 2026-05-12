@@ -39,6 +39,10 @@ const CustomPage = sequelize.define('CustomPage', {
     type: DataTypes.JSON,
     defaultValue: []
   },
+  revisions: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  },
   metaTitle: {
     type: DataTypes.STRING,
     allowNull: true

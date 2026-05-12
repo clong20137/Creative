@@ -1,7 +1,7 @@
 import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState, type FocusEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
-import { FiActivity, FiAlignCenter, FiAlignLeft, FiAlignRight, FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiChevronDown, FiColumns, FiCopy, FiEye, FiEyeOff, FiFileText, FiGrid, FiImage, FiLayout, FiLink, FiMail, FiMapPin, FiMessageSquare, FiMonitor, FiMove, FiPhone, FiRotateCcw, FiRotateCw, FiSave, FiSearch, FiSmartphone, FiSquare, FiTablet, FiTrash2, FiType, FiVideo } from 'react-icons/fi'
+import { FiActivity, FiAlignCenter, FiAlignLeft, FiAlignRight, FiArrowDown, FiArrowLeft, FiArrowRight, FiArrowUp, FiChevronDown, FiClock, FiColumns, FiCopy, FiEye, FiEyeOff, FiFileText, FiGrid, FiImage, FiLayout, FiLink, FiMail, FiMapPin, FiMessageSquare, FiMonitor, FiMove, FiPhone, FiRotateCcw, FiRotateCw, FiSave, FiSearch, FiSmartphone, FiSquare, FiTablet, FiTrash2, FiType, FiVideo } from 'react-icons/fi'
 import AdminLayout from '../components/AdminLayout'
 import { PageSkeleton } from '../components/SkeletonLoaders'
 import { useToast } from '../components/ToastProvider'
@@ -1075,6 +1075,10 @@ export default function AdminPages() {
   const [draftRecoveryPrompt, setDraftRecoveryPrompt] = useState<{ open: boolean; key: string; label: string; updatedAt?: string; data?: any }>({ open: false, key: '', label: '' })
   const [deletePromptOpen, setDeletePromptOpen] = useState(false)
   const [newPageTemplatePromptOpen, setNewPageTemplatePromptOpen] = useState(false)
+  const [revisionsModalOpen, setRevisionsModalOpen] = useState(false)
+  const [pageRevisions, setPageRevisions] = useState<any[]>([])
+  const [revisionsLoading, setRevisionsLoading] = useState(false)
+  const [restoringRevisionId, setRestoringRevisionId] = useState('')
   const [undoStack, setUndoStack] = useState<string[]>([])
   const [redoStack, setRedoStack] = useState<string[]>([])
   const [mediaPicker, setMediaPicker] = useState<{ open: boolean; type: string; onSelect: null | ((url: string) => void) }>({ open: false, type: 'image', onSelect: null })
@@ -1234,9 +1238,12 @@ export default function AdminPages() {
     try {
       setError('')
       setMessage('Saving page edits...')
-      const payload = getActivePayload(settings, activeTab)
+      const payload = {
+        ...getActivePayload(settings, activeTab),
+        pageRevisionPageKey: activeBuiltInPageKey || activeTab
+      }
       await adminAPI.updateSiteSettings(payload)
-      setSavedSnapshot(JSON.stringify(payload))
+      setSavedSnapshot(JSON.stringify(getActivePayload(settings, activeTab)))
       clearAutosaveEntry(autosaveStorageKey)
       lastAutosavedSnapshotRef.current = JSON.stringify(payload)
       setAutosaveMessage('')
@@ -1248,6 +1255,58 @@ export default function AdminPages() {
       setMessage('')
       setError(err.error || 'Failed to save page edits')
       showToast({ tone: 'error', title: 'Save failed', message: err.error || 'Failed to save page edits' })
+    }
+  }
+
+  const openPageRevisions = async () => {
+    try {
+      setError('')
+      setRevisionsModalOpen(true)
+      setRevisionsLoading(true)
+      const revisions = activeTab === 'Custom Pages' && selectedPageId !== 'new'
+        ? await adminAPI.getPageRevisions(selectedPageId)
+        : await adminAPI.getBuiltInPageRevisions(activeBuiltInPageKey || activeTab)
+      setPageRevisions(Array.isArray(revisions) ? revisions : [])
+    } catch (err: any) {
+      setError(err.error || 'Failed to load revisions')
+      showToast({ tone: 'error', title: 'Revisions unavailable', message: err.error || 'Failed to load revisions' })
+    } finally {
+      setRevisionsLoading(false)
+    }
+  }
+
+  const restorePageRevision = async (revisionId: string) => {
+    try {
+      setRestoringRevisionId(revisionId)
+      setError('')
+      if (activeTab === 'Custom Pages' && selectedPageId !== 'new') {
+        const response = await adminAPI.restorePageRevision(selectedPageId, revisionId)
+        const restoredPage = response.page || response
+        setPages(current => {
+          const withoutSaved = current.filter(page => page.id !== restoredPage.id)
+          return [...withoutSaved, restoredPage].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
+        })
+        setPageDraft({ ...restoredPage, showPageHeader: restoredPage.showPageHeader !== false, previewToken: restoredPage.previewToken || '' })
+        setSavedSnapshot(JSON.stringify(restoredPage))
+        setPageRevisions(Array.isArray(response.revisions) ? response.revisions : [])
+      } else {
+        const restoredSettings = await adminAPI.restoreBuiltInPageRevision(activeBuiltInPageKey || activeTab, revisionId)
+        setSettings(restoredSettings)
+        setSavedSnapshot(JSON.stringify(getActivePayload(restoredSettings, activeTab)))
+        setPageRevisions(Array.isArray(restoredSettings.pageRevisions?.[activeBuiltInPageKey || activeTab]) ? restoredSettings.pageRevisions[activeBuiltInPageKey || activeTab] : [])
+      }
+      lastAutosavedSnapshotRef.current = ''
+      setAutosaveMessage('')
+      setUndoStack([])
+      setRedoStack([])
+      setMessage('Revision restored')
+      setRevisionsModalOpen(false)
+      showToast({ tone: 'success', title: 'Revision restored', message: 'The selected page revision is now active.' })
+    } catch (err: any) {
+      setError(err.error || 'Failed to restore revision')
+      showToast({ tone: 'error', title: 'Restore failed', message: err.error || 'Failed to restore revision' })
+    } finally {
+      setRestoringRevisionId('')
     }
   }
 
@@ -2284,6 +2343,16 @@ export default function AdminPages() {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={openPageRevisions}
+            disabled={activeTab === 'Custom Pages' && selectedPageId === 'new'}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-700 transition hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Open page revisions"
+            title="Open page revisions"
+          >
+            <FiClock size={18} />
+          </button>
+          <button
+            type="button"
             onClick={() => setSeoModalOpen(true)}
             className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-700 transition hover:bg-blue-50 hover:text-blue-700"
             aria-label="Open page score"
@@ -2962,6 +3031,54 @@ export default function AdminPages() {
                     )}
                   </div>
                 </section>
+              </div>
+            </div>
+          </div>
+        )}
+        {revisionsModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+            <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+              <div className="border-b px-6 py-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Page revisions</h2>
+                    <p className="mt-1 text-sm text-gray-600">Restore an earlier saved version of <span className="font-semibold text-gray-900">{activePageLabel}</span>.</p>
+                  </div>
+                  <button type="button" onClick={() => setRevisionsModalOpen(false)} className="rounded-lg border px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
+                    Close
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-y-auto p-6">
+                {revisionsLoading ? (
+                  <div className="rounded-xl border border-dashed p-6 text-center text-sm text-gray-500">Loading revisions...</div>
+                ) : pageRevisions.length === 0 ? (
+                  <div className="rounded-xl border border-dashed p-6 text-center text-sm text-gray-500">No saved revisions yet.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {pageRevisions.map((revision: any, index: number) => (
+                      <div key={revision.id || index} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="font-semibold text-gray-900">{revision.label || `Revision ${index + 1}`}</p>
+                            <p className="mt-1 text-sm text-gray-600">
+                              {revision.createdAt ? new Date(revision.createdAt).toLocaleString() : 'Unknown date'}
+                              {(revision.actorName || revision.actorEmail) ? ` · ${revision.actorName || revision.actorEmail}` : ''}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => restorePageRevision(revision.id)}
+                            disabled={restoringRevisionId === revision.id}
+                            className="btn-primary inline-flex min-w-[10rem] items-center justify-center disabled:opacity-60"
+                          >
+                            {restoringRevisionId === revision.id ? 'Restoring...' : 'Restore'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

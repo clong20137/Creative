@@ -5,6 +5,7 @@ import SiteSetting from '../models/SiteSetting.js'
 const router = express.Router()
 let siteSettingsSchemaReady = false
 const BUILT_IN_PAGE_KEYS = ['home', 'portfolio', 'services', 'pricing', 'plugins', 'creativecms', 'contact']
+const PAGE_REVISION_LIMIT = 25
 
 const defaultFooterColumns = [
   {
@@ -647,6 +648,7 @@ async function ensureSiteSettingsSchema() {
     ['cmsReleaseChannel', { type: DataTypes.ENUM('stable', 'early-access'), allowNull: true }],
     ['cmsReleaseNotes', { type: DataTypes.JSON, allowNull: true }],
     ['siteBackups', { type: DataTypes.JSON, allowNull: true }],
+    ['pageRevisions', { type: DataTypes.JSON, allowNull: true }],
     ['setupWizardCompleted', { type: DataTypes.BOOLEAN, allowNull: true }],
     ['setupWizardCompletedAt', { type: DataTypes.DATE, allowNull: true }],
     ['onboardingState', { type: DataTypes.JSON, allowNull: true }]
@@ -675,6 +677,10 @@ export async function getOrCreateSiteSettings() {
   let changed = false
   if (!settings.reusableSections) {
     settings.reusableSections = []
+    changed = true
+  }
+  if (!settings.pageRevisions || typeof settings.pageRevisions !== 'object') {
+    settings.pageRevisions = {}
     changed = true
   }
   if (!settings.cmsCurrentVersion) {
@@ -794,6 +800,72 @@ export async function getOrCreateSiteSettings() {
   if (ensureBuiltInPageDefaults(settings)) changed = true
   if (changed) await settings.save()
   return settings
+}
+
+export function getBuiltInPageRevisionSnapshot(pageKey, settingsLike = {}) {
+  const source = typeof settingsLike?.toJSON === 'function' ? settingsLike.toJSON() : settingsLike
+  const base = {
+    pageMetadata: source.pageMetadata || {},
+    pageSections: source.pageSections || {},
+    reusableSections: source.reusableSections || [],
+    googleReviewsEnabled: source.googleReviewsEnabled === true,
+    googlePlaceId: source.googlePlaceId || '',
+    googleApiKey: source.googleApiKey || '',
+    testimonials: Array.isArray(source.testimonials) ? source.testimonials : []
+  }
+
+  if (pageKey === 'home') {
+    return {
+      ...base,
+      heroTitle: source.heroTitle || '',
+      heroSubtitle: source.heroSubtitle || '',
+      heroPrimaryLabel: source.heroPrimaryLabel || '',
+      heroPrimaryUrl: source.heroPrimaryUrl || '',
+      heroSecondaryLabel: source.heroSecondaryLabel || '',
+      heroSecondaryUrl: source.heroSecondaryUrl || '',
+      heroMediaType: source.heroMediaType || 'none',
+      heroMediaUrl: source.heroMediaUrl || '',
+      whatWeDoHeader: source.whatWeDoHeader || {},
+      whatWeDoEnabled: source.whatWeDoEnabled !== false,
+      whatWeDo: Array.isArray(source.whatWeDo) ? source.whatWeDo : [],
+      featuredWork: Array.isArray(source.featuredWork) ? source.featuredWork : []
+    }
+  }
+
+  if (pageKey === 'services') {
+    return { ...base, pageHeaders: source.pageHeaders || {}, services: Array.isArray(source.services) ? source.services : [] }
+  }
+
+  if (pageKey === 'pricing') {
+    return {
+      ...base,
+      pageHeaders: source.pageHeaders || {},
+      webDesignPackages: Array.isArray(source.webDesignPackages) ? source.webDesignPackages : [],
+      faqs: Array.isArray(source.faqs) ? source.faqs : []
+    }
+  }
+
+  return { ...base, pageHeaders: source.pageHeaders || {} }
+}
+
+export function buildPageRevisionEntry({ label, snapshot, actorName, actorEmail }) {
+  return {
+    id: `rev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: new Date().toISOString(),
+    label: String(label || 'Page revision'),
+    actorName: String(actorName || '').trim(),
+    actorEmail: String(actorEmail || '').trim(),
+    snapshot
+  }
+}
+
+export function appendBuiltInPageRevision(settings, pageKey, revision) {
+  const current = settings.pageRevisions && typeof settings.pageRevisions === 'object' ? settings.pageRevisions : {}
+  const revisions = Array.isArray(current[pageKey]) ? current[pageKey] : []
+  settings.pageRevisions = {
+    ...current,
+    [pageKey]: [revision, ...revisions].slice(0, PAGE_REVISION_LIMIT)
+  }
 }
 
 function publicSiteSettings(settings) {

@@ -28,7 +28,7 @@ import MediaAsset from '../models/MediaAsset.js'
 import CRMLead from '../models/CRMLead.js'
 import BlogArticle from '../models/BlogArticle.js'
 import AuditLog from '../models/AuditLog.js'
-import { getOrCreateSiteSettings } from './site-settings.js'
+import { appendBuiltInPageRevision, buildPageRevisionEntry, getBuiltInPageRevisionSnapshot, getOrCreateSiteSettings } from './site-settings.js'
 import { ensureDemoPlugins, getOrCreateBlogPlugin, getOrCreateBookingPlugin, getOrCreateCrmPlugin, getOrCreateEventsPlugin, getOrCreateProtectedContentPlugin, getOrCreateRestaurantPlugin, getOrCreateRealEstatePlugin } from './plugins.js'
 import { ensureSiteDemos } from './site-demos.js'
 import crypto from 'crypto'
@@ -51,6 +51,7 @@ let blogArticlesSchemaReady = false
 let customPagesSchemaReady = false
 let subscriptionSchemaReady = false
 let cmsLicenseSchemaReady = false
+const PAGE_REVISION_LIMIT = 25
 let googleAccessTokenCache = { token: '', expiresAt: 0 }
 const seoDashboardCache = new Map()
 const mediaMimeExtensions = {
@@ -296,7 +297,48 @@ async function ensureCustomPagesSchema() {
     }
   }
 
+  if (!table.revisions) {
+    try {
+      await queryInterface.addColumn('CustomPages', 'revisions', {
+        type: DataTypes.JSON,
+        allowNull: true
+      })
+    } catch (error) {
+      const message = String(error?.message || '')
+      if (!message.includes('Duplicate column')) throw error
+    }
+  }
+
   customPagesSchemaReady = true
+}
+
+function buildCustomPageRevisionEntry(page, req, label = '') {
+  return {
+    id: `rev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: new Date().toISOString(),
+    label: String(label || page?.title || 'Page revision'),
+    actorName: String(req.user?.name || '').trim(),
+    actorEmail: String(req.user?.email || '').trim(),
+    snapshot: {
+      title: page.title,
+      slug: page.slug,
+      headerTitle: page.headerTitle,
+      headerSubtitle: page.headerSubtitle,
+      showPageHeader: page.showPageHeader !== false,
+      content: page.content || '',
+      sections: Array.isArray(page.sections) ? page.sections : [],
+      metaTitle: page.metaTitle || '',
+      metaDescription: page.metaDescription || '',
+      isPublished: page.isPublished === true,
+      previewToken: page.previewToken || '',
+      sortOrder: Number(page.sortOrder || 0)
+    }
+  }
+}
+
+function appendCustomPageRevision(page, revision) {
+  const revisions = Array.isArray(page.revisions) ? page.revisions : []
+  page.revisions = [revision, ...revisions].slice(0, PAGE_REVISION_LIMIT)
 }
 
 function makePagePreviewToken() {
@@ -2593,7 +2635,18 @@ router.put('/site-settings', async (req, res) => {
     }
     const settings = await getOrCreateSiteSettings()
     const previous = settings.toJSON()
-    await settings.update(req.body)
+    const revisionPageKey = String(req.body?.pageRevisionPageKey || '').trim()
+    const nextSettings = { ...(req.body || {}) }
+    delete nextSettings.pageRevisionPageKey
+    if (revisionPageKey) {
+      appendBuiltInPageRevision(settings, revisionPageKey, buildPageRevisionEntry({
+        label: `${revisionPageKey} page`,
+        snapshot: getBuiltInPageRevisionSnapshot(revisionPageKey, previous),
+        actorName: req.user?.name,
+        actorEmail: req.user?.email
+      }))
+    }
+    await settings.update(nextSettings)
     const changedKeys = summarizeChangedKeys(previous, settings.toJSON(), ['siteBackups'])
     await createAuditLog(req, {
       action: 'site-settings.updated',
@@ -2602,6 +2655,52 @@ router.put('/site-settings', async (req, res) => {
       summary: `Updated site settings${changedKeys.length ? ` (${changedKeys.slice(0, 4).join(', ')})` : ''}`,
       details: {
         changedKeys
+      }
+    })
+    res.json(settings)
+  } catch (error) {
+    sendRouteError(res, error)
+  }
+})
+
+router.get('/site-settings/page-revisions/:pageKey', async (req, res) => {
+  try {
+    const settings = await getOrCreateSiteSettings()
+    const pageKey = String(req.params.pageKey || '').trim()
+    const revisions = settings.pageRevisions && typeof settings.pageRevisions === 'object'
+      ? settings.pageRevisions[pageKey]
+      : []
+    res.json(Array.isArray(revisions) ? revisions : [])
+  } catch (error) {
+    sendRouteError(res, error)
+  }
+})
+
+router.post('/site-settings/page-revisions/:pageKey/:revisionId/restore', async (req, res) => {
+  try {
+    const settings = await getOrCreateSiteSettings()
+    const pageKey = String(req.params.pageKey || '').trim()
+    const revisions = settings.pageRevisions && typeof settings.pageRevisions === 'object'
+      ? settings.pageRevisions[pageKey]
+      : []
+    const revision = Array.isArray(revisions) ? revisions.find((item) => String(item.id) === String(req.params.revisionId)) : null
+    if (!revision?.snapshot) return res.status(404).json({ error: 'Revision not found' })
+
+    appendBuiltInPageRevision(settings, pageKey, buildPageRevisionEntry({
+      label: `${pageKey} before restore`,
+      snapshot: getBuiltInPageRevisionSnapshot(pageKey, settings),
+      actorName: req.user?.name,
+      actorEmail: req.user?.email
+    }))
+    await settings.update(revision.snapshot)
+    await createAuditLog(req, {
+      action: 'site-settings.page-revision.restored',
+      targetType: 'site-settings',
+      targetId: settings.id,
+      summary: `Restored ${pageKey} page revision`,
+      details: {
+        pageKey,
+        revisionId: revision.id
       }
     })
     res.json(settings)
@@ -2769,6 +2868,7 @@ router.post('/pages', async (req, res) => {
       showPageHeader: req.body.showPageHeader !== false,
       content: req.body.content || '',
       sections: Array.isArray(req.body.sections) ? req.body.sections : [],
+      revisions: [],
       metaTitle: req.body.metaTitle || '',
       metaDescription: req.body.metaDescription || '',
       isPublished: Boolean(req.body.isPublished),
@@ -2797,6 +2897,7 @@ router.put('/pages/:id', async (req, res) => {
     const page = await CustomPage.findByPk(req.params.id)
     if (!page) return res.status(404).json({ error: 'Page not found' })
     const previous = page.toJSON()
+    appendCustomPageRevision(page, buildCustomPageRevisionEntry(page, req))
 
     await page.update({
       title: req.body.title,
@@ -2814,6 +2915,7 @@ router.put('/pages/:id', async (req, res) => {
       metaDescription: req.body.metaDescription || '',
       isPublished: Boolean(req.body.isPublished),
       previewToken: page.previewToken || req.body.previewToken || makePagePreviewToken(),
+      revisions: page.revisions,
       sortOrder: Number(req.body.sortOrder || 0)
     })
     await createAuditLog(req, {
@@ -2828,6 +2930,46 @@ router.put('/pages/:id', async (req, res) => {
     res.json(page)
   } catch (error) {
     res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/pages/:id/revisions', async (req, res) => {
+  try {
+    await ensureCustomPagesSchema()
+    const page = await CustomPage.findByPk(req.params.id)
+    if (!page) return res.status(404).json({ error: 'Page not found' })
+    res.json(Array.isArray(page.revisions) ? page.revisions : [])
+  } catch (error) {
+    sendRouteError(res, error)
+  }
+})
+
+router.post('/pages/:id/revisions/:revisionId/restore', async (req, res) => {
+  try {
+    await ensureCustomPagesSchema()
+    const page = await CustomPage.findByPk(req.params.id)
+    if (!page) return res.status(404).json({ error: 'Page not found' })
+    const revisions = Array.isArray(page.revisions) ? page.revisions : []
+    const revision = revisions.find((item) => String(item.id) === String(req.params.revisionId))
+    if (!revision?.snapshot) return res.status(404).json({ error: 'Revision not found' })
+
+    appendCustomPageRevision(page, buildCustomPageRevisionEntry(page, req, `${page.title} before restore`))
+    await page.update({
+      ...revision.snapshot,
+      revisions: page.revisions
+    })
+    await createAuditLog(req, {
+      action: 'page.revision.restored',
+      targetType: 'page',
+      targetId: page.id,
+      summary: `Restored revision for "${page.title}"`,
+      details: {
+        revisionId: revision.id
+      }
+    })
+    res.json({ page, revisions: page.revisions })
+  } catch (error) {
+    sendRouteError(res, error)
   }
 })
 
