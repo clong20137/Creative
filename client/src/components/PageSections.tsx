@@ -1332,7 +1332,7 @@ function LeafletLocationMap({ section, height }: { section: any; height: number 
     }
   }, [])
 
-  return <div ref={mapElementRef} className="w-full" style={{ height: `${height}px` }} />
+  return <div ref={mapElementRef} className="creativecms-interactive-map w-full" style={{ height: `${height}px` }} />
 }
 
 function ImageStripSection({ section, inColumn = false }: { section: any; inColumn?: boolean }) {

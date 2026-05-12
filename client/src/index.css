@@ -1559,6 +1559,16 @@ html.dark-mode .login-page {
   border: 0;
 }
 
+.creativecms-interactive-map {
+  position: relative;
+  z-index: 0;
+}
+
+.creativecms-interactive-map .leaflet-container {
+  position: relative;
+  z-index: 0;
+}
+
 .creativecms-leaflet-pin-wrap {
   background: transparent !important;
   border: 0 !important;
